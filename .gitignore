@@ -16,6 +16,7 @@
 *.dbg*
 *.uvguix.*
 .mxproject
+*.Rhistory
 
 RTE/
 Templates/

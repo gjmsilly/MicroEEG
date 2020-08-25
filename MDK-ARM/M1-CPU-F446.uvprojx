@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_FULL_LL_DRIVER,USE_HAL_DRIVER,STM32F446xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;      ../Drivers/STM32F4xx_HAL_Driver/Inc;      ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;      ../Drivers/CMSIS/Device/ST/STM32F4xx/Include;      ../Drivers/CMSIS/Include;      ..\letter-shell</IncludePath>
+              <IncludePath>../Inc;       ../Drivers/STM32F4xx_HAL_Driver/Inc;       ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;       ../Drivers/CMSIS/Device/ST/STM32F4xx/Include;       ../Drivers/CMSIS/Include;       ..\letter-shell</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -394,9 +394,14 @@
           <GroupName>Application/User</GroupName>
           <Files>
             <File>
-              <FileName>ads1299.c</FileName>
+              <FileName>QSPI.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Src\ads1299.c</FilePath>
+              <FilePath>..\Src\QSPI.c</FilePath>
+            </File>
+            <File>
+              <FileName>W5500_App.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\W5500_App.c</FilePath>
             </File>
             <File>
               <FileName>main.c</FileName>
@@ -582,6 +587,36 @@
               <FileName>shell_ext.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\letter-shell\shell_ext.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Drivers/W5500</GroupName>
+          <Files>
+            <File>
+              <FileName>socket.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\socket.c</FilePath>
+            </File>
+            <File>
+              <FileName>w5500.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\w5500.c</FilePath>
+            </File>
+            <File>
+              <FileName>wizchip_conf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\wizchip_conf.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Drivers/ADS1299</GroupName>
+          <Files>
+            <File>
+              <FileName>ads1299.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\ads1299.c</FilePath>
             </File>
           </Files>
         </Group>

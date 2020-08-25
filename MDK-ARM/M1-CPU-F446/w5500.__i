@@ -1,0 +1,6 @@
+--c99 -c --cpu Cortex-M4.fp.sp -D__EVAL -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ..\letter-shell
+-I.\RTE\_M1-CPU-F446
+-IC:\Users\gjm04\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include
+-IC:\Users\gjm04\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include
+-D__UVISION_VERSION="530" -D_RTE_ -DSTM32F446xx -D_RTE_ -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F446xx
+-o m1-cpu-f446\w5500.o --omf_browse m1-cpu-f446\w5500.crf --depend m1-cpu-f446\w5500.d "..\Src\w5500.c"

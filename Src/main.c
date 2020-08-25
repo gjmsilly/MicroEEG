@@ -263,18 +263,18 @@ int main(void)
 	ERR_LED1_OFF;
 	ERR_LED2_OFF;	
 	
-	//Configure the DMA
-	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
-	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
-	
-	//ADS1299 Initial
-	LL_SPI_Enable(SPI1);
-	ADS1299_PowerOn(0);
-	ADS1299_Reset(0);		
-	
-  ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
+//	//Configure the DMA
+//	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
+//	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
+//	
+//	//ADS1299 Initial
+//	LL_SPI_Enable(SPI1);
+//	ADS1299_PowerOn(0);
+//	ADS1299_Reset(0);		
+//	
+//  ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
 
-	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7
+//	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7
 	
   /* USER CODE END 2 */
 
@@ -526,11 +526,11 @@ static void MX_QUADSPI_Init(void)
   /* USER CODE END QUADSPI_Init 1 */
   /* QUADSPI parameter configuration*/
   hqspi.Instance = QUADSPI;
-  hqspi.Init.ClockPrescaler = 255;
-  hqspi.Init.FifoThreshold = 1;
+  hqspi.Init.ClockPrescaler = 3;
+  hqspi.Init.FifoThreshold = 8;
   hqspi.Init.SampleShifting = QSPI_SAMPLE_SHIFTING_NONE;
-  hqspi.Init.FlashSize = 1;
-  hqspi.Init.ChipSelectHighTime = QSPI_CS_HIGH_TIME_1_CYCLE;
+  hqspi.Init.FlashSize = 15;
+  hqspi.Init.ChipSelectHighTime = QSPI_CS_HIGH_TIME_4_CYCLE;
   hqspi.Init.ClockMode = QSPI_CLOCK_MODE_0;
   hqspi.Init.FlashID = QSPI_FLASH_ID_1;
   hqspi.Init.DualFlash = QSPI_DUALFLASH_DISABLE;
@@ -634,7 +634,7 @@ static void MX_SPI1_Init(void)
 
   LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_STREAM_3, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
 
-  LL_DMA_SetStreamPriorityLevel(DMA2, LL_DMA_STREAM_3, LL_DMA_PRIORITY_HIGH);
+  LL_DMA_SetStreamPriorityLevel(DMA2, LL_DMA_STREAM_3, LL_DMA_PRIORITY_LOW);
 
   LL_DMA_SetMode(DMA2, LL_DMA_STREAM_3, LL_DMA_MODE_NORMAL);
 
@@ -653,7 +653,7 @@ static void MX_SPI1_Init(void)
 
   LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_STREAM_0, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
 
-  LL_DMA_SetStreamPriorityLevel(DMA2, LL_DMA_STREAM_0, LL_DMA_PRIORITY_HIGH);
+  LL_DMA_SetStreamPriorityLevel(DMA2, LL_DMA_STREAM_0, LL_DMA_PRIORITY_VERYHIGH);
 
   LL_DMA_SetMode(DMA2, LL_DMA_STREAM_0, LL_DMA_MODE_NORMAL);
 
