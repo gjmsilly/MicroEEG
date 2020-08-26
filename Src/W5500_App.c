@@ -12,6 +12,9 @@
  * 库版本  ：
 
 ***************************************************************************************/
+/*******************************************************************************
+ * INCLUDES
+ */
 #include <string.h>
 
 #include "stm32f4xx_hal.h"
@@ -20,264 +23,292 @@
 #include "W5500.h"
 #include "wizchip_conf.h"
 #include "socket.h"
-/***************基本参数变量定义（便于阅读）***************/
-#define TRUE	0xff
-#define FALSE	0x00
-/***************寄存器每位定义（便于使用）***************/
-	#define IR_SEND_OK		0x10
-	#define IR_TIMEOUT		0x08
-	#define IR_RECV			0x04
-	#define IR_DISCON		0x02
-	#define IR_CON			0x01
-/***************----- 网络参数变量定义 -----***************/
-uint8_t Gateway_IP[4];//网关IP地址 
-uint8_t Sub_Mask[4];	//子网掩码 
-uint8_t Phy_Addr[6];	//物理地址(MAC) 
-uint8_t IP_Addr[4];	//本机IP地址 
 
-uint16_t S0_Port;	//端口0的端口号(5000) 
-uint8_t S0_DIP[4];	//端口0目的IP地址 
-uint16_t S0_DPort;	//端口0目的端口号(6000) 
-
-uint8_t UDP_DIPR[4];	//UDP(广播)模式,目的主机IP地址
-uint16_t UDP_DPORT;	//UDP(广播)模式,目的主机端口号
-uint16_t UDP_DPORT_[2];	
-/***************----- 端口的运行模式 -----***************/
-uint8_t S0_Mode =3;	//端口0的运行模式,0:TCP服务器模式,1:TCP客户端模式,2:UDP(广播)模式
-#define TCP_SERVER	0x00	//TCP服务器模式
-#define TCP_CLIENT	0x01	//TCP客户端模式 
-#define UDP_MODE	0x02	//UDP(广播)模式 
-
-/***************----- 端口的运行状态 -----***************/
-uint8_t S0_State =0;	//端口0状态记录,1:端口完成初始化,2端口完成连接(可以正常传输数据) 
-#define S_INIT		0x01	//端口完成初始化 
-#define S_CONN		0x02	//端口完成连接,可以正常传输数据 
-
-/***************----- 端口收发数据的状态 -----***************/
-uint8_t S0_Data;		//端口0接收和发送数据的状态,1:端口接收到数据,2:端口发送数据完成 
-#define S_RECEIVE	 0x01	//端口接收到一个数据包 
-#define S_TRANSMITOK 0x02	//端口发送一个数据包完成 
-
-/***************----- 端口数据缓冲区 -----***************/
-uint8_t Rx_Buffer[2048];	//端口接收数据缓冲区 
-uint8_t Tx_Buffer[2048];	//端口发送数据缓冲区 
-
-uint8_t W5500_Interrupt;	//W5500中断标志(0:无中断,1:有中断)
-extern int32_t sendstatus;
-extern uint8_t DMA_is_Sending;//1:DMA正在发送数据，0：DMA完成发送
-extern uint8_t DMA_is_ReSending;//1:DMA正在发送接收的数据，0：DMA完成接收发送
 /*******************************************************************************
-* 函数名  : W5500_Initialization
-* 描述    : W5500初始货配置
-* 输入    : 无
-* 输出    : 无
-* 返回值  : 无
-* 说明    : 无
-*******************************************************************************/
-void W5500_Initialization(void)
-{
-	W5500_Init();		//初始化W5500寄存器函数
-	Detect_Gateway();	//检查网关服务器 
-	//Socket_Init(0);		
-	if(S0_Mode==UDP_MODE)
-	{
-		socket(0,Sn_MR_UDP,5000,0);//Socket0端口初始化，UDP模式，端口号为5000
-	}
-	else
-	{
-	  socket(0,Sn_MR_TCP,5000,0);//Socket0端口初始化，TCP模式，端口号为5000
-	}
-	
-	W5500_Socket_Set();//W5500端口初始化配置
-}
+ * GLOBAL VARIABLES
+ */
+NETWORKParam_t net_param,*Pnet_param;    		//网络配置
+SOCKETnParam_t s0_param,*Ps0_param;   			//Socket0配置
+SOCKETnState_t s0_state,*Ps0_state;   			//Socket0状态
 
+uint8_t Rx_Buffer[2048];										//接收数据缓冲区 
+uint8_t Tx_Buffer[2048];										//发送数据缓冲区 
+
+uint8_t W5500_Interrupt;										//W5500中断标志 0-无，1-有中断
+
+ /*******************************************************************************
+ * EXTERNAL VARIABLES
+ */
+
+extern int32_t Transferstatus;
+extern uint8_t DMA_TX_Transfer_flag;		//1 - DMA正在传输发送区数据，0 - 传输完成
+extern uint8_t DMA_RX_Transfer_flag;		//1 - DMA正在传输接收区数据，0 - 传输完成
+
+/*******************************************************************************
+ * FUNCTIONS
+ */
+ 
 /*******************************************************************************
 * 函数名  : W5500_Init
-* 描述    : 初始化W5500寄存器函数
+*
+* 描述    : W5500初始化
+*
 * 输入    : 无
-* 输出    : 无
+*
 * 返回值  : 无
-* 说明    : 在使用W5500之前，先对W5500初始化
+*
+* 说明    : 无
 *******************************************************************************/
 void W5500_Init(void)
 {
+	Pnet_param =&net_param;
+	Ps0_param =&s0_param;
+	Ps0_state =&s0_state;
+	
+	W5500_Config();			//初始化W5500寄存器
+	Detect_Gateway();		//检查网关服务器 
+	
+	if(Ps0_state->Sn_Mode == UDP_MODE)
+	{
+		socket(0,Sn_MR_UDP,5000,0);//设置Socket0，UDP模式，端口号5000
+	}
+	else
+	{
+	  socket(0,Sn_MR_TCP,5000,0);//设置Socket0，TCP模式，端口号5000
+	}
+	
+	W5500_Socket_Set();		//W5500初始化配置
+}
+
+/*******************************************************************************
+* 函数名  : W5500_Config
+*
+* 描述    : 初始化W5500寄存器
+*
+* 输入    : 无
+*
+* 返回值  : 无
+*
+* 说明    : W5500硬件复位后最先调用本函数
+*******************************************************************************/
+void W5500_Config(void)
+{
 	uint8_t i=0;
 
-  setMR(MR_RST);//软件复位W5500,置1有效,复位后自动清0
-	HAL_Delay(10);//延时10ms,自己定义该函数
+  setMR(MR_RST);	//软件复位W5500,置1有效,复位后自动清0
+	HAL_Delay(10);	//延时10ms
 
-	//设置网关(Gateway)的IP地址,Gateway_IP为4字节unsigned char数组,自己定义 
-	//使用网关可以使通信突破子网的局限，通过网关可以访问到其它子网或进入Internet
-	setGAR(Gateway_IP);
+	//设置网关(Gateway)的IP地址
+	setGAR(Pnet_param->Gateway_IP);
 
-	//设置子网掩码(MASK)值,SUB_MASK为4字节unsigned char数组,自己定义
-	//子网掩码用于子网运算
-	setSUBR(Sub_Mask);		
+	//设置子网掩码(MASK)，子网掩码用于子网运算
+	setSUBR(Pnet_param->Sub_Mask);		
 	
-	//设置物理地址,PHY_ADDR为6字节unsigned char数组,自己定义,用于唯一标识网络设备的物理地址值
-	//该地址值需要到IEEE申请，按照OUI的规定，前3个字节为厂商代码，后三个字节为产品序号
-	//如果自己定义物理地址，注意第一个字节必须为偶数
-	setSHAR(Phy_Addr);		
+	//设置MAC(物理)地址,用于唯一标识网络设备的物理地址值
+	//按照OUI的规定，前3个字节为厂商代码，后三个字节为产品序号
+	//可自己定义MAC地址，注意第一个字节必须为偶数
+	setSHAR(Pnet_param->Phy_Addr);		
 
-	//设置本机的IP地址,IP_ADDR为4字节unsigned char数组,自己定义
-	//注意，网关IP必须与本机IP属于同一个子网，否则本机将无法找到网关
-	setSIPR(IP_Addr);		
+	//设置源（本机）IP地址
+	//注意：网关IP必须与本机IP属于同一个子网，否则本机将无法找到网关
+	setSIPR(Pnet_param->IP_Addr);		
 	
-	//设置发送缓冲区和接收缓冲区的大小并清空发送缓冲区和接收缓冲区，参考W5500数据手册
+	//设置发送缓冲区和接收缓冲区的大小并清空发送缓冲区和接收缓冲区，默认2K
 	for(i=0;i<8;i++)
 	{
 		setSn_RXBUF_SIZE(i, 0x02);//Socket Rx memory size=2k
 		setSn_TXBUF_SIZE(i, 0x02);//Socket Tx mempry size=2k
 	}
 
-	//设置重试时间，默认为2000(200ms) 
-	//每一单位数值为100微秒,初始化时值设为2000(0x07D0),等于200毫秒
+	//设置重试时间，默认2000(200ms) 
+	//每一单位数值为100微秒,初始化时值设为2000(0x07D0),即200ms
 	setRTR(0x07d0);
 
 	//设置重试次数，默认为8次 
 	//如果重发的次数超过设定值,则产生超时中断(相关的端口中断寄存器中的Sn_IR 超时位(TIMEOUT)置“1”)
 	setRCR(8);
 	
-	//设置分片长度，参考W5500数据手册，该值可以不修改	
+	//设置分片长度
 	setSn_MSSR(0, 0x5b4);//最大分片字节数=1460(0x5b4)
 	
-	//启动中断，参考W5500数据手册确定自己需要的中断类型
-	//其它是Socket事件中断，根据需要添加
-	setIMR(IM_IR7 | IM_IR6);//启用IP冲突中断，UDP目的地址不能抵达；关闭PPPoE，Magic Packet中断	
-	setSIMR(1);//启用Socket 0中断
+	//设置中断
+	setIMR(IM_IR7 | IM_IR6);//启用IP冲突中断，UDP目的地址不能抵达中断；关闭PPPoE，Magic Packet中断	
+	setSIMR(1);//启用Socket 0中断(对@ref SIMR bit1置1即使能Socket 0中断)
 	setSn_IMR(0, IMR_SENDOK | IMR_TIMEOUT | IMR_RECV | IMR_DISCON | IMR_CON);
 }
 
+
 /*******************************************************************************
 * 函数名  : Load_Net_Parameters
-* 描述    : 装载网络参数
+*
+* 描述    : 配置网络参数
+*
 * 输入    : 无
-* 输出    : 无
+*
 * 返回值  : 无
-* 说明    : 网关、掩码、物理地址、本机IP地址、端口号、目的IP地址、目的端口号、端口工作模式
+*
+* 说明    : 在W5500 初始化前调用本函数以预先装载寄存器配置值
+*						@Gateway_IP		网关IP地址 					32bit				192.168.1.1
+*						@Sub_Mask			子网掩码 						32bit       255.255.255.0
+*						@Phy_Addr			MAC地址							48bit       0c-29-ab-7c-00-01
+*						@IP_Addr			源IP地址						32bit       192.168.1.10
+*						@Sn_Port			Socket 0端口号（源端口号）			5000 (default)
+*						@Sn_DIP				TCP模式目的IP地址		32bit				192.128.1.101(client)
+*						@UDP_DPORT		UDP模式目的端口号								6000 (defualt)
+*						@UDP_DIPR     UDP模式目的IP地址		32bit				192.128.1.101
 *******************************************************************************/
+
 void Load_Net_Parameters(void)
 {
-	Gateway_IP[0] = 192;//加载网关参数0xC0 0A8
-	Gateway_IP[1] = 168;
-	Gateway_IP[2] = 1;
-	Gateway_IP[3] = 1;
-
-	Sub_Mask[0]=255;//加载子网掩码
-	Sub_Mask[1]=255;
-	Sub_Mask[2]=255;
-	Sub_Mask[3]=0;
-
-	Phy_Addr[0]=0x0c;//加载物理地址
-	Phy_Addr[1]=0x29;
-	Phy_Addr[2]=0xab;
-	Phy_Addr[3]=0x7c;
-	Phy_Addr[4]=0x00;
-	Phy_Addr[5]=0x01;
-
-	IP_Addr[0]=192;//加载本机IP地址
-	IP_Addr[1]=168;
-	IP_Addr[2]=1;
-	IP_Addr[3]=10;
-
-	S0_Port = 5000;//加载端口0的端口号5000(0x1388) 
-
-	UDP_DIPR[0] = 192;	//UDP(广播)模式,目的主机IP地址
-	UDP_DIPR[1] = 168;
-	UDP_DIPR[2] = 1;
-	UDP_DIPR[3] = 101;
-
-	UDP_DPORT = 6000;	//UDP(广播)模式,目的主机端口号
-
-	//S0_Mode=UDP_MODE;//加载端口0的工作模式,UDP模式
-	S0_Mode=TCP_SERVER;//加载端口0的工作模式,TCP服务端模式
-	//S0_Mode=TCP_CLIENT;//加载端口0的工作模式,TCP客户端模式
+	//加载网关参数		
+	Pnet_param->Gateway_IP[0] = 192;
+	Pnet_param->Gateway_IP[1] = 168;
+	Pnet_param->Gateway_IP[2] = 1;
+	Pnet_param->Gateway_IP[3] = 1;
 	
-	if(S0_Mode==TCP_CLIENT)//TCP客户端模式需要目的端口号和IP地址
+	//加载子网掩码
+	Pnet_param->Sub_Mask[0] = 255;
+	Pnet_param->Sub_Mask[1] = 255;
+	Pnet_param->Sub_Mask[2] = 255;
+	Pnet_param->Sub_Mask[3] = 0;
+	
+	//加载MAC地址
+	Pnet_param->Phy_Addr[0] = 0x0c;
+	Pnet_param->Phy_Addr[1] = 0x29;
+	Pnet_param->Phy_Addr[2] = 0xab;
+	Pnet_param->Phy_Addr[3] = 0x7c;
+	Pnet_param->Phy_Addr[4] = 0x00;
+	Pnet_param->Phy_Addr[5] = 0x01;
+	
+	//加载源/本机IP地址
+	Pnet_param->IP_Addr[0] = 192;
+	Pnet_param->IP_Addr[1] = 168;
+	Pnet_param->IP_Addr[2] = 1;
+	Pnet_param->IP_Addr[3] = 10;
+	
+	//加载Socket 0的端口号/源端口号 5000(0x1388) （default）
+	Ps0_param->Sn_Port = 5000;
+
+	//UDP(广播)模式,目的主机IP地址
+	Ps0_param->UDP_DIPR[0] = 192;	
+	Ps0_param->UDP_DIPR[1] = 168;
+	Ps0_param->UDP_DIPR[2] = 1;
+	Ps0_param->UDP_DIPR[3] = 101;
+	
+	//UDP(广播)模式,目的主机端口号 6000（default）
+	Ps0_param->UDP_DPORT = 6000;	
+	
+	// 加载Socket 0的工作模式：服务器（default）
+	// @ref UDP_MODE/TCP_CLIENT/TCP_SERVER
+	Ps0_state->Sn_Mode=TCP_SERVER;	
+	
+	//TCP客户端模式：需要设置目的端口号和IP地址
+	if(Ps0_state->Sn_Mode==TCP_CLIENT)
 	{
-		S0_DIP[0]=192;//加载端口0的目的IP地址
-  	S0_DIP[1]=168;
-	  S0_DIP[2]=1;
-	  S0_DIP[3]=101;
-	
-	  S0_DPort = 6000;//加载端口0的目的端口号6000
+		//加载Socket 0的目的IP地址
+		Ps0_param->Sn_DIP[0]=192;
+  	Ps0_param->Sn_DIP[1]=168;
+	  Ps0_param->Sn_DIP[2]=1;
+	  Ps0_param->Sn_DIP[3]=101;
+		
+		//加载Socket 0的目的端口号 6000（default）
+	  Ps0_param->Sn_DPort = 6000;
 	}
 }
 
 /*******************************************************************************
 * 函数名  : Detect_Gateway
+*
 * 描述    : 检查网关服务器
+*
 * 输入    : 无
-* 输出    : 无
-* 返回值  : 成功返回TRUE(0xFF),失败返回FALSE(0x00)
+*
+* 返回值  : @TRUE/0xff 	- 正常
+*						@FALSE/0x00 - 异常
+*
 * 说明    : 无
 *******************************************************************************/
 uint8_t Detect_Gateway(void)
 {
 	uint8_t ip_adde[4];
-	ip_adde[0]=IP_Addr[0]+1;
-	ip_adde[1]=IP_Addr[1]+1;
-	ip_adde[2]=IP_Addr[2]+1;
-	ip_adde[3]=IP_Addr[3]+1;
+	
+	// 服务器模式下，构造目的IP地址
+	ip_adde[0]=Pnet_param->IP_Addr[0]+1;
+	ip_adde[1]=Pnet_param->IP_Addr[1]+1;
+	ip_adde[2]=Pnet_param->IP_Addr[2]+1;
+	ip_adde[3]=Pnet_param->IP_Addr[3]+1;
 
 	//检查网关及获取网关的物理地址
-	setSn_DIPR(0,ip_adde);//向目的地址寄存器写入与本机IP不同的IP值
-	setSn_MR(0,Sn_MR_TCP);//设置socket0为TCP模式
-	setSn_CR(0,Sn_CR_OPEN);//打开Socket0
+	setSn_DIPR(0,ip_adde);//向目的IP地址寄存器写入构造的目的IP地址
+	setSn_MR(0,Sn_MR_TCP);//设置Socket 0为TCP模式
+	setSn_CR(0,Sn_CR_OPEN);//打开Socket 0
 	HAL_Delay(5);//延时5ms 	
 	
-	if(getSn_SR(0) != SOCK_INIT)//如果socket打开失败
+	//打开socket
+	if(getSn_SR(0) != SOCK_INIT)  
 	{
-		setSn_CR(0,Sn_CR_CLOSE);//打开不成功,关闭Socket0
-		return FALSE;//返回FALSE(0x00)
+		setSn_CR(0,Sn_CR_CLOSE);//打开失败，则关闭Socket 0
+		return FALSE;
 	}
 
+	//建立TCP连接
 	setSn_CR(0,Sn_CR_CONNECT);//设置Socket0为Connect模式						
-
+	
 	do
 	{
-		uint8_t j=0;
-		j=getSn_IR(0);//读取Socket0中断标志寄存器
-		if(j!=0)
-		setSn_IR(0,j);
+		uint8_t flag=0;
+		
+		flag=getSn_IR(0);//读取Socket0中断标志寄存器
+		
+		if(flag!=0)
+			setSn_IR(0,flag); //重置中断寄存器
+		
 		HAL_Delay(5);//延时5ms 
-		if((j&Sn_IR_TIMEOUT) == Sn_IR_TIMEOUT)
+		
+		if((flag & Sn_IR_TIMEOUT) == Sn_IR_TIMEOUT) //超时
 		{
 			return FALSE;	
 		}
-		else if(WIZCHIP_READ(Sn_DHAR(0)) != 0xff)
+		else if( WIZCHIP_READ(Sn_DHAR(0)) != 0xff)  
 		{
-			setSn_CR(0,Sn_CR_CLOSE);//关闭Socket
+			//Socket 0目的MAC地址寄存器非默认值，认为读取成功，已建立连接
+			setSn_CR(0,Sn_CR_CLOSE); //关闭Socket 0
 			return TRUE;							
 		}
 	}while(1);
 }
 
-
 /*******************************************************************************
 * 函数名  : Socket_Init
-* 描述    : 指定Socket(0~7)初始化
-* 输入    : s:待初始化的端口
-* 输出    : 无
+*
+* 描述    : 指定Socket n(0~7)初始化
+*
+* 输入    : 无
+*
 * 返回值  : 无
+*
 * 说明    : 无
 *******************************************************************************/
 void Socket_Init(uint8_t s)
 {
-	//设置分片长度，参考W5500数据手册，该值可以不修改	
-	setSn_MSSR(0, 0x5b4);//最大分片字节数=1460(0x5b4)
-	//设置指定端口
+	//设置分片长度	
+	setSn_MSSR(0, 0x5b4); // 最大分片字节数=1460(0x5b4)
+	
+	//设置指定Socket
 	switch(s)
 	{
 		case 0:
-			//设置端口0的端口号
-			setSn_PORT(0, S0_Port);
-	    if(S0_Mode==TCP_CLIENT)//只有TCP客户端模式需要设置目的端口号和IP地址
+			
+		// 设置Socket 0的端口号
+			setSn_PORT(0, Ps0_param->Sn_Port);
+	  
+		// Socket 0为客户端时需设置目的端口、目的IP地址 
+			if(Ps0_state->Sn_Mode==TCP_CLIENT)
 	    {
-		 	  //设置端口0目的(远程)端口号
-			  setSn_DPORT(0, S0_DPort);
-			  //设置端口0目的(远程)IP地址
-		  	setSn_DIPR(0, S0_DIP);		
+		 	  //设置目的端口号
+			  setSn_DPORT(0, Ps0_param->Sn_DPort);
+			  //设置目的IP地址
+		  	setSn_DIPR(0, Ps0_param->Sn_DIP);		
 	    }		
 			break;
 		case 1:
@@ -301,12 +332,14 @@ void Socket_Init(uint8_t s)
 
 /*******************************************************************************
 * 函数名  : W5500_Socket_Set
+*
 * 描述    : W5500端口初始化配置
+*
 * 输入    : 无
-* 输出    : 无
+*
 * 返回值  : 无
-* 说明    : 分别设置4个端口,根据端口工作模式,将端口置于TCP服务器、TCP客户端或UDP模式.
-*			从端口状态字节Socket_State可以判断端口的工作情况
+*
+* 说明    : 无
 *******************************************************************************/
 void W5500_Socket_Set(void)
 {
@@ -469,8 +502,8 @@ IntDispose:
 				if(listen(0)==SOCK_OK)//再次侦听
 				{
 					S0_State=S_INIT;//端口初始化成功
-					DMA_is_Sending=0;//重置标志位
-					DMA_is_ReSending=0;//重置标志位
+					DMA_TX_Transfer_flag=0;//重置标志位
+					DMA_RX_Transfer_flag=0;//重置标志位
 				}
 	  	}
 			else if(S0_Mode==TCP_CLIENT)
@@ -480,16 +513,16 @@ IntDispose:
 				while(connect(0, S0_DIP, S0_DPort))//再次侦听
 				{
 					S0_State=S_INIT;//端口初始化成功
-					DMA_is_Sending=0;//重置标志位
-					DMA_is_ReSending=0;//重置标志位
+					DMA_TX_Transfer_flag=0;//重置标志位
+					DMA_RX_Transfer_flag=0;//重置标志位
 				}
 	  	}
 			else
 			{
 			  socket(0,Sn_MR_UDP,5000,0);//Socket0端口初始化，UDP模式，端口号为5000
 				S0_State=S_INIT|S_CONN;//端口初始化成功
-				DMA_is_Sending=0;//重置标志位
-				DMA_is_ReSending=0;//重置标志位
+				DMA_TX_Transfer_flag=0;//重置标志位
+				DMA_RX_Transfer_flag=0;//重置标志位
 			}
 		}
 		if(j&IR_SEND_OK)//Socket0数据发送完成,可以再次启动函数发送数据 

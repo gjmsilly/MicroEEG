@@ -67,14 +67,16 @@
 * 描述    : 读W5500寄存器区域指定寄存器的1个字节数据
 *
 * 输入    : @AddrSel: 32位 = 8空位+16位地址段+8位控制段
-*						- 地址段: 寄存器偏移地址
-*						- 控制段: 寄存器区域  通用寄存器区
-*																	Socket n寄存器区
-*																	Socket n发送缓存区
-*																	Socket n接收缓存区
+*						- 地址段: 寄存器偏移地址 - @ref 0x0002 即寄存器偏移量 = 2
+*						- 控制段: 寄存器区域  通用寄存器区  		 - @ref  WIZCHIP_CREG_BLOCK
+*																	Socket n寄存器区   - @ref  WIZCHIP_SREG_BLOCK(N)
+*																	Socket n发送缓存区 - @ref  WIZCHIP_TXBUF_BLOCK(N)
+*																	Socket n接收缓存区 - @ref  WIZCHIP_RXBUF_BLOCK(N)
 *
 *
 * 返回值  : 读取到寄存器的1个字节数据
+*
+* 说明    : 无
 *******************************************************************************/
 uint8_t  WIZCHIP_READ(uint32_t AddrSel)
 {
@@ -105,6 +107,8 @@ uint8_t  WIZCHIP_READ(uint32_t AddrSel)
 						@value: 1字节待写入数据
 *
 * 返回值  : 无
+*
+* 说明    : @AddrSel - @ref WIZCHIP_READ 
 *******************************************************************************/
 void WIZCHIP_WRITE(uint32_t AddrSel, uint8_t value )
 {
@@ -133,6 +137,8 @@ void WIZCHIP_WRITE(uint32_t AddrSel, uint8_t value )
 *						@value: 1字节待写入数据
 *
 * 返回值  : 无
+*
+* 说明    : @AddrSel - @ref WIZCHIP_READ
 *******************************************************************************/
 void WIZCHIP_WRITE_IT (uint32_t AddrSel, uint8_t value )
 {
@@ -161,6 +167,8 @@ void WIZCHIP_WRITE_IT (uint32_t AddrSel, uint8_t value )
 *						@len: 待读取数据长度
 *
 * 返回值  : 无
+*
+* 说明    : @AddrSel - @ref WIZCHIP_READ
 *******************************************************************************/
 void WIZCHIP_READ_BUF (uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 {
@@ -190,6 +198,8 @@ void WIZCHIP_READ_BUF (uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 *						@len:待写入数据长度
 *
 * 返回值  : 无
+*
+* 说明    : @AddrSel - @ref WIZCHIP_READ
 *******************************************************************************/
 void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 {
@@ -215,11 +225,13 @@ void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 *
 * 描述    : 将数据写入W5500的数据发送缓冲区
 *
-* 输入    : @sn: 端口号/Socket n
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *						@dat_ptr: 数据保存缓冲区指针
 *						@len: 待写入数据长度
 *
 * 返回值  : 无
+*
+* 说明    : 无
 *******************************************************************************/
 void Write_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr, uint16_t len)
 {
@@ -263,11 +275,13 @@ void Write_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr, uint16_t len)
 *
 * 描述    : 将数据写入W5500的数据发送缓冲区
 *
-* 输入    : @sn: 端口号/Socket n
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *						@wizdata: 待写入数据指针
 *						@len: 待写入数据长度
 *
 * 返回值  : 无
+*
+* 说明    : 无
 *******************************************************************************/
 void wiz_send_data(uint8_t sn, uint8_t *wizdata, uint16_t len)
 {
@@ -338,11 +352,13 @@ uint16_t Read_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr)
 *
 * 描述    : 从W5500接收数据缓冲区中读取数据
 *
-* 输入    : @sn:端口号
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *						@wizdata: 数据保存指针
 *						@len: 读取数据长度
 *
 * 返回值  : 无
+*
+* 说明    : 无
 *******************************************************************************/
 void wiz_recv_data(uint8_t sn, uint8_t *wizdata, uint16_t len)
 {
@@ -369,10 +385,12 @@ void wiz_recv_data(uint8_t sn, uint8_t *wizdata, uint16_t len)
 *
 * 描述    : 从W5500接收数据缓冲区中直接丢弃数据
 *
-* 输入    : @sn:端口号
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *						@len: 丢弃数据长度
 *
 * 返回值  : 无
+*
+* 说明    : 无
 *******************************************************************************/
 void wiz_recv_ignore(uint8_t sn, uint16_t len)
 {
@@ -395,6 +413,8 @@ void wiz_recv_ignore(uint8_t sn, uint16_t len)
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *
 * 返回值  : 发送缓冲区空闲空间大小
+*
+* 说明    : 无
 *******************************************************************************/
 uint16_t getSn_TX_FSR(uint8_t sn)
 {
@@ -402,9 +422,9 @@ uint16_t getSn_TX_FSR(uint8_t sn)
 
    do
    { 
-     // 读取Socket n寄存器Sn_TX_FSRn (offset=0x002n)的值 （value1 高八位）
+     // 读取Socket n寄存器Sn_TX_FSRn (offset=0x002n)的值 （value2的高八位）
 		 value2 = WIZCHIP_READ(Sn_TX_FSR(sn)); 
-     // 读取Socket n寄存器Sn_TX_FSRn+1 (offset=0x002n+1)的值 （value1 低八位）
+     // 读取Socket n寄存器Sn_TX_FSRn+1 (offset=0x002n+1)的值 （value2的低八位）
 		 value2 = (value2 << 8) + WIZCHIP_READ(WIZCHIP_OFFSET_INC(Sn_TX_FSR(sn),1)); 
       if (value2 != 0)
       {
@@ -425,6 +445,8 @@ uint16_t getSn_TX_FSR(uint8_t sn)
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *
 * 返回值  : 发送缓冲区空闲空间大小
+*
+* 说明    : 无
 *******************************************************************************/
 uint16_t getSn_RX_RSR(uint8_t sn)
 {

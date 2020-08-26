@@ -67,12 +67,11 @@ static uint16_t sock_is_sending = 0;
 static uint16_t sock_remained_size[_WIZCHIP_SOCK_NUM_] = {0,0,};
 
 //M20150601 : For extern decleation
-//static uint8_t  sock_pack_info[_WIZCHIP_SOCK_NUM_] = {0,};
 uint8_t  sock_pack_info[_WIZCHIP_SOCK_NUM_] = {0,};
-//
-extern QSPI_HandleTypeDef hqspi;
-extern DMA_HandleTypeDef hdma_quadspi;
-extern uint8_t DMA_flag;
+
+extern QSPI_HandleTypeDef 	hqspi;
+extern DMA_HandleTypeDef 		hdma_quadspi;
+extern uint8_t 							DMA_flag;
 
 #if _WIZCHIP_ == 5200
    static uint16_t sock_next_rd[_WIZCHIP_SOCK_NUM_] ={0,};
@@ -105,21 +104,29 @@ extern uint8_t DMA_flag;
    }while(0);              \
 
 
-
+/*******************************************************************************
+* 函数名  : socket
+*
+* 描述    : W5500 socket n 配置
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*					  @protocol: 传输层协议
+*						- @ref Sn_MR_UDP 
+*						- @ref Sn_MR_TCP
+*						@port: 端口号
+*						@flag: 标志位
+*
+* 返回值  : 无
+*******************************************************************************/
 int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
 {
-	CHECK_SOCKNUM();
+	CHECK_SOCKNUM(); //socket检查 （是否小于上限8）
 	switch(protocol)
 	{
       case Sn_MR_TCP :  //检查有无IP地址
          {
-            //M20150601 : Fixed the warning - taddr will never be NULL
-		    /*
-            uint8_t taddr[4];
-            getSIPR(taddr);
-            */
             uint32_t taddr;
-            getSIPR((uint8_t*)&taddr);  //
+            getSIPR((uint8_t*)&taddr);  //SIPR - 源IP地址寄存器
             if(taddr == 0) return SOCKERR_SOCKINIT;
          }
       case Sn_MR_UDP :
@@ -169,31 +176,30 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
    	      break;
    	}
    }
-	close(sn);  //创建socket时确保socket连接是关闭状态
-	//M20150601
+	
+	close(sn);  // 创建socket时确保socket连接是关闭状态	 
 	#if _WIZCHIP_ == 5300
 	   setSn_MR(sn, ((uint16_t)(protocol | (flag & 0xF0))) | (((uint16_t)(flag & 0x02)) << 7) );
     #else
-	   setSn_MR(sn, (protocol | (flag & 0xF0)));
+	   setSn_MR(sn, ( protocol | (flag & 0xF0)));
     #endif
 	if(!port)
 	{
 	   port = sock_any_port++;
 	   if(sock_any_port == 0xFFF0) sock_any_port = SOCK_ANY_PORT_NUM;
 	}
-   setSn_PORT(sn,port);	//设置端口sn的端口号
-   setSn_CR(sn,Sn_CR_OPEN);//打开Socket sn
+   setSn_PORT(sn,port);	//设置socket n的端口号
+   setSn_CR(sn,Sn_CR_OPEN);//打开Socket n
    while(getSn_CR(sn));
    //A20150401 : For release the previous sock_io_mode
    sock_io_mode &= ~(1 <<sn);//0
-   //
-	sock_io_mode |= ((flag & SF_IO_NONBLOCK) << sn);   
+	 sock_io_mode |= ((flag & SF_IO_NONBLOCK) << sn);   
    sock_is_sending &= ~(1<<sn);//0
    sock_remained_size[sn] = 0;
    //M20150601 : repalce 0 with PACK_COMPLETED
    //sock_pack_info[sn] = 0;
    sock_pack_info[sn] = PACK_COMPLETED;
-   //
+
    while(getSn_SR(sn) == SOCK_CLOSED);//确保打开Socket sn
    return (int8_t)sn;
 }	   
@@ -226,14 +232,13 @@ int8_t close(uint8_t sn)
       sendto(sn,destip,1,destip,0x3000); // send the dummy data to an unknown destination(0.0.0.1).
    };   
 #endif 
-	setSn_CR(sn,Sn_CR_CLOSE);//关闭Socket
+	setSn_CR(sn,Sn_CR_CLOSE);//关闭Socket n
    /* wait to process the command... */
 	while( getSn_CR(sn) );
 	/* clear all interrupt of the socket. */
 	setSn_IR(sn, 0xFF);
 	//A20150401 : Release the sock_io_mode of socket n.
 	sock_io_mode &= ~(1<<sn);
-	//
 	sock_is_sending &= ~(1<<sn);
 	sock_remained_size[sn] = 0;
 	sock_pack_info[sn] = 0;
@@ -248,7 +253,7 @@ int8_t listen(uint8_t sn)
 	CHECK_SOCKINIT();
 	setSn_CR(sn,Sn_CR_LISTEN);//设置Socket为侦听模式	
 	while(getSn_CR(sn));//等待设置完成
-   while(getSn_SR(sn) != SOCK_LISTEN)//如果socket设置失败
+   while(getSn_SR(sn) != SOCK_LISTEN)
    {
          close(sn);              //设置不成功,关闭Socket
          return SOCKERR_SOCKCLOSED;
@@ -272,12 +277,11 @@ int8_t connect(uint8_t sn, uint8_t * addr, uint16_t port)
       taddr = (taddr << 8) + ((uint32_t)addr[3] & 0x000000FF);
       if( taddr == 0xFFFFFFFF || taddr == 0) return SOCKERR_IPINVALID;
    }
-   //
-	
-	if(port == 0) return SOCKERR_PORTZERO;
-	setSn_DIPR(sn,addr);//设置目的主机IP  
-	setSn_DPORT(sn,port);//设置目的主机端口号
-	setSn_CR(sn,Sn_CR_CONNECT);//设置Socket为Connect模式
+
+	 if(port == 0) return SOCKERR_PORTZERO;
+	 setSn_DIPR(sn,addr);//设置目的主机IP  
+	 setSn_DPORT(sn,port);//设置目的主机端口号
+	 setSn_CR(sn,Sn_CR_CONNECT);//设置Socket为Connect模式
    while(getSn_CR(sn));//等待设置完成
    if(sock_io_mode & (1<<sn)) return SOCK_BUSY;
    while(getSn_SR(sn) != SOCK_ESTABLISHED)

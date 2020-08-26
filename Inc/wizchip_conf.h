@@ -66,7 +66,7 @@ extern "C" {
  */
 
 #define W5100						5100
-#define W5100S						5100+5
+#define W5100S					5100+5
 #define W5200						5200
 #define W5300						5300
 #define W5500						5500
