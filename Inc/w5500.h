@@ -2177,8 +2177,8 @@ void wiz_recv_ignore(uint8_t sn, uint16_t len);
 
 /******************User Add**************/
 
-void Write_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr, uint16_t len);
-uint16_t Read_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr);
+uint16_t Write_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr, uint16_t len);
+uint16_t Read_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr,uint32_t len);
 void WIZCHIP_WRITE_IT (uint32_t AddrSel, uint8_t wb );
 /// @cond DOXY_APPLY_CODE
 #endif

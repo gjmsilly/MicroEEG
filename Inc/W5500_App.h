@@ -46,7 +46,7 @@ typedef struct
 }SOCKETnState_t;
 
 /*********************************************************************
- * CONSTANTS
+ * Macros
  */
 #define TRUE						0xff
 #define FALSE						0x00
@@ -77,15 +77,11 @@ typedef struct
 void W5500_Init(void);
 void W5500_Config(void);
 void W5500_RST(void);
-void Load_Net_Parameters(void);
+void W5500_Load_Net_Parameters(void);
 uint8_t Detect_Gateway(void);
 
-void Socket_Init(uint8_t s);
-uint8_t Socket_Connect(uint8_t s);
-uint8_t Socket_Listen(uint8_t s);
-uint8_t Socket_UDP(uint8_t s);
-void W5500_Socket_Set(void);
-void Process_Socket_Data(uint8_t s);
+void W5500_Socket_Init(uint8_t sn);
+void W5500_Socket_State(uint8_t sn);
 
 void W5500_Interrupt_Process(void);
 

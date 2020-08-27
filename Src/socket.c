@@ -69,9 +69,6 @@ static uint16_t sock_remained_size[_WIZCHIP_SOCK_NUM_] = {0,0,};
 //M20150601 : For extern decleation
 uint8_t  sock_pack_info[_WIZCHIP_SOCK_NUM_] = {0,};
 
-extern QSPI_HandleTypeDef 	hqspi;
-extern DMA_HandleTypeDef 		hdma_quadspi;
-extern uint8_t 							DMA_flag;
 
 #if _WIZCHIP_ == 5200
    static uint16_t sock_next_rd[_WIZCHIP_SOCK_NUM_] ={0,};
@@ -82,22 +79,23 @@ extern uint8_t 							DMA_flag;
    uint8_t sock_remained_byte[_WIZCHIP_SOCK_NUM_] = {0,}; // set by wiz_recv_data()
 #endif
 
-
+/* Socket n 配置检查 */
+// 检查需要配置的Socket n编号是否为 0-7
 #define CHECK_SOCKNUM()   \
    do{                    \
       if(sn > _WIZCHIP_SOCK_NUM_) return SOCKERR_SOCKNUM;   \
    }while(0);             \
-
+// 检查Socket n工作模式（TCP/UDP）是否为设定值
 #define CHECK_SOCKMODE(mode)  \
    do{                     \
       if((getSn_MR(sn) & 0x0F) != mode) return SOCKERR_SOCKMODE;  \
    }while(0);              \
-
+// 检查Socket n端口是否打开并处于TCP工作模式 - SOCK_INIT
 #define CHECK_SOCKINIT()   \
    do{                     \
       if((getSn_SR(sn) != SOCK_INIT)) return SOCKERR_SOCKINIT; \
    }while(0);              \
-
+// 检查Socket n数据长度
 #define CHECK_SOCKDATA()   \
    do{                     \
       if(len == 0) return SOCKERR_DATALEN;   \
@@ -107,20 +105,24 @@ extern uint8_t 							DMA_flag;
 /*******************************************************************************
 * 函数名  : socket
 *
-* 描述    : W5500 socket n 配置
+* 描述    : W5500配置并打开Socket n 
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *					  @protocol: 传输层协议
 *						- @ref Sn_MR_UDP 
 *						- @ref Sn_MR_TCP
 *						@port: 端口号
-*						@flag: 标志位
+*						@flag: Socket标志位
 *
-* 返回值  : 无
+* 返回值  : @Success: Socket n已经配置并打开
+*						@Fail:  - @ref SOCKERR_SOCKNUM 
+*										- @ref SOCKERR_SOCKMODE
+*										- @ref SOCKERR_SOCKFLAG
+* 说明    : 无	 
 *******************************************************************************/
 int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
 {
-	CHECK_SOCKNUM(); //socket检查 （是否小于上限8）
+	CHECK_SOCKNUM(); //Socket n编号检查
 	switch(protocol)
 	{
       case Sn_MR_TCP :  //检查有无IP地址
@@ -147,7 +149,7 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
    if(flag & 0x10) return SOCKERR_SOCKFLAG;
 #endif
 	   
-	if(flag != 0)
+	if(flag != 0)  //Socket 标志位检查
 	{
    	switch(protocol)
    	{
@@ -177,7 +179,7 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
    	}
    }
 	
-	close(sn);  // 创建socket时确保socket连接是关闭状态	 
+	close(sn);  //创建socket时确保Socket n是关闭状态	 
 	#if _WIZCHIP_ == 5300
 	   setSn_MR(sn, ((uint16_t)(protocol | (flag & 0xF0))) | (((uint16_t)(flag & 0x02)) << 7) );
     #else
@@ -188,7 +190,7 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
 	   port = sock_any_port++;
 	   if(sock_any_port == 0xFFF0) sock_any_port = SOCK_ANY_PORT_NUM;
 	}
-   setSn_PORT(sn,port);	//设置socket n的端口号
+   setSn_PORT(sn,port);	//设置Socket n的端口号
    setSn_CR(sn,Sn_CR_OPEN);//打开Socket n
    while(getSn_CR(sn));
    //A20150401 : For release the previous sock_io_mode
@@ -200,10 +202,21 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
    //sock_pack_info[sn] = 0;
    sock_pack_info[sn] = PACK_COMPLETED;
 
-   while(getSn_SR(sn) == SOCK_CLOSED);//确保打开Socket sn
+   while(getSn_SR(sn) == SOCK_CLOSED);//确保打开Socket n
    return (int8_t)sn;
 }	   
-
+/*******************************************************************************
+* 函数名  : close
+*
+* 描述    : W5500关闭Socket n 
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*
+* 返回值  : @Success: - @ref SOCK_OK 
+*						@Fail:  - @ref SOCKERR_SOCKNUM 
+*
+* 说明    : 无	 
+*******************************************************************************/
 int8_t close(uint8_t sn)
 {
 	CHECK_SOCKNUM();
@@ -246,28 +259,56 @@ int8_t close(uint8_t sn)
 	return SOCK_OK;
 }
 
+/*******************************************************************************
+* 函数名  : listen
+*
+* 描述    : 侦听已连接的客户端的请求 
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*
+* 返回值  : @Success: - @ref SOCK_OK 
+*						@Fail:  - @ref SOCKERR_SOCKINIT
+*										- @ref SOCKERR_SOCKCLOSED
+*
+* 说明    : 无	 
+*******************************************************************************/
 int8_t listen(uint8_t sn)
 {
 	CHECK_SOCKNUM();
-   CHECK_SOCKMODE(Sn_MR_TCP);
+  CHECK_SOCKMODE(Sn_MR_TCP);
 	CHECK_SOCKINIT();
+	
 	setSn_CR(sn,Sn_CR_LISTEN);//设置Socket为侦听模式	
 	while(getSn_CR(sn));//等待设置完成
    while(getSn_SR(sn) != SOCK_LISTEN)
    {
-         close(sn);              //设置不成功,关闭Socket
+         close(sn);//设置不成功,关闭Socket
          return SOCKERR_SOCKCLOSED;
    }
    return SOCK_OK;
 }
 
-
+/*******************************************************************************
+* 函数名  : connect
+*
+* 描述    : 尝试连接服务器 
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*           @addr: 目的IP地址
+*						@port: 目的端口号
+*
+* 返回值  : @Success: - @ref SOCK_OK 
+*						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
+*
+* 说明    : 仅设备作为客户端时调用	 
+*******************************************************************************/
 int8_t connect(uint8_t sn, uint8_t * addr, uint16_t port)
 {
    CHECK_SOCKNUM();
    CHECK_SOCKMODE(Sn_MR_TCP);
    CHECK_SOCKINIT();
-   //M20140501 : For avoiding fatal error on memory align mismatched
+   
+	//M20140501 : For avoiding fatal error on memory align mismatched
    //if( *((uint32_t*)addr) == 0xFFFFFFFF || *((uint32_t*)addr) == 0) return SOCKERR_IPINVALID;
    {
       uint32_t taddr;
@@ -279,9 +320,9 @@ int8_t connect(uint8_t sn, uint8_t * addr, uint16_t port)
    }
 
 	 if(port == 0) return SOCKERR_PORTZERO;
-	 setSn_DIPR(sn,addr);//设置目的主机IP  
-	 setSn_DPORT(sn,port);//设置目的主机端口号
-	 setSn_CR(sn,Sn_CR_CONNECT);//设置Socket为Connect模式
+	 setSn_DIPR(sn,addr);//设置目的IP地址  
+	 setSn_DPORT(sn,port);//设置目的端口号
+	 setSn_CR(sn,Sn_CR_CONNECT);//设置Socket n为Connect模式
    while(getSn_CR(sn));//等待设置完成
    if(sock_io_mode & (1<<sn)) return SOCK_BUSY;
    while(getSn_SR(sn) != SOCK_ESTABLISHED)
@@ -301,10 +342,23 @@ int8_t connect(uint8_t sn, uint8_t * addr, uint16_t port)
    return SOCK_OK;
 }
 
+/*******************************************************************************
+* 函数名  : disconnect 
+*
+* 描述    : 尝试断开连接 
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*
+* 返回值  : @Success: - @ref SOCK_OK 
+*						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
+*
+* 说明    : 仅设备作为客户端/服务器时调用	 
+*******************************************************************************/
 int8_t disconnect(uint8_t sn)
 {
-   CHECK_SOCKNUM();
-   CHECK_SOCKMODE(Sn_MR_TCP);
+  CHECK_SOCKNUM();
+  CHECK_SOCKMODE(Sn_MR_TCP);
+	
 	setSn_CR(sn,Sn_CR_DISCON);
 	/* wait to process the command... */
 	while(getSn_CR(sn));
@@ -321,6 +375,20 @@ int8_t disconnect(uint8_t sn)
 	return SOCK_OK;
 }
 
+/*******************************************************************************
+* 函数名  : send
+*
+* 描述    : 向已连接设备发送TCP socket数据 
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*           @buf: 待发送数据指针
+*						@len: 待发送数据长度
+*
+* 返回值  : @Success: 待发送的数据长度
+*						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
+*
+* 说明    : 仅设备作为TCP客户端/服务器时调用	 
+*******************************************************************************/
 int32_t send(uint8_t sn, uint8_t * buf, uint16_t len)
 {
    uint8_t tmp=0;
@@ -329,7 +397,7 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len)
    CHECK_SOCKNUM();
    CHECK_SOCKMODE(Sn_MR_TCP);
    CHECK_SOCKDATA();
-   tmp = getSn_SR(sn);//获取Socket sn状态
+   tmp = getSn_SR(sn);//获取Socket n状态
    if(tmp != SOCK_ESTABLISHED && tmp != SOCK_CLOSE_WAIT) return SOCKERR_SOCKSTATUS;
    if( sock_is_sending & (1<<sn) )  //
    {
@@ -356,11 +424,11 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len)
       }
       else return SOCK_BUSY;
    }
-   freesize = getSn_TxMAX(sn);//得到发送缓存寄存器的最大长度
-   if (len > freesize) len = freesize; // check size not to exceed MAX size.
-   while(1)
+   freesize = getSn_TxMAX(sn);//获取发送缓存大小（默认2KB）
+   if (len > freesize) len = freesize; //确保缓存不溢出  
+	 while(1)
    {
-      freesize = getSn_TX_FSR(sn);//Socket sn发送缓存的空闲空间大小
+      freesize = getSn_TX_FSR(sn);//Socket n发送缓存的空闲空间大小
       tmp = getSn_SR(sn);
       if ((tmp != SOCK_ESTABLISHED) && (tmp != SOCK_CLOSE_WAIT))
       {
@@ -368,7 +436,7 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len)
          return SOCKERR_SOCKSTATUS;
       }
       if( (sock_io_mode & (1<<sn)) && (len > freesize) ) return SOCK_BUSY;
-      if(len <= freesize) break;//判断当前发送的字节长度是否大于发送缓存的空闲空间
+      if(len <= freesize) break;//判断待发送数据长度是否大于目前发送缓存的空闲空间
    }
 	 
    wiz_send_data(sn, buf, len);
@@ -390,52 +458,54 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len)
    return (int32_t)len;
 }
 
-
-int32_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len)
+/*******************************************************************************
+* 函数名  : DMA_send
+*
+* 描述    : 向已连接设备发送TCP socket数据（DMA方式）
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*           @buf: 待发送数据指针
+*						@len: 待发送数据长度
+*
+* 返回值  : @ptr: 本次数据写入前发送缓冲区写指针（for debug）
+*
+* 说明    : 仅设备作为TCP客户端/服务器时调用	 
+*******************************************************************************/
+uint16_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len)
 {
    uint8_t tmp=0;
    uint16_t freesize=0;
+	 uint16_t ptr = 0;
 	
-   uint16_t ptr = 0;
-   uint32_t addrsel = 0;
-	 uint16_t RegAddr;
-	 uint8_t ControlWord;
-
    CHECK_SOCKNUM();
    CHECK_SOCKMODE(Sn_MR_TCP);
    CHECK_SOCKDATA();
-   tmp = getSn_SR(sn);//获取Socket sn状态
+	
+   tmp = getSn_SR(sn);//获取Socket n状态
    if(tmp != SOCK_ESTABLISHED && tmp != SOCK_CLOSE_WAIT) return SOCKERR_SOCKSTATUS;
-	 if( sock_is_sending & (1<<sn) )  //如果socket sn正在发送数据
+	 
+	 if( sock_is_sending & (1<<sn) )//Socket n正在发送数据，不做操作  
    {
-      tmp = getSn_IR(sn);
-		 if(tmp & Sn_IR_SENDOK)//如果发送完成，标志清零
+     tmp = getSn_IR(sn);
+
+		 if(tmp & Sn_IR_SENDOK)//发送完成，标志清零
       {
          setSn_IR(sn, Sn_IR_SENDOK);
-         //M20150401 : Typing Error
-         //#if _WZICHIP_ == 5200
-         #if _WIZCHIP_ == 5200
-            if(getSn_TX_RD(sn) != sock_next_rd[sn])
-            {
-               setSn_CR(sn,Sn_CR_SEND);
-               while(getSn_CR(sn));
-               return SOCK_BUSY;
-            }
-         #endif
          sock_is_sending &= ~(1<<sn);         
       }
-      else if(tmp & Sn_IR_TIMEOUT)
+			
+      else if(tmp & Sn_IR_TIMEOUT) //TCP超时，关闭Socket n
       {
          close(sn);
          return SOCKERR_TIMEOUT;
       }
-      //else return SOCK_BUSY;
    }
-   freesize = getSn_TxMAX(sn);//获取发送缓存寄存器的缓存大小（2KB）
-   if (len > freesize) len = freesize; // check size not to exceed MAX size.
-   while(1)
+	 
+   freesize = getSn_TxMAX(sn);//获取发送缓存大小（默认2KB）
+   if (len > freesize) len = freesize; //确保缓存不溢出  
+	 while(1)
    {
-      freesize = getSn_TX_FSR(sn);//Socket sn发送缓存的空闲空间大小
+      freesize = getSn_TX_FSR(sn);//Socket n发送缓存的空闲空间大小
       tmp = getSn_SR(sn);
       if ((tmp != SOCK_ESTABLISHED) && (tmp != SOCK_CLOSE_WAIT))
       {
@@ -443,22 +513,10 @@ int32_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len)
          return SOCKERR_SOCKSTATUS;
       }
       if( (sock_io_mode & (1<<sn)) && (len > freesize) ) return SOCK_BUSY;
-      if(len <= freesize) break;//判断当前发送的字节长度是否大于发送缓存的空闲空间
+      if(len <= freesize) break;//判断待发送数据长度是否大于当前发送缓存的空闲空间
    }
 	 
-	 /************************************/
-   ptr = getSn_TX_WR(sn);//得到实际的物理地址
-   addrsel = ((uint32_t)ptr << 8) + (WIZCHIP_TXBUF_BLOCK(sn) << 3);
-	
-	 addrsel |= _W5500_SPI_WRITE_ ;
-	 RegAddr=((addrsel & 0x00FFFF00)>>8);
-	 ControlWord=((addrsel & 0x000000FF) >>  0);//1个字节数据长度,读数据,选择通用寄存器
-  
-	 QSPI_Send_Control(RegAddr,ControlWord,0,QSPI_DATA_1_LINE);
-	 //QSPI控制寄存器,RegAddr,控制字为ControlWord，无空周期,单线传输数据
-	 
-	 hqspi.Instance->DLR=len+16;//len-1;// //配置数据长度,17个字节不知所踪??????????????
-	 HAL_QSPI_Transmit_DMA(&hqspi, buf);//写n个字节数据 
+	 ptr=Write_SOCK_Data_Buffer(sn,buf,len); //DMA写入Socket n发送缓冲区
 	 
 	 //	 while(1)
 //	 {
@@ -469,20 +527,29 @@ int32_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len)
 //				break;
 //	    }
 //	}
-	 ptr += len;//更新实际物理地址,即下次写待发送数据到发送数据缓冲区的起始地址
-   //setSn_TX_WR(sn,ptr);
-	 /************************************/
   
   // setSn_CR(sn,Sn_CR_SEND);//发送启动发送命令	
    /* wait to process the command... */
    //while(getSn_CR(sn));
    sock_is_sending |= (1 << sn);//1
 
-   //M20150409 : Explicit Type Casting
-   //return len;
-   return (int32_t)ptr;
+   return ptr;
 }
 
+/*******************************************************************************
+* 函数名  : recv
+*
+* 描述    : 从已连接设备获取TCP socket数据 
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*           @buf: 保存待接收数据指针
+*						@len: 待接收数据长度
+*
+* 返回值  : @Success: 接收数据长度
+*						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
+*
+* 说明    : 仅设备作为TCP客户端/服务器时调用	 
+*******************************************************************************/
 int32_t recv(uint8_t sn, uint8_t * buf, uint16_t len)
 {
    uint8_t  tmp = 0;
@@ -590,15 +657,24 @@ int32_t recv(uint8_t sn, uint8_t * buf, uint16_t len)
    return (int32_t)len;
 }
 
-int32_t DMA_recv(uint8_t sn, uint8_t * buf, uint32_t len)
+/*******************************************************************************
+* 函数名  : DMA_recv
+*
+* 描述    : 从已连接设备获取TCP socket数据（DMA方式） 
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*           @buf: 保存待接收数据指针
+*						@len: 待接收数据长度
+*
+* 返回值  : @ptr: 本次接收完成后接收缓冲区读指针
+*
+* 说明    : 仅设备作为TCP客户端/服务器时调用	 
+*******************************************************************************/
+uint16_t DMA_recv(uint8_t sn, uint8_t * buf, uint32_t len)
 {
    uint8_t  tmp = 0;
-   uint16_t recvsize = 0;
-	
+   uint16_t recvsize = 0;	
    uint16_t ptr = 0;
-   uint32_t addrsel = 0;
-   uint16_t RegAddr;
-	 uint8_t ControlWord;
 
    CHECK_SOCKNUM();
    CHECK_SOCKMODE(Sn_MR_TCP);
@@ -633,40 +709,30 @@ int32_t DMA_recv(uint8_t sn, uint8_t * buf, uint32_t len)
 		};
 	
    if(recvsize < len) len = recvsize; 
+	 /* 上述操作的comment @ref DMA_send */
 		
-   //wiz_recv_data(sn, buf, len);
-	 /****************************************************/
-   ptr = getSn_RX_RD(sn);
-   addrsel = ((uint32_t)ptr << 8) + (WIZCHIP_RXBUF_BLOCK(sn) << 3);
-
-	 addrsel |= _W5500_SPI_READ_ ;
-   RegAddr = ((addrsel & 0x00FFFF00)>>8);
-	 ControlWord = ((addrsel & 0x000000FF) >>  0);//1个字节数据长度,读数据,选择通用寄存器
-
-	 QSPI_Send_Control(RegAddr,ControlWord,0,QSPI_DATA_1_LINE);
-	 //QSPI控制寄存器,RegAddr,控制字为ControlWord，无空周期,单线传输数据
-	 HAL_QSPI_Receive_DMA(&hqspi,buf);
-		
-	 while(1)
-	 {
-		 if(__HAL_DMA_GET_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7))//等待 DMA2_Steam7 接收完成	
-			{
-				__HAL_DMA_CLEAR_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7);//清除 DMA2_Steam7 接收完成标志			
-				HAL_QSPI_Abort(&hqspi);//接收完成以后关闭DMA
-				break;
-	    }
-	}	 
-   ptr += len; 
-   setSn_RX_RD(sn,ptr);	
-	 /****************************************************/
-   setSn_CR(sn,Sn_CR_RECV);
-   while(getSn_CR(sn));
-	
-   //M20150409 : Explicit Type Casting
-   //return len;
-   return (int32_t)ptr;
+	 ptr=Read_SOCK_Data_Buffer(sn,buf,len);//DMA读取Socket n接收缓冲区 
+	 	
+   return ptr;
 }
 
+/*******************************************************************************
+* 函数名  : sendto
+*
+* 描述    : 将UDP/MACRAW数据报文传给目的主机
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*					  @buf: 发送数据指针
+*						@len: 发送数据长度 
+*						@addr: 目的主机IP地址
+*						@port: 目的主机端口号
+
+*
+* 返回值  : @Success: 发送数据长度
+*						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
+*
+* 说明    : 无	 
+*******************************************************************************/
 int32_t sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t port)
 {
    uint8_t tmp = 0;
@@ -769,8 +835,22 @@ int32_t sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t
    return (int32_t)len;
 }
 
-
-
+/*******************************************************************************
+* 函数名  : recvfrom
+*
+* 描述    : 接收UDP/MACRAW数据报文
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*					  @buf: 保存接收数据指针
+*						@len: 接收数据长度 
+*						@addr: 目的主机IP地址
+*						@port: 目的主机端口号
+*
+* 返回值  : @Success: 接收的数据长度
+*						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
+*
+* 说明    : 无	 
+*******************************************************************************/
 int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t *port)
 {
 //M20150601 : For W5300   
@@ -952,7 +1032,20 @@ int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16
    return (int32_t)pack_len;
 }
 
-
+/*******************************************************************************
+* 函数名  : ctlsocket
+*
+* 描述    : 控制Socket （IO，中断，中断屏蔽etc.）
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*					  @cstype:  - @ref ctlsock_type
+*						@arg: - @ref ctlsock_type 
+*
+* 返回值  : @Success: SOCK_OK 
+*						@Fail:  - @ref SOCKERR_ARG
+*
+* 说明    : 无	 
+*******************************************************************************/
 int8_t  ctlsocket(uint8_t sn, ctlsock_type cstype, void* arg)
 {
    uint8_t tmp = 0;
@@ -999,6 +1092,20 @@ int8_t  ctlsocket(uint8_t sn, ctlsock_type cstype, void* arg)
    return SOCK_OK;
 }
 
+/*******************************************************************************
+* 函数名  : setsockopt
+*
+* 描述    : 设置Socket （TTL，MSS，TOS etc.）
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*					  @sotype:  - @ref  sockopt_type 
+*						@arg: - @ref  sockopt_type  
+*
+* 返回值  : @Success: SOCK_OK 
+*						@Fail: /
+*
+* 说明    : 无	 
+*******************************************************************************/
 int8_t  setsockopt(uint8_t sn, sockopt_type sotype, void* arg)
 {
  // M20131220 : Remove warning
@@ -1051,7 +1158,20 @@ int8_t  setsockopt(uint8_t sn, sockopt_type sotype, void* arg)
    }   
    return SOCK_OK;
 }
-
+/*******************************************************************************
+* 函数名  : getsockopt
+*
+* 描述    : 获取Socket设置 （TTL，MSS，TOS etc.）
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*					  @sotype:  - @ref  sockopt_type 
+*						@arg: - @ref  sockopt_type  
+*
+* 返回值  : @Success: SOCK_OK 
+*						@Fail: /
+*
+* 说明    : 无	 
+*******************************************************************************/
 int8_t  getsockopt(uint8_t sn, sockopt_type sotype, void* arg)
 {
    CHECK_SOCKNUM();

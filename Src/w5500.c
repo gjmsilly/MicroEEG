@@ -57,6 +57,8 @@
 #include "W5500_App.h"
 #include "QSPI.h"
 
+extern QSPI_HandleTypeDef hqspi; 
+extern DMA_HandleTypeDef hdma_quadspi;
 
 #if   (_WIZCHIP_ == 5500)
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,57 +225,49 @@ void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 /*******************************************************************************
 * 函数名  : Write_SOCK_Data_Buffer
 *
-* 描述    : 将数据写入W5500的数据发送缓冲区
+* 描述    : 将数据写入W5500的Socket n数据发送缓冲区（DMA方式）
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
-*						@dat_ptr: 数据保存缓冲区指针
+*						@dat_ptr: 待写入数据指针
 *						@len: 待写入数据长度
 *
-* 返回值  : 无
+* 返回值  : @ptr: 本次数据写入前发送缓冲区写指针（for debug） 
 *
 * 说明    : 无
 *******************************************************************************/
-void Write_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr, uint16_t len)
+uint16_t Write_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr, uint16_t len)
 {
-	uint16_t offset,offset1;
-
-	//如果不是UDP模式,可以在此设置目的主机的IP和端口号
-	if((getSn_MR(sn)&0x0f) != SOCK_UDP)//如果Socket打开失败
-	{		
-		setSn_DIPR(sn, UDP_DIPR);//设置目的主机IP  		
-		setSn_DPORT(sn, UDP_DPORT);//设置目的主机端口号				
-	}
-
-	offset=getSn_TX_WR(sn);
-	offset1=offset;
-	offset&=(S_TX_SIZE-1);//计算实际的物理地址
-
-  QSPI_Send_Control(offset,(_W5500_SPI_VDM_OP_|_W5500_SPI_WRITE_|(WIZCHIP_TXBUF_BLOCK(sn)<<3)),0,QSPI_DATA_1_LINE);
-	//写入地址，写控制字节（N个字节数据长度,写数据,选择端口s的寄存器），无空周期,单线传输数据
-	if((offset+len)<S_TX_SIZE)//如果最大地址未超过W5500发送缓冲区寄存器的最大地址
-	{
-		QSPI_Transmit(dat_ptr,len);////写size个字节数据
-	}
-	else//如果最大地址超过W5500发送缓冲区寄存器的最大地址
-	{
-		offset=S_TX_SIZE-offset;
-		QSPI_Transmit(dat_ptr,offset);////写size个字节数据
-
-    QSPI_Send_Control(0x00,(_W5500_SPI_VDM_OP_|_W5500_SPI_WRITE_|(WIZCHIP_TXBUF_BLOCK(sn)<<3)),0,QSPI_DATA_1_LINE);
-	  //写入地址，写控制字节（N个字节数据长度,写数据,选择端口s的寄存器），无空周期,单线传输数据	
-    QSPI_Transmit(dat_ptr,len);////写size-offset个字节数据
-	}
-
-	offset1+=len;//更新实际物理地址,即下次写待发送数据到发送数据缓冲区的起始地址
-	setSn_TX_WR(sn, offset1);
-	setSn_CR(sn, Sn_CR_SEND);//发送启动发送命令	
-
+	 uint16_t ptr = 0;
+   uint32_t addrsel = 0;
+	 uint16_t RegAddr;
+	 uint8_t ControlWord;
+	 
+	 //读取发送缓冲区写指针，为当前数据写入的首地址
+   ptr = getSn_TX_WR(sn);
+	 //将数据写入对应的端口的发送缓冲区
+   addrsel = ((uint32_t)ptr << 8) + (WIZCHIP_TXBUF_BLOCK(sn) << 3); 
+	 RegAddr=((addrsel & 0x00FFFF00)>>8);           // W5500地址段:Socket n发送缓冲区地址
+	 addrsel |= _W5500_SPI_WRITE_ ;	                // W5500控制段:写访问
+	 ControlWord=((addrsel & 0x000000FF) >>  0);    // W5500控制段:寄存器区域 - Socket n发送缓存区
+	 
+	 // QSPI命令配置 单线传输
+   //	| 指令 |  地址   |  交替字节   | 空指令 |  数据   |
+	 // | NULL | RegAddr | ControlWord |	NULL 	|	dat_ptr |
+	 QSPI_Send_Control(RegAddr,ControlWord,0,QSPI_DATA_1_LINE);
+	 hqspi.Instance->DLR=len+16;//len-1;				   //配置数据长度,17个字节不知所踪
+	 HAL_QSPI_Transmit_DMA(&hqspi, dat_ptr);		   //DMA方式向发送缓冲区写n字节数据 
+	 
+	//更新发送缓冲区写指针，为下一次数据写入的首地址
+   ptr += len; 
+   setSn_TX_WR(sn,ptr);
+	 
+	 return ptr;
 }
 
 /*******************************************************************************
 * 函数名  : wiz_send_data
 *
-* 描述    : 将数据写入W5500的数据发送缓冲区
+* 描述    : 将数据写入W5500的Socket n数据发送缓冲区
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *						@wizdata: 待写入数据指针
@@ -305,46 +299,54 @@ void wiz_send_data(uint8_t sn, uint8_t *wizdata, uint16_t len)
 
 /*******************************************************************************
 * 函数名  : Read_SOCK_Data_Buffer
-* 描述    : 从W5500接收数据缓冲区中读取数据
-* 输入    : s:端口号,*dat_ptr:数据保存缓冲区指针
-* 输出    : 无
-* 返回值  : 读取到的数据长度,rx_size个字节
+*
+* 描述    : 从W5500接收数据缓冲区中读取数据（DMA方式）
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*           @dat_ptr: 保存待接收数据指针
+*						@len: 待接收数据长度
+*
+* 返回值  : @ptr: 本次接收完成后接收缓冲区读指针 （for debug）
+*
 * 说明    : 无
 *******************************************************************************/
-uint16_t Read_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr)
+uint16_t Read_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr,uint32_t len)
 {
-	uint16_t rx_size;
-	uint16_t offset, offset1;
-
-	rx_size=getSn_RX_RSR(sn);
-	if(rx_size==0) return 0;//没接收到数据则返回
-	if(rx_size>1460) rx_size=1460;
-
-	offset=getSn_RX_RD(sn);
-	offset1=offset;
-	offset&=(S_RX_SIZE-1);//计算实际的物理地址
-
-	QSPI_Send_Control(offset,(_W5500_SPI_VDM_OP_|_W5500_SPI_READ_|(WIZCHIP_RXBUF_BLOCK(sn)<<3)),0,QSPI_DATA_1_LINE);
-	//写入地址，写控制字节（N个字节数据长度,读数据,选择端口s的寄存器），无空周期,单线传输数据
+	 uint16_t ptr = 0;
+   uint32_t addrsel = 0;
+   uint16_t RegAddr;
+	 uint8_t ControlWord;
+	 
+	 //读取接收缓冲区读指针，为此次数据读取的首地址
+	 ptr = getSn_RX_RD(sn);
 	
-	if((offset+rx_size)<S_RX_SIZE)//如果最大地址未超过W5500接收缓冲区寄存器的最大地址
-	{
-		QSPI_Receive(dat_ptr,rx_size);//读取rx_size个字节数据，并将读取到的数据保存到数据保存缓冲区
-	}
-	else//如果最大地址超过W5500接收缓冲区寄存器的最大地址
-	{
-		offset=S_RX_SIZE-offset;
-		QSPI_Receive(dat_ptr,offset);//读取rx_size个字节数据，并将读取到的数据保存到数据保存缓冲区
+   addrsel = ((uint32_t)ptr << 8) + (WIZCHIP_RXBUF_BLOCK(sn) << 3);
+   RegAddr = ((addrsel & 0x00FFFF00)>>8);         // W5500地址段:Socket n接收缓冲区地址
+	 addrsel |= _W5500_SPI_READ_ ;	                // W5500控制段:写访问
+	 ControlWord=((addrsel & 0x000000FF) >>  0);    // W5500控制段:寄存器区域 - Socket n接收缓存区
+	 
+	 // QSPI命令配置 单线传输
+   //	| 指令 |  地址   |  交替字节   | 空指令 |  数据   |
+	 // | NULL | RegAddr | ControlWord |	NULL 	|	dat_ptr |
+	 QSPI_Send_Control(RegAddr,ControlWord,0,QSPI_DATA_1_LINE);
+
+	 HAL_QSPI_Receive_DMA(&hqspi,dat_ptr);
 		
-	  QSPI_Send_Control(0x00,(_W5500_SPI_VDM_OP_|_W5500_SPI_READ_|(WIZCHIP_RXBUF_BLOCK(sn)<<3)),0,QSPI_DATA_1_LINE);
-	  //写入地址，写控制字节（N个字节数据长度,读数据,选择端口s的寄存器），无空周期,单线传输数据
-		
-		QSPI_Receive(dat_ptr,rx_size);//读取rx_size-offset个字节数据，并将读取到的数据保存到数据保存缓冲区
-	}
-	offset1+=rx_size;//更新实际物理地址,即下次读取接收到的数据的起始地址
-	setSn_RX_RD(sn, offset1);
-	setSn_CR(sn, Sn_CR_RECV);//发送启动接收命令
-	return rx_size;//返回接收到数据的长度
+	 while(1)
+	 {
+		 if(__HAL_DMA_GET_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7))//等待 DMA2_Steam7 接收完成	
+			{
+				__HAL_DMA_CLEAR_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7);//清除 DMA2_Steam7 接收完成标志			
+				HAL_QSPI_Abort(&hqspi);//接收完成以后关闭DMA
+				break;
+	    }
+	  }
+	 
+	 //更新接收缓冲区读指针，为下一次数据读取的首地址 	 
+   ptr += len; 
+   setSn_RX_RD(sn,ptr);	
+
+	 return ptr;
 }
 
 /*******************************************************************************
@@ -378,6 +380,8 @@ void wiz_recv_data(uint8_t sn, uint8_t *wizdata, uint16_t len)
 	 //更新接收缓冲区读指针，为下一次数据读取的首地址   
 	 ptr += len;
    setSn_RX_RD(sn,ptr);
+	 setSn_CR(sn,Sn_CR_RECV); // RECV命令，将更新后的Sn_RX_RD告知W5500
+   while(getSn_CR(sn));
 }
 
 /*******************************************************************************

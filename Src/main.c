@@ -53,9 +53,10 @@ DMA_HandleTypeDef hdma_quadspi;
 /* USER CODE BEGIN PV */
 SHELL_TypeDef shell;
 
-uint8_t resultval[28];  // save ads1299 output data
+uint8_t resultval[28];  					//ads1299 结果缓存区
 uint8_t ReadResult;
-uint8_t i;
+uint8_t DMA_TX_Transfer_flag=0;		//1 - DMA正在传输发送区数据，0 - 传输完成
+uint8_t DMA_RX_Transfer_flag=0;		//1 - DMA正在传输接收区数据，0 - 传输完成
 
 /* USER CODE END PV */
 
@@ -157,6 +158,8 @@ SHELL_EXPORT_CMD(ADC_WriteReg, ADC_WriteReg, Write ADS1299 Register);
 
 void ladreg(void)
 {
+	uint8_t i;
+	
 	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_DEVID);	
 	printf("DEVID=%#x\r\n",ReadResult);
 	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);	
@@ -262,7 +265,9 @@ int main(void)
 	ACQ_LED2_OFF;
 	ERR_LED1_OFF;
 	ERR_LED2_OFF;	
-	
+
+//--------------------------------------------------------------
+/* ADS1299 */	
 //	//Configure the DMA
 //	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
 //	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
@@ -275,8 +280,9 @@ int main(void)
 //  ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
 
 //	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7
-	
-  /* USER CODE END 2 */
+//--------------------------------------------------------------	
+ 
+	/* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */

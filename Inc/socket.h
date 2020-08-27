@@ -486,9 +486,9 @@ int8_t  getsockopt(uint8_t sn, sockopt_type sotype, void* arg);
  }
 #endif
 
-/**************************ADD*********************************/
-int32_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len);
-int32_t DMA_recv(uint8_t sn, uint8_t * buf, uint32_t len);
-/**************************END*********************************/
+/*************************User Add************************/
+uint16_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len);
+uint16_t DMA_recv(uint8_t sn, uint8_t * buf, uint32_t len);
+/**************************END*****************************/
 
 #endif   // _SOCKET_H_
