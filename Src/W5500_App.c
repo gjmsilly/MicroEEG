@@ -43,7 +43,7 @@ extern uint8_t DMA_RX_Transfer_flag;		//1 - DMA正在传输接收区数据，0 - 传输完成
 *
 * 返回值  : 无
 *
-* 说明    : 无
+* 说明    : 首先完成W5500硬件复位，之后最先调用本函数
 *******************************************************************************/
 void W5500_Init(void)
 {
@@ -66,7 +66,7 @@ void W5500_Init(void)
 *
 * 返回值  : 无
 *
-* 说明    : W5500硬件复位后最先调用本函数
+* 说明    : 
 *******************************************************************************/
 void W5500_Config(void)
 {
@@ -117,63 +117,63 @@ void W5500_Config(void)
 *						@Sn_Port			Socket 0端口号（源端口号）			5000 (default)
 *						@Sn_DIP				TCP模式目的IP地址		32bit				192.128.1.101(client)
 *						@UDP_DPORT		UDP模式目的端口号								6000 (defualt)
-*						@UDP_DIPR     UDP模式目的IP地址		32bit				192.128.1.101
+*						@UDP_DIPR     UDP模式目的IP地址		32bit				192.168.1.101
 *******************************************************************************/
 void W5500_Load_Net_Parameters(void)
 {
 	//加载网关参数		
-	Pnet_param->Gateway_IP[0] = 192;
-	Pnet_param->Gateway_IP[1] = 168;
-	Pnet_param->Gateway_IP[2] = 1;
-	Pnet_param->Gateway_IP[3] = 1;
+	net_param.Gateway_IP[0] = 192;
+	net_param.Gateway_IP[1] = 168;
+	net_param.Gateway_IP[2] = 1;
+	net_param.Gateway_IP[3] = 1;
 	
 	//加载子网掩码
-	Pnet_param->Sub_Mask[0] = 255;
-	Pnet_param->Sub_Mask[1] = 255;
-	Pnet_param->Sub_Mask[2] = 255;
-	Pnet_param->Sub_Mask[3] = 0;
+	net_param.Sub_Mask[0] = 255;
+	net_param.Sub_Mask[1] = 255;
+	net_param.Sub_Mask[2] = 255;
+	net_param.Sub_Mask[3] = 0;
 	
 	//加载MAC地址
-	Pnet_param->Phy_Addr[0] = 0x0c;
-	Pnet_param->Phy_Addr[1] = 0x29;
-	Pnet_param->Phy_Addr[2] = 0xab;
-	Pnet_param->Phy_Addr[3] = 0x7c;
-	Pnet_param->Phy_Addr[4] = 0x00;
-	Pnet_param->Phy_Addr[5] = 0x01;
+	net_param.Phy_Addr[0] = 0x0c;
+	net_param.Phy_Addr[1] = 0x29;
+	net_param.Phy_Addr[2] = 0xab;
+	net_param.Phy_Addr[3] = 0x7c;
+	net_param.Phy_Addr[4] = 0x00;
+	net_param.Phy_Addr[5] = 0x01;
 	
 	//加载源/本机IP地址
-	Pnet_param->IP_Addr[0] = 192;
-	Pnet_param->IP_Addr[1] = 168;
-	Pnet_param->IP_Addr[2] = 1;
-	Pnet_param->IP_Addr[3] = 10;
+	net_param.IP_Addr[0] = 192;
+	net_param.IP_Addr[1] = 168;
+	net_param.IP_Addr[2] = 1;
+	net_param.IP_Addr[3] = 10;
 	
 	//加载Socket 0的端口号/源端口号 5000(0x1388) （default）
-	Ps0_param->Sn_Port = 5000;
+	s0_param.Sn_Port = 5000;
 
 	//UDP(广播)模式,目的主机IP地址
-	Ps0_param->UDP_DIPR[0] = 192;	
-	Ps0_param->UDP_DIPR[1] = 168;
-	Ps0_param->UDP_DIPR[2] = 1;
-	Ps0_param->UDP_DIPR[3] = 101;
+	s0_param.UDP_DIPR[0] = 192;	
+	s0_param.UDP_DIPR[1] = 168;
+	s0_param.UDP_DIPR[2] = 1;
+	s0_param.UDP_DIPR[3] = 101;
 	
 	//UDP(广播)模式,目的主机端口号 6000（default）
-	Ps0_param->UDP_DPORT = 6000;	
+	s0_param.UDP_DPORT = 6000;	
 	
 	// 加载Socket 0的工作模式：服务器（default）
 	// @ref UDP_MODE/TCP_CLIENT/TCP_SERVER
-	Ps0_state->Sn_Mode=TCP_SERVER;	
+	s0_state.Sn_Mode=TCP_SERVER;	
 	
 	//TCP客户端模式：需要设置目的端口号和IP地址
-	if(Ps0_state->Sn_Mode==TCP_CLIENT)
+	if(s0_state.Sn_Mode==TCP_CLIENT)
 	{
 		//加载Socket 0的目的IP地址
-		Ps0_param->Sn_DIP[0]=192;
-  	Ps0_param->Sn_DIP[1]=168;
-	  Ps0_param->Sn_DIP[2]=1;
-	  Ps0_param->Sn_DIP[3]=101;
+		s0_param.Sn_DIP[0]=192;
+  	s0_param.Sn_DIP[1]=168;
+	  s0_param.Sn_DIP[2]=1;
+	  s0_param.Sn_DIP[3]=101;
 		
 		//加载Socket 0的目的端口号 6000（default）
-	  Ps0_param->Sn_DPort = 6000;
+	  s0_param.Sn_DPort = 6000;
 	}
 }
 
@@ -488,5 +488,7 @@ void W5500_RST(void)
 	LL_GPIO_SetOutputPin(W5500_nRST_GPIO_Port,W5500_nRST_Pin);//复位引脚拉高
 	HAL_Delay(100);
 	while((WIZCHIP_READ(PHYCFGR)&PHYCFGR_LNK_ON)==0);//等待以太网连接完成
+
+
 }
 

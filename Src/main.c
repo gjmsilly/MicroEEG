@@ -23,9 +23,13 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "shell.h"
+#include <string.h>
 #include <stdio.h>
 #include "ADS1299.h"
-
+#include "W5500_App.h"
+#include "W5500.h"
+#include "wizchip_conf.h"
+#include "socket.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,10 +57,13 @@ DMA_HandleTypeDef hdma_quadspi;
 /* USER CODE BEGIN PV */
 SHELL_TypeDef shell;
 
-uint8_t resultval[28];  					//ads1299 结果缓存区
+uint8_t resultval[28];  					//ADS1299 结果缓存区
 uint8_t ReadResult;
 uint8_t DMA_TX_Transfer_flag=0;		//1 - DMA正在传输发送区数据，0 - 传输完成
 uint8_t DMA_RX_Transfer_flag=0;		//1 - DMA正在传输接收区数据，0 - 传输完成
+int32_t size;
+uint8_t Data_Pack[1000];
+uint16_t Ptr;
 
 /* USER CODE END PV */
 
@@ -230,6 +237,15 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 	Mod_DRDY_INT_Disable
+	
+	memset(Data_Pack,'A',sizeof(Data_Pack));
+	memset(Tx_Buffer,0,sizeof(Tx_Buffer));//清除缓冲区
+	memset(Rx_Buffer,0,sizeof(Rx_Buffer));//清除缓冲区
+	Data_Pack[0]='S';
+	Data_Pack[1]='T';
+	Data_Pack[982]='X';
+	Data_Pack[983]='Y';
+	Data_Pack[999]='Z';
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -265,7 +281,12 @@ int main(void)
 	ACQ_LED2_OFF;
 	ERR_LED1_OFF;
 	ERR_LED2_OFF;	
-
+	
+	//W5500 Initial
+	W5500_Load_Net_Parameters(); //装载网络参数	
+	W5500_RST();//硬件复位
+	W5500_Init(); //W5500初始化
+	
 //--------------------------------------------------------------
 /* ADS1299 */	
 //	//Configure the DMA
@@ -282,13 +303,63 @@ int main(void)
 //	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7
 //--------------------------------------------------------------	
  
-	/* USER CODE END 2 */
+  /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
     shellTask(&shell);
+
+		if(W5500_Interrupt)//处理W5500中断		
+		{
+			W5500_Interrupt_Process();//W5500中断处理程序
+		}
+		if(Ps0_state->Sn_Data == S_RECEIVE)//如果Socket0接收到数据
+		{
+				memset(Tx_Buffer,0,sizeof(Tx_Buffer));//清除缓冲区
+				memset(Rx_Buffer,0,sizeof(Rx_Buffer));//清除缓冲区
+				if(Ps0_state->Sn_Mode==UDP_MODE)
+				{
+					size=recvfrom(0, Rx_Buffer,1460, Ps0_param->UDP_DIPR, Ps0_param->UDP_DPORT_);
+					memcpy(Tx_Buffer, Rx_Buffer+8, size-8);			
+					send(0, Tx_Buffer, size);
+				}
+				else 
+				{
+					if(DMA_TX_Transfer_flag != 1)//等发送完成再接收
+					{						
+						Ps0_state->Sn_Data = 0;
+				    size=recv(0, Rx_Buffer, 1460);
+						DMA_RX_Transfer_flag=1;
+						if(size>0)//接收有效
+						{
+							memcpy(Tx_Buffer, Rx_Buffer, size);			
+							Ptr=DMA_send(0, Tx_Buffer, size);							
+						}
+						else
+						{
+							DMA_RX_Transfer_flag=0;
+						}	
+					}
+				}
+		}	
+		//else if(W5500_Send_Delay_Counter >=1000) //20ms定时发送字符串
+		//{
+			if((Ps0_state->Sn_State == (S_INIT|S_CONN)) && \
+					(Ps0_state->Sn_State != S_RECEIVE) )//端口已打开并且无数据接收
+			{
+				if(DMA_RX_Transfer_flag==0)//DMA无发送接收的数据
+				{					
+					Ps0_state->Sn_Data &=~S_TRANSMITOK;//S0_Data=0
+					DMA_TX_Transfer_flag=1;
+					
+					Ptr=DMA_send(0, Data_Pack, sizeof(Data_Pack));//指定Socket0发送数据处理,端口0发送1000字节数据
+				}
+			}
+
+
+			HAL_Delay(500);//ms级		
 		
     /* USER CODE END WHILE */
 
@@ -999,7 +1070,7 @@ static void MX_GPIO_Init(void)
   EXTI_InitStruct.Line_0_31 = LL_EXTI_LINE_0;
   EXTI_InitStruct.LineCommand = ENABLE;
   EXTI_InitStruct.Mode = LL_EXTI_MODE_IT;
-  EXTI_InitStruct.Trigger = LL_EXTI_TRIGGER_RISING;
+  EXTI_InitStruct.Trigger = LL_EXTI_TRIGGER_FALLING;
   LL_EXTI_Init(&EXTI_InitStruct);
 
   /**/
@@ -1054,6 +1125,8 @@ static void MX_GPIO_Init(void)
   LL_GPIO_SetPinMode(Mods_nDRDY_GPIO_Port, Mods_nDRDY_Pin, LL_GPIO_MODE_INPUT);
 
   /* EXTI interrupt init*/
+  NVIC_SetPriority(EXTI0_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(EXTI0_IRQn);
   NVIC_SetPriority(EXTI9_5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(EXTI9_5_IRQn);
 

@@ -30,7 +30,7 @@ typedef struct
 	//UDP模式
 	uint16_t UDP_DPORT;			//Socket n目的端口号
 	uint8_t  UDP_DIPR[4];		//Socket n目的IP地址
-	//	uint16_t UDP_DPORT_[2];
+	uint16_t UDP_DPORT_[2];
 }SOCKETnParam_t;
 
 /* Socket n状态参数 */
@@ -70,6 +70,16 @@ typedef struct
 /* Socket n收发数据状态 */
 #define S_RECEIVE	 			0x01				//Socket n接收到一个数据包 
 #define S_TRANSMITOK 		0x02				//Socket n完成一个数据包的发送 
+ 
+ /*******************************************************************************
+ * EXTERNAL VARIABLES
+ */
+extern uint8_t W5500_Interrupt;			//W5500中断标志 0-无，1-有中断
+extern uint8_t Rx_Buffer[2048];			//接收数据缓冲区 
+extern uint8_t Tx_Buffer[2048];			//发送数据缓冲区
+extern NETWORKParam_t *Pnet_param;  //网络参数配置
+extern SOCKETnParam_t	*Ps0_param;   //Socket 0参数配置
+extern SOCKETnState_t *Ps0_state;   //Socket 0状态
 
 /*******************************************************************************
  * FUNCTIONS

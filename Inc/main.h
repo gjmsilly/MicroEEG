@@ -145,6 +145,7 @@ void Error_Handler(void);
 #define W5500_MISO_GPIO_Port GPIOC
 #define W5500_nINT_Pin LL_GPIO_PIN_0
 #define W5500_nINT_GPIO_Port GPIOD
+#define W5500_nINT_EXTI_IRQn EXTI0_IRQn
 #define W5500_SCLK_Pin LL_GPIO_PIN_3
 #define W5500_SCLK_GPIO_Port GPIOD
 #define Modc_nDRDY_Pin LL_GPIO_PIN_4

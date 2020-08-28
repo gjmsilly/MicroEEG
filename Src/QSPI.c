@@ -18,7 +18,7 @@ extern QSPI_HandleTypeDef hqspi;
 void QSPI_Send_Control( uint16_t address,uint8_t controlword,uint32_t dummyCycles,uint32_t dataMode)
 {
 		QSPI_CommandTypeDef Cmdhandler;
-	
+		
 		Cmdhandler.InstructionMode=QSPI_INSTRUCTION_NONE; 					// 指令命令 - NULL	
 		Cmdhandler.Address=address; 																// 地址命令 - address
 		Cmdhandler.AddressSize=QSPI_ADDRESS_16_BITS; 								// 地址命令长度 - 16位  
@@ -29,8 +29,11 @@ void QSPI_Send_Control( uint16_t address,uint8_t controlword,uint32_t dummyCycle
 		Cmdhandler.DummyCycles=dummyCycles; 												// 空指令命令周期数 - dummyCycles
 		Cmdhandler.DataMode=dataMode; 															// 数据命令收发模式 - dataMode
 		Cmdhandler.DdrMode=QSPI_DDR_MODE_DISABLE; 									// 关闭 DDR 模式
-	
-		HAL_QSPI_Command(&hqspi,&Cmdhandler,2000);
+		Cmdhandler.DdrHoldHalfCycle=QSPI_DDR_HHC_ANALOG_DELAY;      // 默认配置
+		Cmdhandler.SIOOMode= QSPI_SIOO_INST_EVERY_CMD;              // 默认配置
+
+		HAL_QSPI_Command(&hqspi,&Cmdhandler,HAL_QPSI_TIMEOUT_DEFAULT_VALUE);
+
 }
 
 /*******************************************************************************
@@ -59,6 +62,8 @@ void QSPI_Send_Control_IT(uint16_t address,uint8_t controlword,uint32_t dummyCyc
 		Cmdhandler.DummyCycles=dummyCycles; 												// 空指令命令周期数 - dummyCycles
 		Cmdhandler.DataMode=dataMode; 															// 数据命令收发模式 - dataMode
 		Cmdhandler.DdrMode=QSPI_DDR_MODE_DISABLE; 									// 关闭 DDR 模式
+		Cmdhandler.DdrHoldHalfCycle=QSPI_DDR_HHC_ANALOG_DELAY;      // 默认配置
+		Cmdhandler.SIOOMode= QSPI_SIOO_INST_EVERY_CMD;              // 默认配置
 	
 		HAL_QSPI_Command_IT(&hqspi,&Cmdhandler);
 }
@@ -78,7 +83,7 @@ uint8_t QSPI_Receive(uint8_t* buf,uint32_t datalen)
 {
 	hqspi.Instance->DLR=datalen-1; //配置数据长度
 	
-	if( HAL_QSPI_Receive(&hqspi,buf,2000)==HAL_OK ) 
+	if( HAL_QSPI_Receive(&hqspi,buf,HAL_QPSI_TIMEOUT_DEFAULT_VALUE)== HAL_OK ) 
 		return 0; //接收数据
 	else 
 		return 1;
@@ -99,7 +104,7 @@ uint8_t QSPI_Transmit(uint8_t* buf,uint32_t datalen)
 {
 	hqspi.Instance->DLR=datalen-1; //配置数据长度
 	
-	if( HAL_QSPI_Transmit(&hqspi,buf,2000)==HAL_OK ) 
+	if( HAL_QSPI_Transmit(&hqspi,buf,HAL_QPSI_TIMEOUT_DEFAULT_VALUE)==HAL_OK ) 
 		return 0; //发送数据
 	else 
 		return 1;
