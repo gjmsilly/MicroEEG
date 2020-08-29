@@ -241,9 +241,10 @@ uint16_t Write_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr, uint16_t len)
    uint32_t addrsel = 0;
 	 uint16_t RegAddr;
 	 uint8_t ControlWord;
-	 
+			
 	 //读取发送缓冲区写指针，为当前数据写入的首地址
    ptr = getSn_TX_WR(sn);
+	
 	 //将数据写入对应的端口的发送缓冲区
    addrsel = ((uint32_t)ptr << 8) + (WIZCHIP_TXBUF_BLOCK(sn) << 3); 
 	 RegAddr=((addrsel & 0x00FFFF00)>>8);           // W5500地址段:Socket n发送缓冲区地址
@@ -254,8 +255,18 @@ uint16_t Write_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr, uint16_t len)
    //	| 指令 |  地址   |  交替字节   | 空指令 |  数据   |
 	 // | NULL | RegAddr | ControlWord |	NULL 	|	dat_ptr |
 	 QSPI_Send_Control(RegAddr,ControlWord,0,QSPI_DATA_1_LINE);
-	 hqspi.Instance->DLR=len+16;//len-1;				   //配置数据长度,17个字节不知所踪
+	 hqspi.Instance->DLR=len-1;//len-1;				   //配置数据长度,17个字节不知所踪
 	 HAL_QSPI_Transmit_DMA(&hqspi, dat_ptr);		   //DMA方式向发送缓冲区写n字节数据 
+	 
+	 while(1)
+	 {
+		 if(__HAL_DMA_GET_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7))//等待 DMA2_Steam7 传输完成	
+			{
+				__HAL_DMA_CLEAR_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7);//清除 DMA2_Steam7 传输完成标志			
+				HAL_QSPI_Abort(&hqspi);//传输完成以后关闭DMA
+				break;
+	    }
+	 }
 	 
 	//更新发送缓冲区写指针，为下一次数据写入的首地址
    ptr += len; 

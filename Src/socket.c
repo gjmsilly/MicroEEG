@@ -69,6 +69,8 @@ static uint16_t sock_remained_size[_WIZCHIP_SOCK_NUM_] = {0,0,};
 //M20150601 : For extern decleation
 uint8_t  sock_pack_info[_WIZCHIP_SOCK_NUM_] = {0,};
 
+extern QSPI_HandleTypeDef hqspi;
+extern DMA_HandleTypeDef hdma_quadspi;
 
 #if _WIZCHIP_ == 5200
    static uint16_t sock_next_rd[_WIZCHIP_SOCK_NUM_] ={0,};
@@ -114,7 +116,7 @@ uint8_t  sock_pack_info[_WIZCHIP_SOCK_NUM_] = {0,};
 *						@port: 端口号
 *						@flag: Socket标志位
 *
-* 返回值  : @Success: Socket n已经配置并打开
+* 返回值  : @Success: sn
 *						@Fail:  - @ref SOCKERR_SOCKNUM 
 *										- @ref SOCKERR_SOCKMODE
 *										- @ref SOCKERR_SOCKFLAG
@@ -518,20 +520,21 @@ uint16_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len)
 	 
 	 ptr=Write_SOCK_Data_Buffer(sn,buf,len); //DMA写入Socket n发送缓冲区
 	 
-	 //	 while(1)
-//	 {
-//		 if(__HAL_DMA_GET_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7))//等待 DMA2_Steam7 传输完成	
-//			{
-//				__HAL_DMA_CLEAR_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7);//清除 DMA2_Steam7 传输完成标志			
-//				HAL_QSPI_Abort(&hqspi);//传输完成以后关闭DMA
-//				break;
-//	    }
-//	}
+	 while(1)
+	 {
+		 if(__HAL_DMA_GET_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7))//等待 DMA2_Steam7 传输完成	
+			{
+				__HAL_DMA_CLEAR_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7);//清除 DMA2_Steam7 传输完成标志			
+				HAL_QSPI_Abort(&hqspi);//传输完成以后关闭DMA
+				break;
+	    }
+	}
   
-  // setSn_CR(sn,Sn_CR_SEND);//发送启动发送命令	
+    setSn_CR(sn,Sn_CR_SEND);//发送启动发送命令	
    /* wait to process the command... */
-   //while(getSn_CR(sn));
-   sock_is_sending |= (1 << sn);//1
+   while(getSn_CR(sn));
+  
+	 sock_is_sending |= (1 << sn);//1
 
    return ptr;
 }
@@ -712,7 +715,10 @@ uint16_t DMA_recv(uint8_t sn, uint8_t * buf, uint32_t len)
 	 /* 上述操作的comment @ref DMA_send */
 		
 	 ptr=Read_SOCK_Data_Buffer(sn,buf,len);//DMA读取Socket n接收缓冲区 
-	 	
+	 
+	 setSn_CR(sn,Sn_CR_RECV);
+   while(getSn_CR(sn));
+		
    return ptr;
 }
 
@@ -784,8 +790,10 @@ int32_t sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t
       if( (sock_io_mode & (1<<sn)) && (len > freesize) ) return SOCK_BUSY;
       if(len <= freesize) break;
    };
-	wiz_send_data(sn, buf, len);
+	//wiz_send_data(sn, buf, len);
+	Write_SOCK_Data_Buffer(sn, buf, len);   //DMA方式
 
+	 
    #if _WIZCHIP_ < 5500   //M20150401 : for WIZCHIP Errata #4, #5 (ARP errata)
       getSIPR((uint8_t*)&taddr);
       if(taddr == 0)
