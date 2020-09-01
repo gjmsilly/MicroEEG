@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_FULL_LL_DRIVER,USE_HAL_DRIVER,STM32F446xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;                ../Drivers/STM32F4xx_HAL_Driver/Inc;                ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;                ../Drivers/CMSIS/Device/ST/STM32F4xx/Include;                ../Drivers/CMSIS/Include;                ..\letter-shell</IncludePath>
+              <IncludePath>../Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;..\letter-shell;..\utilities</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -394,16 +394,6 @@
           <GroupName>Application/User</GroupName>
           <Files>
             <File>
-              <FileName>QSPI.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\QSPI.c</FilePath>
-            </File>
-            <File>
-              <FileName>W5500_App.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\W5500_App.c</FilePath>
-            </File>
-            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Src/main.c</FilePath>
@@ -417,6 +407,21 @@
               <FileName>stm32f4xx_hal_msp.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Src/stm32f4xx_hal_msp.c</FilePath>
+            </File>
+            <File>
+              <FileName>microEEG_misc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\microEEG_misc.c</FilePath>
+            </File>
+            <File>
+              <FileName>w5500_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\w5500_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>AttritubeTable.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\AttritubeTable.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -593,6 +598,11 @@
         <Group>
           <GroupName>Drivers/W5500</GroupName>
           <Files>
+            <File>
+              <FileName>qspi_conf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\qspi_conf.c</FilePath>
+            </File>
             <File>
               <FileName>socket.c</FileName>
               <FileType>1</FileType>

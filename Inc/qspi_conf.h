@@ -1,5 +1,5 @@
-#ifndef  QSPI_H_
-#define  QSPI_H_
+#ifndef  QSPI_CONF_H_
+#define  QSPI_CONF_H_
 
 #include "stdint.h"
 
@@ -9,4 +9,4 @@ uint8_t QSPI_Receive(uint8_t* buf,uint32_t datalen);
 uint8_t QSPI_Transmit(uint8_t* buf,uint32_t datalen);
 uint8_t QSPI_Transmit_IT(uint8_t* buf,uint32_t datalen);
 
-#endif   //QSPI_H_
+#endif   //QSPI_CONF_H_

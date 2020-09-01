@@ -1,5 +1,5 @@
 #include "stm32f4xx_hal.h"
-#include "QSPI.h"
+#include "qspi_conf.h"
 
 extern QSPI_HandleTypeDef hqspi; 
 

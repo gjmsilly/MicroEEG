@@ -5,9 +5,9 @@
 #include "compiler.h"
 #include "ooc.h"
 #include "simple_fsm.h"
-#include "SimpleInsQueue.h"
+#include "simpleInsQueue.h"
 #include "main.h"
-#include "MicroEEG_Misc.h"
+#include "microEEG_misc.h"
 #include "ads1299.h"
 /* USER CODE END Includes */
 

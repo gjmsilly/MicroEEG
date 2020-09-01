@@ -56,7 +56,7 @@
 #include "socket.h"
 #include "w5500.h"
 #include "stm32f4xx_hal.h"
-#include "QSPI.h"
+#include "qspi_conf.h"
 
 #define SOCK_ANY_PORT_NUM  0xC000
 
@@ -264,7 +264,7 @@ int8_t close(uint8_t sn)
 /*******************************************************************************
 * 函数名  : listen
 *
-* 描述    : 侦听已连接的客户端的请求 
+* 描述    : 监听客户端的请求 
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *
@@ -272,7 +272,7 @@ int8_t close(uint8_t sn)
 *						@Fail:  - @ref SOCKERR_SOCKINIT
 *										- @ref SOCKERR_SOCKCLOSED
 *
-* 说明    : 无	 
+* 说明    : 本机为TCP服务器模式时调用	 
 *******************************************************************************/
 int8_t listen(uint8_t sn)
 {
@@ -280,7 +280,7 @@ int8_t listen(uint8_t sn)
   CHECK_SOCKMODE(Sn_MR_TCP);
 	CHECK_SOCKINIT();
 	
-	setSn_CR(sn,Sn_CR_LISTEN);//设置Socket为侦听模式	
+	setSn_CR(sn,Sn_CR_LISTEN);//设置Socket为监听模式	
 	while(getSn_CR(sn));//等待设置完成
    while(getSn_SR(sn) != SOCK_LISTEN)
    {
@@ -302,7 +302,7 @@ int8_t listen(uint8_t sn)
 * 返回值  : @Success: - @ref SOCK_OK 
 *						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
 *
-* 说明    : 仅设备作为客户端时调用	 
+* 说明    : 本机为TCP客户端模式时调用	 
 *******************************************************************************/
 int8_t connect(uint8_t sn, uint8_t * addr, uint16_t port)
 {
@@ -354,7 +354,7 @@ int8_t connect(uint8_t sn, uint8_t * addr, uint16_t port)
 * 返回值  : @Success: - @ref SOCK_OK 
 *						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
 *
-* 说明    : 仅设备作为客户端/服务器时调用	 
+* 说明    : 本机为TCP客户端/服务器时调用	 
 *******************************************************************************/
 int8_t disconnect(uint8_t sn)
 {
@@ -389,7 +389,7 @@ int8_t disconnect(uint8_t sn)
 * 返回值  : @Success: 待发送的数据长度
 *						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
 *
-* 说明    : 仅设备作为TCP客户端/服务器时调用	 
+* 说明    : 本机为TCP客户端/服务器时调用	 
 *******************************************************************************/
 int32_t send(uint8_t sn, uint8_t * buf, uint16_t len)
 {
@@ -451,10 +451,10 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len)
       setSn_TX_WRSR(sn,len);
    #endif
    
-   setSn_CR(sn,Sn_CR_SEND);//发送启动发送命令	
+   setSn_CR(sn,Sn_CR_SEND);//发送命令，发送W5500 Socket n发送缓冲区中的所有数据	
    /* wait to process the command... */
    while(getSn_CR(sn));
-   sock_is_sending |= (1 << sn);//1
+   sock_is_sending |= (1 << sn);
    //M20150409 : Explicit Type Casting
    //return len;
    return (int32_t)len;
@@ -471,7 +471,7 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len)
 *
 * 返回值  : @ptr: 本次数据写入前发送缓冲区写指针（for debug）
 *
-* 说明    : 仅设备作为TCP客户端/服务器时调用	 
+* 说明    : 本机为TCP客户端/服务器时调用	 
 *******************************************************************************/
 uint16_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len)
 {
@@ -519,17 +519,7 @@ uint16_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len)
    }
 	 
 	 ptr=Write_SOCK_Data_Buffer(sn,buf,len); //DMA写入Socket n发送缓冲区
-	 
-	 while(1)
-	 {
-		 if(__HAL_DMA_GET_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7))//等待 DMA2_Steam7 传输完成	
-			{
-				__HAL_DMA_CLEAR_FLAG(&hdma_quadspi,DMA_FLAG_TCIF3_7);//清除 DMA2_Steam7 传输完成标志			
-				HAL_QSPI_Abort(&hqspi);//传输完成以后关闭DMA
-				break;
-	    }
-	}
-  
+	   
     setSn_CR(sn,Sn_CR_SEND);//发送启动发送命令	
    /* wait to process the command... */
    while(getSn_CR(sn));
@@ -551,7 +541,7 @@ uint16_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len)
 * 返回值  : @Success: 接收数据长度
 *						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
 *
-* 说明    : 仅设备作为TCP客户端/服务器时调用	 
+* 说明    : 本机为TCP客户端/服务器时调用	 
 *******************************************************************************/
 int32_t recv(uint8_t sn, uint8_t * buf, uint16_t len)
 {
@@ -648,6 +638,7 @@ int32_t recv(uint8_t sn, uint8_t * buf, uint16_t len)
    //len = recvsize;
 #else   
    if(recvsize < len) len = recvsize;   
+	 /* 上述操作的comment @ref DMA_send */
 	 
    wiz_recv_data(sn, buf, len);
 	 
@@ -737,7 +728,7 @@ uint16_t DMA_recv(uint8_t sn, uint8_t * buf, uint32_t len)
 * 返回值  : @Success: 发送数据长度
 *						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
 *
-* 说明    : 无	 
+* 说明    : 默认DMA方式	 
 *******************************************************************************/
 int32_t sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t port)
 {

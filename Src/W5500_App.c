@@ -1,5 +1,5 @@
 /**
- * @file    W5500_APP.c
+ * @file    w5500_app.c
  * @author  gjmsilly
  * @brief   W5500应用程序（轮询方式/配置Socket 0 - TCP Socket 1 - UDP）
  * @version 1.0
@@ -16,8 +16,8 @@
 
 #include "stm32f4xx_hal.h"
 #include "main.h"
-#include "W5500_App.h"
-#include "W5500.h"
+#include "w5500_app.h"
+#include "w5500.h"
 #include "wizchip_conf.h"
 #include "socket.h"
 
@@ -25,25 +25,17 @@
  * GLOBAL VARIABLES
  */
 NETWORKParam_t net_param,*Pnet_param;    		//网络参数配置
-SOCKETnParam_t s0_param,*Ps0_param;   			//Socket 0参数配置
-SOCKETnParam_t s1_param,*Ps1_param;   			//Socket 1参数配置
+SOCKETnParam_t sn_param[2],*Psn_param;   		//Socket n参数配置(n=0,1)
 
-uint8_t Rx_Buffer[2048];										//接收数据缓冲区 
-uint8_t Tx_Buffer[2048];										//发送数据缓冲区
-uint8_t W5500_Send_flag = 0;                //1- 发送数据缓冲区已满，准备UDP发送数据包
+uint8_t Rx_Buffer[Rx_Buffer_Size];					//接收数据缓冲区 
+uint8_t Tx_Buffer[Tx_Buffer_Size];					//发送数据缓冲区
+uint8_t W5500_Send_flag = 0;                //1- 准备向W5500 socket n发送缓冲区写入
 
-#if(_W5500_MODE_ == Interrupt)
-SOCKETnState_t s0_state,*Ps0_state;   			//Socket 0状态
-SOCKETnState_t s1_state,*Ps1_state;   			//Socket 1状态
-uint8_t W5500_Interrupt;										//W5500中断标志 0-无，1-有中断
-#endif
 
  /*******************************************************************************
  * EXTERNAL VARIABLES
  */
 
-extern uint8_t DMA_TX_Transfer_flag;		//1 - DMA正在传输发送区数据，0 - 传输完成
-extern uint8_t DMA_RX_Transfer_flag;		//1 - DMA正在传输接收区数据，0 - 传输完成
 
 /*******************************************************************************
  * FUNCTIONS
@@ -63,13 +55,12 @@ extern uint8_t DMA_RX_Transfer_flag;		//1 - DMA正在传输接收区数据，0 - 传输完成
 void W5500_Init(void)
 {
 	Pnet_param =&net_param;
-	Ps0_param =&s0_param;
-	Ps1_param =&s1_param;
+	Psn_param = sn_param;
 	
 	W5500_Config();						//初始化W5500通用寄存器区
 	Detect_Gateway();					//检查网关服务器 
-	//W5500_Socket_Init(0);			//Socket配置（Socket 0 - TCP Socket 1 - UDP）
-	W5500_Socket_Init(1);
+	W5500_Socket_Init(0);			//Socket 0配置 - TCP 
+	W5500_Socket_Init(1);     //Socket 1配置 - UDP 
 
 }
 
@@ -176,24 +167,23 @@ void W5500_Load_Net_Parameters(void)
 	/* Socket 0 配置 */
 	{				
 		//加载Socket 0的端口号: 5000（default）
-		s0_param.Sn_Port = 5000;
+		sn_param[0].Sn_Port = 5000;
 	}
 	
 	/* Socket 1 配置 */	
 	{		
 		//加载Socket 1的端口号: 5555 （default）
-		s1_param.Sn_Port = 5555;
+		sn_param[1].Sn_Port = 5555;
 
 		//UDP(广播)模式需配置目的主机IP地址
-		s1_param.UDP_DIPR[0] = 192;	
-		s1_param.UDP_DIPR[1] = 168;
-		s1_param.UDP_DIPR[2] = 1;
-		s1_param.UDP_DIPR[3] = 101;
+		sn_param[1].UDP_DIPR[0] = 192;	
+		sn_param[1].UDP_DIPR[1] = 168;
+		sn_param[1].UDP_DIPR[2] = 1;
+		sn_param[1].UDP_DIPR[3] = 101;
 
 		//UDP(广播)模式需配置目的主机端口号 6000（default）
-		s1_param.UDP_DPORT = 6000;	
+		sn_param[1].UDP_DPORT = 6000;	
 	}
-
 }
 
 /*******************************************************************************
@@ -274,14 +264,16 @@ void W5500_Socket_Init(uint8_t sn)
 {
  		uint16_t DPort=6000;
 		uint32_t taddr;
+	
 	/* Socket 寄存器区设置 */
 	
-	//设置发送缓冲区和接收缓冲区的大小并清空发送缓冲区和接收缓冲区，默认2K
-	for(uint8_t i=0;i<8;i++)
-	{
-		setSn_RXBUF_SIZE(i, 0x02);//Socket Rx memory size=2k
-		setSn_TXBUF_SIZE(i, 0x02);//Socket Tx mempry size=2k
-	}
+	////设置发送缓冲区和接收缓冲区的大小，默认2K(默认值即无需配置)
+	//	for(uint8_t i=0;i<8;i++)
+	//	{
+	//		setSn_RXBUF_SIZE(i, 0x02);//Socket Rx memory size=2k
+	//		setSn_TXBUF_SIZE(i, 0x02);//Socket Tx mempry size=2k
+	//	}
+	
 	// 屏蔽所有的Socket中断，采用轮询的方式 @ref DO_TCP_Server
 	setSIMR(1);
 	
@@ -293,7 +285,7 @@ void W5500_Socket_Init(uint8_t sn)
 			//设置分片长度
 			setSn_MSSR(0, 0x5b4);//最大分片字节数=1460(0x5b4)			
 			//设置工作模式 TCP server，打开Socket 0并绑定端口
-			while(socket(0,Sn_MR_TCP,Ps0_param->Sn_Port,0) != 0);
+			while(socket(0,Sn_MR_TCP,Psn_param->Sn_Port,0) != 0);
 			//设置心跳包自动发送间隔，单位时间为5s	
 			setSn_KPALVTR(0,2);    	
 			break;
@@ -303,7 +295,7 @@ void W5500_Socket_Init(uint8_t sn)
 			//设置分片长度
 			setSn_MSSR(1, 0x5b4);//最大分片字节数=1460(0x5b4)			
 		  //设置工作模式 UDP，打开Socket 1并绑定端口
-			while(socket(1,Sn_MR_UDP,Ps1_param->Sn_Port,0) != 1);			
+			while(socket(1,Sn_MR_UDP,(Psn_param+1)->Sn_Port,0) != 1);			
 		break;
 		
 		case 2:
@@ -332,13 +324,12 @@ void W5500_Socket_Init(uint8_t sn)
 *
 * 返回值  : 无
 *
-* 说明    : 本函数必须在- @ref W5500_Socket_Init后调用以确保socket打开
+* 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
 void DO_TCP_Server(uint8_t sn)
 {
-	uint16_t len;
 	uint16_t recvsize=0,sentsize = 0;
-		uint32_t taddr;
+	uint32_t taddr;
 	
 	switch(getSn_SR(sn))
 	{
@@ -355,21 +346,21 @@ void DO_TCP_Server(uint8_t sn)
 		
 		/* Socket n 处于连接状态 */
 		case SOCK_ESTABLISHED:
-			getSn_DIPR(0,((uint8_t*)&taddr));
+			getSn_DIPR(0,((uint8_t*)&taddr)); //读取目的IP地址 - debug
 		
 			if(getSn_IR(sn) & Sn_IR_CON)
 			{
 				setSn_IR(sn,Sn_IR_CON); //清除标志位
 			}	
-				//回环测试
-				len =getSn_RX_RSR(sn);
-				if(len>0)				
+				//回环测试  - debug
+				recvsize = getSn_RX_RSR(sn); //Socket n接收缓冲区接收到的字节数
+				if(recvsize>0)				
 				{	
-					recvsize = DMA_recv(sn,Rx_Buffer,len);
+					sentsize = recv(sn,Rx_Buffer,recvsize);  //从接收缓冲区全部读取
+					DMA_send(sn, Rx_Buffer, sentsize); //回环：重新写入Socket n发送缓冲区发出
 				}
-
-				 len = DMA_send(sn, Tx_Buffer, recvsize);
-
+				  
+				// 接收目的主机发送的命令 （1字节）
 			
 		break;
 			
@@ -389,7 +380,7 @@ void DO_TCP_Server(uint8_t sn)
 *
 * 返回值  : 无
 *
-* 说明    : 本函数必须在- @ref W5500_Socket_Init后调用以确保socket打开
+* 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
 void DO_UDP(uint8_t sn)
 {
@@ -409,170 +400,16 @@ void DO_UDP(uint8_t sn)
 			// 准备发送数据包至目的主机
 			///if(W5500_Send_flag)
 			//{
-				sendto(sn,Tx_Buffer,1024,Ps1_param->UDP_DIPR,Ps1_param->UDP_DPORT);  // test:1024byte
+				sendto(sn, Tx_Buffer,    				  \
+							 sizeof(Tx_Buffer), 				\
+							 (Psn_param+sn)->UDP_DIPR,  \
+							 (Psn_param+sn)->UDP_DPORT);  // test:1024byte
 			//}		
 		break;
 		
 	}
 		
 }
-
-
-#if(_W5500_MODE_ == Interrupt )
-/*******************************************************************************
-* 函数名  : W5500_Socket_State
-*
-* 描述    : Socket连接状态初始化
-*
-* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
-*
-* 返回值  : 无
-*
-* 说明    : 本函数必须在- @ref W5500_Socket_Init后调用以确保socket打开
-*******************************************************************************/
-void W5500_Socket_State(uint8_t sn)
-{
- 	switch(sn)
-	{
-		case 0:
-		if(Ps0_state->Sn_Mode == TCP_SERVER) //TCP服务器模式 
-		{
-			if(listen(0)==SOCK_OK)  //socket n连接初始化成功
-			{
-				Ps0_state->Sn_State = S_INIT;
-			}
-			else
-			{
-				Ps0_state->Sn_State = 0;
-			}
-		}
-		else if(Ps0_state->Sn_Mode == TCP_CLIENT)// TCP客户端模式 
-		{
-			if(connect(0, Ps0_param->Sn_DIP, Ps0_param->Sn_DPort)==SOCK_OK) //socket n连接初始化成功
-				Ps0_state->Sn_State = S_INIT;
-			else
-				Ps0_state->Sn_State = 0;
-		}
-		else //UDP模式，无需连接
-		{
-				Ps0_state->Sn_State = S_INIT|S_CONN;
-		}
-			break;
-		case 1:
-			break;
-		case 2:
-			break;
-		case 3:
-			break;
-		case 4:
-			break;
-		case 5:
-			break;
-		case 6:
-			break;
-		case 7:
-			break;
-		default:
-			break;
-	}	
-}
-
-/*******************************************************************************
-* 函数名  : W5500_Interrupt_Process
-*
-* 描述    : W5500中断处理程序
-*
-* 输入    : 无
-*
-* 返回值  : 无
-*
-* 说明    : 无
-*******************************************************************************/
-void W5500_Interrupt_Process(void)
-{
-	uint8_t flag_c,flag_s;
-
-	IntDispose:
-	W5500_Interrupt=0;//清除中断标志
-	flag_c = getIR();//读取中断标志寄存器
-	setIR(flag_c);	 //清除中断标志
-	
-	flag_s=getSIR(); //读取Socket中断标志寄存器	
-	
-	if((flag_c & S0_INT) == S0_INT) //Socket n中断事件处理 
-	{
-		flag_s=getSn_IR(0);//读取Socket n中断标志寄存器
-		setSn_IR(0,flag_s);//Socket0清除中断标志
-		
-		if(flag_s & IR_CON)	//在TCP模式下，Socket n成功连接 
-		{
-			Ps0_state->Sn_State|=S_CONN; //更新状态为连接成功，可以传输数据
-		}
-		
-		if(flag_s & IR_DISCON)//在TCP模式下，Socket n断开连接
-		{
-			//TCP SERVER 模式
-			if(Ps0_state->Sn_Mode==TCP_SERVER)
-			{
-				Ps0_state->Sn_State=0;//更新状态为连接失败
-						
-				socket(0,Sn_MR_TCP,Ps0_param->Sn_Port,0);//Socket n端口初始化，TCP模式，端口号为5000
-			
-				if(listen(0)==SOCK_OK)//再次侦听成功
-				{
-					Ps0_state->Sn_State=S_INIT;//Socket n连接初始化成功
-					
-					DMA_TX_Transfer_flag=0;//重置标志位
-					DMA_RX_Transfer_flag=0;//重置标志位
-				}
-	  	}
-			//TCP CLIENT 模式
-			else if(Ps0_state->Sn_Mode==TCP_CLIENT)
-			{
-				Ps0_state->Sn_State=0;//更新状态为连接失败
-				
-				socket(0,Sn_MR_TCP,Ps0_param->Sn_Port,0);//Socket n初始化，TCP模式，端口号为5000
-				
-				while(connect(0, Ps0_param->Sn_DIP, Ps0_param->Sn_DPort))//再次侦听
-				{
-					Ps0_state->Sn_State=S_INIT;//Socket n连接初始化成功
-					
-					DMA_TX_Transfer_flag=0;//重置标志位
-					DMA_RX_Transfer_flag=0;//重置标志位
-				}
-	  	}
-			//UDP 模式，无需连接，Socket n打开成功即可准备传输数据
-			else	
-			{
-			  socket(0,Sn_MR_UDP,Ps0_param->Sn_Port,0);//Socket n初始化，UDP模式，端口号为5000
-				Ps0_state->Sn_State=S_INIT|S_CONN;
-				
-				DMA_TX_Transfer_flag=0;//重置标志位
-				DMA_RX_Transfer_flag=0;//重置标志位
-			}
-		}
-		
-		if(flag_s&IR_SEND_OK)//Socket n数据发送完成,可以再次启动函数发送数据 
-		{
-			Ps0_state->Sn_Data |=S_TRANSMITOK;//更新状态为发送完成
-		}
-		
-		if(flag_s&IR_RECV)//Socket接收到数据,可以启动接收函数 
-		{
-			Ps0_state->Sn_Data = S_RECEIVE;//更新状态为接收到数据
-		}
-		
-		if(flag_s&IR_TIMEOUT)//Socket连接或数据传输超时处理 
-		{
-			setSn_CR(0,Sn_CR_CLOSE);// 关闭Socket n,等待重新打开连接 
-			Ps0_state->Sn_State=0;//更新状态为连接失败
-		}
-	}
-
-	if(getSIR() != 0) 
-		goto IntDispose;
-}
-#endif
 
 /*******************************************************************************
 * 函数名  : W5500_RST

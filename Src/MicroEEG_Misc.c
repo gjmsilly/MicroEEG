@@ -1,4 +1,4 @@
-#include "MicroEEG_Misc.h"
+#include "microEEG_misc.h"
 
 
 /* 

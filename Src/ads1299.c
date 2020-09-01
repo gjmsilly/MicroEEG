@@ -1,6 +1,6 @@
 #include "main.h"
 #include "stm32f4xx_hal.h"
-#include "ADS1299.h"
+#include "ads1299.h"
 
 uint8_t ResultByte = 0;
 uint8_t DummyByte;

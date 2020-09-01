@@ -25,9 +25,9 @@
 #include "shell.h"
 #include <string.h>
 #include <stdio.h>
-#include "ADS1299.h"
-#include "W5500_App.h"
-#include "W5500.h"
+#include "ads1299.h"
+#include "w5500_app.h"
+#include "w5500.h"
 #include "wizchip_conf.h"
 #include "socket.h"
 /* USER CODE END Includes */
@@ -59,8 +59,7 @@ SHELL_TypeDef shell;
 
 uint8_t resultval[28];  					//ADS1299 结果缓存区
 uint8_t ReadResult;
-uint8_t DMA_TX_Transfer_flag=0;		//1 - DMA正在传输发送区数据，0 - 传输完成
-uint8_t DMA_RX_Transfer_flag=0;		//1 - DMA正在传输接收区数据，0 - 传输完成
+
 
 /* USER CODE END PV */
 
@@ -235,16 +234,17 @@ int main(void)
   /* USER CODE BEGIN Init */
 	Mod_DRDY_INT_Disable
 	
-	memset(Tx_Buffer,0,sizeof(Tx_Buffer));//清除缓冲区
-	memset(Rx_Buffer,0,sizeof(Rx_Buffer));//清除缓冲区
+	memset(Tx_Buffer,0xff,sizeof(Tx_Buffer));//清除缓冲区
+	//memset(Rx_Buffer,0,sizeof(Rx_Buffer));//清除缓冲区
 	// for test
-	Tx_Buffer[0]='S';
-	Tx_Buffer[1]='T';
-	Tx_Buffer[10]='M';
-	Tx_Buffer[20]='K';
-	Tx_Buffer[982]='X';
-	Tx_Buffer[983]='Y';
-	Tx_Buffer[999]='Z';
+	Tx_Buffer[0]=0x00;
+	Tx_Buffer[1]=0x01;
+	Tx_Buffer[10]=0x10;
+	Tx_Buffer[20]=0x20;
+	Tx_Buffer[982]=0xdd;
+	Tx_Buffer[983]=0xaa;
+	Tx_Buffer[999]=0xbb;
+	Tx_Buffer[1023]=0xcc;
 	
   /* USER CODE END Init */
 
@@ -285,7 +285,7 @@ int main(void)
 	//W5500 Initial
 	W5500_Load_Net_Parameters(); //装载网络参数	
 	W5500_RST();//硬件复位
-	W5500_Init(); //W5500初始化
+	W5500_Init(); //W5500初始化，配置Socket
 	
 //--------------------------------------------------------------
 /* ADS1299 */	
@@ -312,12 +312,13 @@ int main(void)
 
     shellTask(&shell);
 
-//		DO_TCP_Server(0);
+		DO_TCP_Server(0);	//Socket0 TCP服务器工作模式开启
+		DO_UDP(1);				//Socket1 UDP工作模式开启
 		
-		//HAL_Delay(500);
-		DO_UDP(1);
-		
-    /* USER CODE END WHILE */
+		//HAL_Delay(500);		
+   
+
+		/* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
@@ -559,7 +560,7 @@ static void MX_QUADSPI_Init(void)
   /* USER CODE END QUADSPI_Init 1 */
   /* QUADSPI parameter configuration*/
   hqspi.Instance = QUADSPI;
-  hqspi.Init.ClockPrescaler = 15;
+  hqspi.Init.ClockPrescaler = 3;
   hqspi.Init.FifoThreshold = 8;
   hqspi.Init.SampleShifting = QSPI_SAMPLE_SHIFTING_NONE;
   hqspi.Init.FlashSize = 15;
