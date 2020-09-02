@@ -1,72 +1,46 @@
-/* Includes ------------------------------------------------------------------*/
-
-/* USER CODE BEGIN Includes */
+/**
+ * @file    protocol_ethernet.c
+ * @author  gjmsilly
+ * @brief   以太网数据协议（TCP封包拆包，UDP封包 实现）
+ * @version 1.0
+ * @date    2020-09-02
+ * @ref			https://www.amobbs.com/forum.php?mod=viewthread&tid=5668532
+ * @copyright (c) 2020 gjmsilly
+ *
+ */
+ 
+/*********************************************************************
+ * INCLUDES
+ */
 #include <string.h>
 #include "compiler.h"
 #include "ooc.h"
 #include "simple_fsm.h"
+#include "protocol_ethernet.h"
 #include "simpleInsQueue.h"
 #include "main.h"
 #include "microEEG_misc.h"
 #include "ads1299.h"
-/* USER CODE END Includes */
 
-/* Private variables ---------------------------------------------------------*/
+/*******************************************************************
+ * GLOBAL VARIABLES
+ */
+InsQUEUE TCPInsQueue;   		//!< 队列 - TCP接收的控制指令
+uint8_t FrameHeaderBuff;    
 
-
-/* USER CODE BEGIN PV */
-/* Private variables ---------------------------------------------------------*/
-
-
-
-
-const uint8_t R_FrameHeader = 0xAC;
-const uint8_t R_FrameTail   = 0xCC;
-const uint8_t T_FrameHeader = 0xA2;
-const uint8_t T_FrameTail   = 0xC2;
-const uint8_t Tag_FrameHeader = 0xBC;
-const uint8_t Tag_FrameTail   = 0xBD;
-
-uint8_t FrameHeaderBuff;
-uint8_t TagBuffer[4];
-
-
-InsQUEUE UARTInsQueue;
-
-extern uint8_t BT_USART_BUFF[];
-extern uint16_t gSYS_SampleRate;
-extern uint16_t gSYS_Gain;
-
-extern uint8_t BT_USART_Mutex;
-extern uint8_t BT_USART_Ready;
-const uint8_t testchar2[5]="None ";
-
-
-extern uint16_t gBattVolt;
-
-extern char* pcCurTimeStamp;
-extern char* pcCurEventTag;
-extern uint16_t CurEventTag;
-
-unsigned int SampleNum = 0;
-uint8_t NewSample = 0;
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
-
-void BTFrameBuilder (void);
-
-/* USER CODE BEGIN PFP */
-/* Private function prototypes -----------------------------------------------*/
-
-/*! /brief define fsm delay_1s
- *!        list all the parameters
+/*******************************************************************
+ * TYPEDEFS
+ */
+ 
+/*! @brief	定义延时1s的状态机 delay_1s
+ *!					同时列出所有参数	wCounter
  */
 simple_fsm
 ( 
+		/* 声明状态机名称 */
 		delay_1s,
     
-    /* define all the parameters used in the fsm */ 
+    /* 定义本状态机所用的所有形参 */ 
     def_params
 		(
         uint32_t wCounter;                  //!< a uint32_t counter
@@ -74,12 +48,13 @@ simple_fsm
 )
 
 
-/*! /brief define fsm ProtocolProcess
- *!        list all the parameters
+/*! @brief	定义TCP协议数据处理的状态机 TCP_Process
+ *!       	同时列出所有参数
+ *!	@note		本状态机由w5500_app.c -> TCPServer_Service调用
  */
-simple_fsm
+extern_simple_fsm
 ( 
-		ProtocolProcess,
+		TCP_Process,
     def_params
 		(
 				uint8_t ERR_NUM;
@@ -94,38 +69,35 @@ simple_fsm
 )
 
 
-
-
-/*! /brief define the fsm initialiser for FSML delay_1s
-*! /param wCounter  an uint32_t value for the delay count
-*/
+/*********************************************************************
+ * FUNCTIONS
+ */
+/*
+ *  ============================ 延时1s ==============================
+ */ 
+/*! @brief define the fsm initialiser for fsm delay_1s
+ *! @param - wCounter  an uint32_t value for the delay count
+ */
 fsm_initialiser
 (
-		delay_1s,               //!< define initialiser for fsm: delay_1s
-    /*! list all the parameters required by this initialiser */
+		delay_1s,														 //!< 状态机名称
+   
+	 /*! 本状态机初始化函数的形参列表 */
     args
 		(           
         uint32_t wCounter               //!< delay count
-    )
-)
-
-		/*! the body of this initialiser */
+    ))
+		/*! 本状态机初始化函数 */
 		init_body 
 		(
 				this.wCounter = wCounter;       //!< initialiser the fsm paramter
 		)
-
-fsm_initialiser(ProtocolProcess)
-    init_body ()
+/* End of fsm initialization */
 
 
-
-
-
-
-/*! /brief Implement the fsm: delay_1s
-*         This fsm only contains one state.
-*/
+/*! @brief Implement the fsm: delay_1s
+ *         This fsm only contains one state.
+ */
 fsm_implementation(delay_1s)
     def_states(DELAY_1S)                //!< list all the states used in the FSM
 
@@ -134,7 +106,7 @@ fsm_implementation(delay_1s)
 		(
         state
 				(  
-						DELAY_1S,               //!< state: DELAY_1s
+						DELAY_1S,               		//!< state: DELAY_1s
             if (!this.wCounter) 
 						{
                 fsm_cpl();              //!< FSM is completed
@@ -143,33 +115,29 @@ fsm_implementation(delay_1s)
         )
     )
 /* End of fsm implementation */
-						
-						
+
+/*
+ *  ========================== TCP拆包 ==============================
+ */ 						
+/*! @brief define the fsm initialiser for fsm TCP_Process
+ */
+fsm_initialiser(TCP_Process)
+    init_body ()
 
 
-/*! /brief Implement the fsm: delay_1s
-*         This fsm only contains one state.
-*/
-
-
-fsm_implementation(ProtocolProcess)
+/*! @brief Implement the fsm: TCP_Process
+ */
+fsm_implementation(TCP_Process)
 
     /*! list all the states used in the FSM */
     def_states(FRAME_SEEKHEAD,FRAME_LENGTH,FRAME_CHK,FRAME_INS,FRAME_ERR,FRAME_RPY,FRAME_TAG)
 
     body(
-//! the on_start block are called once and only once on the entry point of a FSM
-//        on_start(
-//            /* add fsm parameter initialisation code here */
-//        )
-
-
+				/*! 帧头检测 */
         state(FRAME_SEEKHEAD,
-    
-						
-						FrameHeaderBuff = DeQueue(&UARTInsQueue);
-						// Instruction Frame
-						if (FrameHeaderBuff == R_FrameHeader) 
+    						
+						FrameHeaderBuff = DeQueue(&TCPInsQueue);   //!< 帧头出队
+						if (FrameHeaderBuff == TCP_Recv_FH) 
 						{
 							this.PRM_NUM = 0x00;
 							this.ISUM = 0;
@@ -177,7 +145,7 @@ fsm_implementation(ProtocolProcess)
 							this.ERR_NUM = 0;
 							
 							printf("S:LENGTH\r\n");
-							transfer_to(FRAME_LENGTH);
+							transfer_to(FRAME_LENGTH);							//!< 跳转有效帧长检测
 						}
 						
 						//Tag Frame

@@ -20,6 +20,7 @@
 #include "w5500.h"
 #include "wizchip_conf.h"
 #include "socket.h"
+#include "AttritubeTable.h"
 
 /*******************************************************************************
  * GLOBAL VARIABLES
@@ -125,14 +126,14 @@ void W5500_Config(void)
 *						@Phy_Addr			MAC地址										48bit       0c-29-ab-7c-00-01
 *						@IP_Addr			源/本机IP地址							32bit       192.168.1.10						
 *						@Sn_Port			源端口号
-*														- Socket 0													5000 (default)
-*														- Socket 1													5555 (default)
+*														- Socket 0													7001 (default)
+*														- Socket 1													7002 (default)
 *						@Sn_Mode			工作模式											
 *														- Socket 0                     			TCP 服务器
 *														- Socket 1													UDP
 *						@Sn_DIP				目的主机IP地址						32bit			 （TCP client时配置） 
 *						@UDP_DPORT		目的主机端口号												
-*														- Socket 1													6000 (defualt)
+*														- Socket 1													7002 (defualt)
 *						@UDP_DIPR     目的主机IP地址						
 *														- Socket 1              32bit				192.168.1.101
 *******************************************************************************/
@@ -151,29 +152,29 @@ void W5500_Load_Net_Parameters(void)
 	net_param.Sub_Mask[3] = 0;
 	
 	//加载MAC地址
-	net_param.Phy_Addr[0] = 0x0c;
-	net_param.Phy_Addr[1] = 0x29;
-	net_param.Phy_Addr[2] = 0xab;
-	net_param.Phy_Addr[3] = 0x7c;
-	net_param.Phy_Addr[4] = 0x00;
-	net_param.Phy_Addr[5] = 0x01;
+	net_param.Phy_Addr[0] = COMM_param.Dev_MAC[0];
+	net_param.Phy_Addr[1] = COMM_param.Dev_MAC[1];
+	net_param.Phy_Addr[2] = COMM_param.Dev_MAC[2];
+	net_param.Phy_Addr[3] = COMM_param.Dev_MAC[3];
+	net_param.Phy_Addr[4] = COMM_param.Dev_MAC[4];
+	net_param.Phy_Addr[5] = COMM_param.Dev_MAC[5];
 
 	//加载源/本机IP地址
-	net_param.IP_Addr[0] = 192;
-	net_param.IP_Addr[1] = 168;
-	net_param.IP_Addr[2] = 1;
-	net_param.IP_Addr[3] = 10;
+	net_param.IP_Addr[0] = COMM_param.Dev_IP[0];
+	net_param.IP_Addr[1] = COMM_param.Dev_IP[1];
+	net_param.IP_Addr[2] = COMM_param.Dev_IP[2];
+	net_param.IP_Addr[3] = COMM_param.Dev_IP[3];
 
 	/* Socket 0 配置 */
 	{				
-		//加载Socket 0的端口号: 5000（default）
-		sn_param[0].Sn_Port = 5000;
+		//加载Socket 0的端口号: 7001 （default）
+		sn_param[0].Sn_Port = 7001;
 	}
 	
 	/* Socket 1 配置 */	
 	{		
-		//加载Socket 1的端口号: 5555 （default）
-		sn_param[1].Sn_Port = 5555;
+		//加载Socket 1的端口号: 7002 （default）
+		sn_param[1].Sn_Port = 7002;
 
 		//UDP(广播)模式需配置目的主机IP地址
 		sn_param[1].UDP_DIPR[0] = 192;	
@@ -181,8 +182,8 @@ void W5500_Load_Net_Parameters(void)
 		sn_param[1].UDP_DIPR[2] = 1;
 		sn_param[1].UDP_DIPR[3] = 101;
 
-		//UDP(广播)模式需配置目的主机端口号 6000（default）
-		sn_param[1].UDP_DPORT = 6000;	
+		//UDP(广播)模式需配置目的主机端口号 7002（default）
+		sn_param[1].UDP_DPORT = COMM_param.Host_Port;	
 	}
 }
 
@@ -316,9 +317,9 @@ void W5500_Socket_Init(uint8_t sn)
 }
 
 /*******************************************************************************
-* 函数名  : DO_TCP_Server
+* 函数名  : TCPServer_Service
 *
-* 描述    : 采取轮询的方式获取Socket n状态，完成TCP请求
+* 描述    : TCP服务器服务: 采取轮询的方式获取Socket n状态，完成TCP请求
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *
@@ -326,7 +327,7 @@ void W5500_Socket_Init(uint8_t sn)
 *
 * 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
-void DO_TCP_Server(uint8_t sn)
+void TCPServer_Service(uint8_t sn)
 {
 	uint16_t recvsize=0,sentsize = 0;
 	uint32_t taddr;
@@ -372,9 +373,9 @@ void DO_TCP_Server(uint8_t sn)
 }
 
 /*******************************************************************************
-* 函数名  : DO_UDP
+* 函数名  : UDP_Service
 *
-* 描述    : 采取轮询的方式获取Socket n状态，完成UDP发送
+* 描述    : UDP服务: 采取轮询的方式获取Socket n状态，完成UDP发送
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *
@@ -382,7 +383,7 @@ void DO_TCP_Server(uint8_t sn)
 *
 * 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
-void DO_UDP(uint8_t sn)
+void UDP_Service(uint8_t sn)
 {
 	switch(getSn_SR(sn))
 	{

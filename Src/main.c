@@ -22,14 +22,16 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "shell.h"
 #include <string.h>
 #include <stdio.h>
+#include "shell.h"
 #include "ads1299.h"
 #include "w5500_app.h"
 #include "w5500.h"
 #include "wizchip_conf.h"
 #include "socket.h"
+#include "AttritubeTable.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -274,6 +276,9 @@ int main(void)
 	shell.write = ShellPutchar;
 	shellInit(&shell);
 	
+	//Attribute table Initial
+	Attr_Tbl_Init();
+	
 	//LED Initial
 	PWR_LED1_ON;
 	PWR_LED2_OFF;
@@ -312,8 +317,8 @@ int main(void)
 
     shellTask(&shell);
 
-		DO_TCP_Server(0);	//Socket0 TCP服务器工作模式开启
-		DO_UDP(1);				//Socket1 UDP工作模式开启
+		TCPServer_Service(0);	//Socket0 TCP服务器服务
+		UDP_Service(1);				//Socket1 UDP服务
 		
 		//HAL_Delay(500);		
    

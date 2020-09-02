@@ -1,5 +1,5 @@
-#ifndef  _W5500_App_H_
-#define  _W5500_App_H_
+#ifndef  _W5500_APP_H_
+#define  _W5500_APP_H_
 
 /*********************************************************************
  * INCLUDES
@@ -63,8 +63,8 @@ void W5500_Load_Net_Parameters(void);
 uint8_t Detect_Gateway(void);
 void W5500_Socket_Init(uint8_t sn);
 
-void DO_TCP_Server(uint8_t sn);
-void DO_UDP(uint8_t sn);
+void TCPServer_Service(uint8_t sn);
+void UDP_Service(uint8_t sn);
 
 
-#endif   // _W5500_App_H_
+#endif   // _w5500_app_H_

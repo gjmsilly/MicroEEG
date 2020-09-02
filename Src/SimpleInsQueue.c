@@ -1,7 +1,5 @@
 #include "simpleInsQueue.h"
 
-
-
 inline void Init_queue(PQUEUE Q)
 {
     Q->front = 0;

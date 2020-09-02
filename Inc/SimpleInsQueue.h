@@ -6,10 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-
-
 typedef unsigned char QData_t;
-
 
 // Loop Queue by natural uint8 overflow 
 typedef struct Queue
@@ -19,14 +16,9 @@ typedef struct Queue
     QData_t tail; 
 }InsQUEUE,*PQUEUE;
 
-
 inline void InitQueue(PQUEUE);
 void    EnQueue(PQUEUE,QData_t);
 QData_t DeQueue(PQUEUE);
 unsigned char GetQueueLength(PQUEUE);
-
-
-
-
 		
 #endif
