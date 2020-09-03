@@ -21,6 +21,7 @@
 #include "main.h"
 #include "microEEG_misc.h"
 #include "ads1299.h"
+#include "AttritubeTable.h" 
 
 /*******************************************************************
  * GLOBAL VARIABLES
@@ -57,14 +58,16 @@ extern_simple_fsm
 		TCP_Process,
     def_params
 		(
-				uint8_t ERR_NUM;
-				uint8_t INS_NUM;
-				uint8_t PRM_NUM;
-				uint8_t FrameLength;
-				uint8_t CSBuffer[5];
-				uint8_t i,ISUM;
-				bool InsNeedReply;
-				fsm(delay_1s) fsmDelay;             //!< sub fsm delay_1s
+				uint8_t FrameLength;				//!< 有效帧长
+				uint8_t InsNum;							//!< 指令码							
+				uint8_t InsAttrNum;					//!< 指令作用地址（属性表偏移量）
+				uint8_t ChxNum;							//!< 指令作用通道
+				uint8_t ERR_NUM;						//!< 错误码
+				uint8_t	OP[4];							//!< 操作立即数 // 9.3 操作数数据类型 bool int8 int32 ???
+				uint32_t* RPY;							//!< 回复数据
+				
+				bool InsNeedReply;          //!< 指令需要回复
+				fsm(delay_1s) fsmDelay;			//!< sub fsm delay_1s
     )
 )
 
@@ -130,243 +133,103 @@ fsm_initialiser(TCP_Process)
 fsm_implementation(TCP_Process)
 
     /*! list all the states used in the FSM */
-    def_states(FRAME_SEEKHEAD,FRAME_LENGTH,FRAME_CHK,FRAME_INS,FRAME_ERR,FRAME_RPY,FRAME_TAG)
+    def_states(FRAME_SEEKHEAD,FRAME_LENGTH,FRAME_CHK,FRAME_INS,FRAME_ERR,FRAME_RPY)
 
     body(
-				/*! 帧头检测 */
+				/*! 帧头获取 */
         state(FRAME_SEEKHEAD,
     						
 						FrameHeaderBuff = DeQueue(&TCPInsQueue);   //!< 帧头出队
 						if (FrameHeaderBuff == TCP_Recv_FH) 
 						{
-							this.PRM_NUM = 0x00;
-							this.ISUM = 0;
-							this.FrameLength = 0;
-							this.ERR_NUM = 0;
+							this.FrameLength = 0;			//!< 有效帧长
+							this.InsNum = 0;					//!< 指令码							
+							this.InsAttrNum = 0x00; 	//!< 指令作用地址（属性表偏移量）
+							this.ChxNum = 0x00;				//!< 指令作用通道
+							this.ERR_NUM = 0x00;			//!< 错误码
 							
 							printf("S:LENGTH\r\n");
-							transfer_to(FRAME_LENGTH);							//!< 跳转有效帧长检测
-						}
+							transfer_to(FRAME_LENGTH);							//!< 跳转有效帧长获取
+						}						
+       )
 						
-						//Tag Frame
-						if (FrameHeaderBuff == Tag_FrameHeader) 
-						{
-							if(SYS_Status == SYS_STATUS_ACQUIRING)
-							{
-								this.PRM_NUM = 0x00;
-								this.ISUM = 0;
-								this.FrameLength = 0;
-								this.ERR_NUM = 0;
-							
-								transfer_to(FRAME_TAG);
-							}
-						}
-        )
-				
-						
-				state(FRAME_TAG,
-    
-						
-						if(GetQueueLength(&UARTInsQueue) >= 5)   //wait for enough 
-						{
-							TagBuffer[0] = DeQueue(&UARTInsQueue);
-							TagBuffer[1] = DeQueue(&UARTInsQueue);
-							TagBuffer[2] = DeQueue(&UARTInsQueue);
-							TagBuffer[3] = DeQueue(&UARTInsQueue);
-							
-							
-							if((TagBuffer[0]==TagBuffer[2])&&(TagBuffer[1]==TagBuffer[3]))  //check
-							{
-								if(Tag_FrameTail == DeQueue(&UARTInsQueue))    //checktail
-								{
-									*(pcCurEventTag) = TagBuffer[0];
-									*(pcCurEventTag+1) = TagBuffer[1];
-									
-									printf("S:Tagged\r\n");
-									
-									transfer_to(FRAME_SEEKHEAD);
-								}
-								else     //checktail failed
-								{
-									this.ERR_NUM = 0x30;
-									printf("S:ERR-CTFailed\r\n");
-									transfer_to(FRAME_ERR);
-								}
-								
-							}
-							else   //check failed
-							{
-								this.ERR_NUM = 0x20;
-								printf("S:ERR-CSFailed\r\n");								
-								transfer_to(FRAME_ERR);
-							}
-						}
-        )	
-						
+				/*! 帧长度获取 */												
 				state(FRAME_LENGTH,
-    
 						
-						if ((this.FrameLength = DeQueue(&UARTInsQueue)) != 0xFF) 
+						if ((this.FrameLength = DeQueue(&TCPInsQueue)) != 0xFF) 
 						{
 
 							printf("S:CHK\r\n");
-							transfer_to(FRAME_CHK);
+							transfer_to(FRAME_CHK);									//!< 跳转帧检测
 							
 						}
-        )						
+       )						
 
-        
+        /*! 帧检测 */	
 				state(FRAME_CHK,
-
 						
-						if(GetQueueLength(&UARTInsQueue) >= this.FrameLength +1)   //wait for enough 
+						if (GetQueueLength(&TCPInsQueue) >= this.FrameLength +1)   //!< 等待整帧入队 
 						{
-							
-							for (this.i=0;this.i<this.FrameLength;this.i++)
+							if (this.FrameLength == 3) //!< 读属性操作
 							{
-								this.CSBuffer[this.i] = DeQueue(&UARTInsQueue);
-								this.ISUM += this.CSBuffer[this.i];
+								this.InsNum = DeQueue(&TCPInsQueue);
+								this.InsAttrNum = DeQueue(&TCPInsQueue);
+								this.ChxNum = DeQueue(&TCPInsQueue);
 							}
-							
-							if(this.ISUM == DeQueue(&UARTInsQueue))  //checksum
+							else if(this.FrameLength == 0);	//!< 空指令
+							else //!< 写属性操作
 							{
-								if(R_FrameTail == DeQueue(&UARTInsQueue))    //checktail
-								{
-									
-									this.INS_NUM = this.CSBuffer[0];
-									printf("S:INS\r\n");
-									
-									transfer_to(FRAME_INS);
-								}
-								else     //checktail failed
-								{
-									this.ERR_NUM = 0x30;
-									printf("S:ERR-CTFailed\r\n");
-									transfer_to(FRAME_ERR);
-								}
+								this.InsNum = DeQueue(&TCPInsQueue);
+								this.InsAttrNum = DeQueue(&TCPInsQueue);
+								this.ChxNum = DeQueue(&TCPInsQueue);
 								
+								for (this.i=0;this.i<(this.FrameLength-3);this.i++)
+								{
+									this.OP[this.i] = DeQueue(&TCPInsQueue);
+								}
 							}
-							else   //checksum failed
+
+							if(TCP_Recv_FT == DeQueue(&TCPInsQueue))     //!< 帧尾检测
 							{
-								this.ERR_NUM = 0x20;
-								printf("S:ERR-CSFailed\r\n");								
-								transfer_to(FRAME_ERR);
+								
+								printf("S:INS\r\n");
+								
+								transfer_to(FRAME_INS);										//!< 跳转指令操作
 							}
-						}
-						
-						
-
-        )						
-						
+							else     //!< 帧尾检测失败
+							{
+								//this.ERR_NUM = 0x30;
+								printf("S:ERR-CTFailed\r\n");
+								transfer_to(FRAME_ERR);
+							}							
+						}											
+       )						
+				
+				/*! 指令操作 */						
         state(FRAME_INS,
-            switch (this.INS_NUM)
+            switch (this.InsNum)
             {
-            	case 0x80:   // Start Acq
-								// preform action
-								printf("ACQ_start\r\n");
-								this.ERR_NUM = 0;
-									
-									ADS1299_Mode_Config(ADS1299_ParaGroup_ACQ);
-									LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_7);
-									ADS1299_SendCommand(ADS1299_CMD_RDATAC);		
-							
-									SYS_Status = SYS_STATUS_ACQUIRING;
-							
-							
-								transfer_to(FRAME_RPY);
+            	case 0x01:   																//!< 读普通属性
+								this.RPY = ((uint8_t*)pattr_tbl+2*InsAttrNum+1);						
+								transfer_to(FRAME_RPY);										//!< 跳转回复
             		
 								break;
             	
-							case 0x90:   // Stop Acq
-								// preform action
-								printf("ACQ_stop\r\n");
-								this.ERR_NUM = 0;
-									
-									
-									LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_7);
-									
-									Mod_CS_Disable;
-									ADS1299_SendCommand(ADS1299_CMD_SDATAC);
-							
-									SYS_Status = SYS_STATUS_STANDBY;
-									
-								transfer_to(FRAME_RPY);
+							case 0x02:   																//!< 写普通属性
+								
+								transfer_to(FRAME_RPY);										//!< 跳转回复
             		
 								break;
-            	
-							case 0x82:   // Start Resistantance Measuring
-								printf("RES_start\r\n");
-									
-
-								this.ERR_NUM = 0;
-									
-									ADS1299_Mode_Config(ADS1299_ParaGroup_IMP);
-									LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_7);
-									ADS1299_SendCommand(ADS1299_CMD_RDATAC);		
-							
-									SYS_Status = SYS_STATUS_ACQUIRING;
-								transfer_to(FRAME_RPY);
-            		break;            	
-							
-							case 0x92:   // Stop Resistantance Measuring
-								printf("RES_stop\r\n");
-								this.ERR_NUM = 0;
-									
-									
-									LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_7);
-									
-									Mod_CS_Disable;
-									ADS1299_SendCommand(ADS1299_CMD_SDATAC);
-							
-									SYS_Status = SYS_STATUS_STANDBY;
-								transfer_to(FRAME_RPY);
-            		break;            	
-							
-							case 0x31:   // Get Acq Parameter (Sample Rate)
-								printf("ParaReadSR\r\n");
-								transfer_to(FRAME_RPY);
-            		break;            	
-							
-							case 0x41:   // Set Acq Parameter (Sample Rate)
-								printf("ParaWriteSR %d\r\n",this.CSBuffer[1]);
-								//need check!!
-								gSYS_SampleRate = this.CSBuffer[1];
-								transfer_to(FRAME_RPY);
-            		break;
-							
-							case 0x32:   // Get Acq Parameter (Gain)
-								printf("ParaReadG\r\n");
-								transfer_to(FRAME_RPY);
-            		break;            	
-							
-							case 0x42:   // Set Acq Parameter (Gain)
-								printf("ParaWriteG %d\r\n",this.CSBuffer[1]);
-								//need check!!
-								gSYS_Gain = this.CSBuffer[1];
-								transfer_to(FRAME_RPY);
-            		break;
-							
-							case 0x50:   // Set Special Mode
-								printf("SPMode\r\n");
-								transfer_to(FRAME_RPY);
-            		break;
-							
-							case 0x35:   // Get Battary Voltage
-								transfer_to(FRAME_RPY);
-								printf("ReadBATT_V\r\n");
-            		break;
 							
             	default:
-								this.ERR_NUM = 0x11;
+//								this.ERR_NUM = 0x11;
 								printf("WrongINS\r\n");
 								transfer_to(FRAME_ERR);
             		break;
-            }
-						
+            }						
         )
 						
 				
-
         state(FRAME_ERR,
 						
 						transfer_to(FRAME_SEEKHEAD);

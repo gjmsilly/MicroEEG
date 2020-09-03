@@ -150,20 +150,20 @@ void W5500_Load_Net_Parameters(void)
 	net_param.Sub_Mask[1] = 255;
 	net_param.Sub_Mask[2] = 255;
 	net_param.Sub_Mask[3] = 0;
-	
+																 
 	//加载MAC地址
-	net_param.Phy_Addr[0] = COMM_param.Dev_MAC[0];
-	net_param.Phy_Addr[1] = COMM_param.Dev_MAC[1];
-	net_param.Phy_Addr[2] = COMM_param.Dev_MAC[2];
-	net_param.Phy_Addr[3] = COMM_param.Dev_MAC[3];
-	net_param.Phy_Addr[4] = COMM_param.Dev_MAC[4];
-	net_param.Phy_Addr[5] = COMM_param.Dev_MAC[5];
+	net_param.Phy_Addr[0] = *attr_tbl.COMM_Param.Dev_MAC.pValue;
+	net_param.Phy_Addr[1] = *((uint8_t*)attr_tbl.COMM_Param.Dev_MAC.pValue+1);
+	net_param.Phy_Addr[2] = *((uint8_t*)attr_tbl.COMM_Param.Dev_MAC.pValue+2);
+	net_param.Phy_Addr[3] = *((uint8_t*)attr_tbl.COMM_Param.Dev_MAC.pValue+3);
+	net_param.Phy_Addr[4] = *((uint8_t*)attr_tbl.COMM_Param.Dev_MAC.pValue+4);
+	net_param.Phy_Addr[5] = *((uint8_t*)attr_tbl.COMM_Param.Dev_MAC.pValue+5);
 
 	//加载源/本机IP地址
-	net_param.IP_Addr[0] = COMM_param.Dev_IP[0];
-	net_param.IP_Addr[1] = COMM_param.Dev_IP[1];
-	net_param.IP_Addr[2] = COMM_param.Dev_IP[2];
-	net_param.IP_Addr[3] = COMM_param.Dev_IP[3];
+	net_param.IP_Addr[0] = *attr_tbl.COMM_Param.Dev_IP.pValue;
+	net_param.IP_Addr[1] = *((uint8_t*)attr_tbl.COMM_Param.Dev_IP.pValue+1);
+	net_param.IP_Addr[2] = *((uint8_t*)attr_tbl.COMM_Param.Dev_IP.pValue+2);
+	net_param.IP_Addr[3] = *((uint8_t*)attr_tbl.COMM_Param.Dev_IP.pValue+3);
 
 	/* Socket 0 配置 */
 	{				
@@ -183,7 +183,7 @@ void W5500_Load_Net_Parameters(void)
 		sn_param[1].UDP_DIPR[3] = 101;
 
 		//UDP(广播)模式需配置目的主机端口号 7002（default）
-		sn_param[1].UDP_DPORT = COMM_param.Host_Port;	
+		sn_param[1].UDP_DPORT = *attr_tbl.COMM_Param.Host_Port.pValue;	
 	}
 }
 
@@ -263,8 +263,6 @@ uint8_t Detect_Gateway(void)
 *******************************************************************************/
 void W5500_Socket_Init(uint8_t sn)
 {
- 		uint16_t DPort=6000;
-		uint32_t taddr;
 	
 	/* Socket 寄存器区设置 */
 	
@@ -336,7 +334,7 @@ void TCPServer_Service(uint8_t sn)
 	{
 		/* Socket n 关闭 */
 		case SOCK_CLOSED:
-			socket(sn,Sn_MR_TCP,5000,0); //打开Socket绑定TCP默认端口
+			socket(sn,Sn_MR_TCP,(Psn_param+sn)->Sn_Port,0); //打开Socket绑定TCP默认端口
 			setSn_KPALVTR(sn,2);    //设置心跳包自动发送间隔，单位时间为5s
 		break;
 		
@@ -390,7 +388,7 @@ void UDP_Service(uint8_t sn)
 		
 		/* Socket n 关闭 */
 		case SOCK_CLOSED:
-			socket(sn,Sn_MR_UDP,5555,0); //打开Socket绑定UDP默认端口
+			socket(sn,Sn_MR_UDP,(Psn_param+sn)->Sn_DPort,0); //打开Socket绑定UDP默认端口
 		break;
 		
 		/* Socket n 已完成初始化 */

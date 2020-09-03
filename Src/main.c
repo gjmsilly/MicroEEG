@@ -277,7 +277,7 @@ int main(void)
 	shellInit(&shell);
 	
 	//Attribute table Initial
-	Attr_Tbl_Init();
+	pattr_tbl = &attr_tbl;
 	
 	//LED Initial
 	PWR_LED1_ON;

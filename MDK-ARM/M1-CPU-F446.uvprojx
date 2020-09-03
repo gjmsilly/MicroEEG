@@ -419,11 +419,6 @@
               <FilePath>..\Src\AttritubeTable.c</FilePath>
             </File>
             <File>
-              <FileName>protocol_ethernet.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\protocol_ethernet.c</FilePath>
-            </File>
-            <File>
               <FileName>simpleInsQueue.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\simpleInsQueue.c</FilePath>
