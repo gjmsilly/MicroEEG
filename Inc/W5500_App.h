@@ -37,21 +37,8 @@ typedef struct
 /*********************************************************************
  * Macros
  */
-#define TRUE						0xff
-#define FALSE						0x00
-
-#define Rx_Buffer_Size	1024
-#define Tx_Buffer_Size	1024
-
- /*******************************************************************************
- * EXTERNAL VARIABLES
- */
-
-extern uint8_t Rx_Buffer[Rx_Buffer_Size];			//接收数据缓冲区 
-extern uint8_t Tx_Buffer[Tx_Buffer_Size];			//发送数据缓冲区
-
-extern NETWORKParam_t *Pnet_param;  					//网络参数配置
-extern SOCKETnParam_t *Psn_param;  					  //Socket n参数配置(n=0,1) 
+#define TRUE							0xff
+#define FALSE							0x00
 
 /*******************************************************************************
  * FUNCTIONS

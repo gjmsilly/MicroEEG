@@ -522,8 +522,7 @@ uint16_t DMA_send(uint8_t sn, uint8_t * buf, uint32_t len)
 	   
     setSn_CR(sn,Sn_CR_SEND);//·¢ËÍÆô¶¯·¢ËÍÃüÁî	
    /* wait to process the command... */
-   while(getSn_CR(sn));
-  
+   while(getSn_CR(sn)); 
 	 sock_is_sending |= (1 << sn);//1
 
    return ptr;

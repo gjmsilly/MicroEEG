@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_FULL_LL_DRIVER,USE_HAL_DRIVER,STM32F446xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;..\letter-shell;..\utilities</IncludePath>
+              <IncludePath>../Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;..\letter-shell;..\utilities;..\utilities\template</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -412,16 +412,6 @@
               <FileName>w5500_app.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\w5500_app.c</FilePath>
-            </File>
-            <File>
-              <FileName>AttritubeTable.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\AttritubeTable.c</FilePath>
-            </File>
-            <File>
-              <FileName>simpleInsQueue.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\simpleInsQueue.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -627,6 +617,21 @@
               <FileName>ads1299.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\ads1299.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Service</GroupName>
+          <Files>
+            <File>
+              <FileName>AttritubeTable.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\AttritubeTable.c</FilePath>
+            </File>
+            <File>
+              <FileName>protocol_ethernet.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\protocol_ethernet.c</FilePath>
             </File>
           </Files>
         </Group>

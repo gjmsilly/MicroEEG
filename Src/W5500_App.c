@@ -20,23 +20,19 @@
 #include "w5500.h"
 #include "wizchip_conf.h"
 #include "socket.h"
+#include "protocol_ethernet.h"
 #include "AttritubeTable.h"
 
 /*******************************************************************************
  * GLOBAL VARIABLES
  */
-NETWORKParam_t net_param,*Pnet_param;    		//网络参数配置
-SOCKETnParam_t sn_param[2],*Psn_param;   		//Socket n参数配置(n=0,1)
-
-uint8_t Rx_Buffer[Rx_Buffer_Size];					//接收数据缓冲区 
-uint8_t Tx_Buffer[Tx_Buffer_Size];					//发送数据缓冲区
 uint8_t W5500_Send_flag = 0;                //1- 准备向W5500 socket n发送缓冲区写入
 
-
  /*******************************************************************************
- * EXTERNAL VARIABLES
+ * LOCAL VARIABLES
  */
-
+static NETWORKParam_t net_param,*Pnet_param;    		//网络参数配置
+static SOCKETnParam_t sn_param[2],*Psn_param;   		//Socket n参数配置(n=0,1)
 
 /*******************************************************************************
  * FUNCTIONS
@@ -62,7 +58,7 @@ void W5500_Init(void)
 	Detect_Gateway();					//检查网关服务器 
 	W5500_Socket_Init(0);			//Socket 0配置 - TCP 
 	W5500_Socket_Init(1);     //Socket 1配置 - UDP 
-
+ 	ProtocolProcessFSMInit();	//TCP帧协议服务初始化
 }
 
 /*******************************************************************************
@@ -99,8 +95,8 @@ void W5500_Config(void)
 	setSIPR(Pnet_param->IP_Addr);		
 
 	//设置重试时间，默认2000(200ms) 
-	//每一单位数值为100微秒,初始化时值设为2000(0x07D0),即200ms
-	setRTR(0x07d0);
+	//每一单位数值为100微秒,初始化时值设为4000,即400ms
+	setRTR(4000);
 
 	//设置重试次数，默认为8次 
 	//如果重发的次数超过设定值,则产生超时中断(相关的端口中断寄存器中的Sn_IR 超时位(TIMEOUT)置“1”)
@@ -152,18 +148,18 @@ void W5500_Load_Net_Parameters(void)
 	net_param.Sub_Mask[3] = 0;
 																 
 	//加载MAC地址
-	net_param.Phy_Addr[0] = *attr_tbl.COMM_Param.Dev_MAC.pValue;
-	net_param.Phy_Addr[1] = *((uint8_t*)attr_tbl.COMM_Param.Dev_MAC.pValue+1);
-	net_param.Phy_Addr[2] = *((uint8_t*)attr_tbl.COMM_Param.Dev_MAC.pValue+2);
-	net_param.Phy_Addr[3] = *((uint8_t*)attr_tbl.COMM_Param.Dev_MAC.pValue+3);
-	net_param.Phy_Addr[4] = *((uint8_t*)attr_tbl.COMM_Param.Dev_MAC.pValue+4);
-	net_param.Phy_Addr[5] = *((uint8_t*)attr_tbl.COMM_Param.Dev_MAC.pValue+5);
+	net_param.Phy_Addr[0] = *DEV_MAC;
+	net_param.Phy_Addr[1] = *((uint8_t*)DEV_MAC+1);
+	net_param.Phy_Addr[2] = *((uint8_t*)DEV_MAC+2);
+	net_param.Phy_Addr[3] = *((uint8_t*)DEV_MAC+3);
+	net_param.Phy_Addr[4] = *((uint8_t*)DEV_MAC+4);
+	net_param.Phy_Addr[5] = *((uint8_t*)DEV_MAC+5);
 
 	//加载源/本机IP地址
-	net_param.IP_Addr[0] = *attr_tbl.COMM_Param.Dev_IP.pValue;
-	net_param.IP_Addr[1] = *((uint8_t*)attr_tbl.COMM_Param.Dev_IP.pValue+1);
-	net_param.IP_Addr[2] = *((uint8_t*)attr_tbl.COMM_Param.Dev_IP.pValue+2);
-	net_param.IP_Addr[3] = *((uint8_t*)attr_tbl.COMM_Param.Dev_IP.pValue+3);
+	net_param.IP_Addr[0] = *DEV_IP;
+	net_param.IP_Addr[1] = *((uint8_t*)DEV_IP+1);
+	net_param.IP_Addr[2] = *((uint8_t*)DEV_IP+2);
+	net_param.IP_Addr[3] = *((uint8_t*)DEV_IP+3);
 
 	/* Socket 0 配置 */
 	{				
@@ -183,7 +179,7 @@ void W5500_Load_Net_Parameters(void)
 		sn_param[1].UDP_DIPR[3] = 101;
 
 		//UDP(广播)模式需配置目的主机端口号 7002（default）
-		sn_param[1].UDP_DPORT = *attr_tbl.COMM_Param.Host_Port.pValue;	
+		sn_param[1].UDP_DPORT = *HOST_PORT;	
 	}
 }
 
@@ -280,9 +276,9 @@ void W5500_Socket_Init(uint8_t sn)
 	switch(sn)
 	{
 		case 0:
-			/* Socket 0 */			
+			/* Socket 0 */	
 			//设置分片长度
-			setSn_MSSR(0, 0x5b4);//最大分片字节数=1460(0x5b4)			
+			setSn_MSSR(0, 0x5b4);//最大分片字节数=1460(0x5b4)	
 			//设置工作模式 TCP server，打开Socket 0并绑定端口
 			while(socket(0,Sn_MR_TCP,Psn_param->Sn_Port,0) != 0);
 			//设置心跳包自动发送间隔，单位时间为5s	
@@ -327,7 +323,7 @@ void W5500_Socket_Init(uint8_t sn)
 *******************************************************************************/
 void TCPServer_Service(uint8_t sn)
 {
-	uint16_t recvsize=0,sentsize = 0;
+	uint16_t recvsize=0,sentsize = 0; // 用于回环测试
 	uint32_t taddr;
 	
 	switch(getSn_SR(sn))
@@ -345,22 +341,23 @@ void TCPServer_Service(uint8_t sn)
 		
 		/* Socket n 处于连接状态 */
 		case SOCK_ESTABLISHED:
-			getSn_DIPR(0,((uint8_t*)&taddr)); //读取目的IP地址 - debug
 		
 			if(getSn_IR(sn) & Sn_IR_CON)
 			{
 				setSn_IR(sn,Sn_IR_CON); //清除标志位
 			}	
-				//回环测试  - debug
-				recvsize = getSn_RX_RSR(sn); //Socket n接收缓冲区接收到的字节数
-				if(recvsize>0)				
-				{	
-					sentsize = recv(sn,Rx_Buffer,recvsize);  //从接收缓冲区全部读取
-					DMA_send(sn, Rx_Buffer, sentsize); //回环：重新写入Socket n发送缓冲区发出
-				}
-				  
-				// 接收目的主机发送的命令 （1字节）
+
+			if((recvsize = getSn_RX_RSR(sn))>0) //接收目的主机发来的TCP数据			
+				sentsize = DMA_recv(sn,TCP_Rx_Buff,recvsize);  //从接收缓冲区全部读取
 			
+			ProtocolProcessFSM(); //TCP帧协议解析及回复封包	
+			
+			if(TCP_RPY_Size!=0xFF)
+			{
+				send(sn, TCP_Tx_Buff, TCP_RPY_Size); //TCP回复目的主机
+				TCP_RPY_Size=0xFF;
+				memset(TCP_Rx_Buff,0xff,sizeof(TCP_Rx_Buff));//清除缓冲区
+			}
 		break;
 			
 		/* Socket n 断开请求 */
@@ -399,8 +396,8 @@ void UDP_Service(uint8_t sn)
 			// 准备发送数据包至目的主机
 			///if(W5500_Send_flag)
 			//{
-				sendto(sn, Tx_Buffer,    				  \
-							 sizeof(Tx_Buffer), 				\
+				sendto(sn, UDP_Tx_Buff,    				  \
+							 sizeof(UDP_Tx_Buff), 				\
 							 (Psn_param+sn)->UDP_DIPR,  \
 							 (Psn_param+sn)->UDP_DPORT);  // test:1024byte
 			//}		

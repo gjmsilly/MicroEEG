@@ -31,6 +31,7 @@
 #include "wizchip_conf.h"
 #include "socket.h"
 #include "AttritubeTable.h"
+#include "protocol_ethernet.h"
 
 /* USER CODE END Includes */
 
@@ -236,18 +237,18 @@ int main(void)
   /* USER CODE BEGIN Init */
 	Mod_DRDY_INT_Disable
 	
-	memset(Tx_Buffer,0xff,sizeof(Tx_Buffer));//清除缓冲区
-	//memset(Rx_Buffer,0,sizeof(Rx_Buffer));//清除缓冲区
-	// for test
-	Tx_Buffer[0]=0x00;
-	Tx_Buffer[1]=0x01;
-	Tx_Buffer[10]=0x10;
-	Tx_Buffer[20]=0x20;
-	Tx_Buffer[982]=0xdd;
-	Tx_Buffer[983]=0xaa;
-	Tx_Buffer[999]=0xbb;
-	Tx_Buffer[1023]=0xcc;
-	
+//	memset(UDP_Tx_Buff,0xff,sizeof(UDP_Tx_Buff));//清除缓冲区
+//	//memset(Rx_Buffer,0,sizeof(Rx_Buffer));//清除缓冲区
+//	// for test
+//	UDP_Tx_Buff[0]=0x00;
+//	UDP_Tx_Buff[1]=0x01;
+//	UDP_Tx_Buff[10]=0x10;
+//	UDP_Tx_Buff[20]=0x20;
+//	UDP_Tx_Buff[982]=0xdd;
+//	UDP_Tx_Buff[983]=0xaa;
+//	UDP_Tx_Buff[999]=0xbb;
+//	UDP_Tx_Buff[1023]=0xcc;
+//	
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -277,7 +278,7 @@ int main(void)
 	shellInit(&shell);
 	
 	//Attribute table Initial
-	pattr_tbl = &attr_tbl;
+	Attr_Tbl_Init();
 	
 	//LED Initial
 	PWR_LED1_ON;
@@ -291,7 +292,7 @@ int main(void)
 	W5500_Load_Net_Parameters(); //装载网络参数	
 	W5500_RST();//硬件复位
 	W5500_Init(); //W5500初始化，配置Socket
-	
+
 //--------------------------------------------------------------
 /* ADS1299 */	
 //	//Configure the DMA
@@ -318,8 +319,8 @@ int main(void)
     shellTask(&shell);
 
 		TCPServer_Service(0);	//Socket0 TCP服务器服务
-		UDP_Service(1);				//Socket1 UDP服务
-		
+		//UDP_Service(1);				//Socket1 UDP服务
+				
 		//HAL_Delay(500);		
    
 

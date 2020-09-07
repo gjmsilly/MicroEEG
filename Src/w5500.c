@@ -221,6 +221,7 @@ void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len)
 	
 }
 
+////////////////////////////////////////////////////////////////////////////////
 
 /*******************************************************************************
 * 函数名  : Write_SOCK_Data_Buffer
@@ -241,21 +242,21 @@ uint16_t Write_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr, uint16_t len)
    uint32_t addrsel = 0;
 	 uint16_t RegAddr;
 	 uint8_t ControlWord;
-			
+	
 	 //读取发送缓冲区写指针，为当前数据写入的首地址
    ptr = getSn_TX_WR(sn);
 	
 	 //将数据写入对应的端口的发送缓冲区
    addrsel = ((uint32_t)ptr << 8) + (WIZCHIP_TXBUF_BLOCK(sn) << 3); 
-	 RegAddr=((addrsel & 0x00FFFF00)>>8);           // W5500地址段:Socket n发送缓冲区地址
-	 addrsel |= _W5500_SPI_WRITE_ ;	                // W5500控制段:写访问
-	 ControlWord=((addrsel & 0x000000FF) >>  0);    // W5500控制段:寄存器区域 - Socket n发送缓存区
+	 RegAddr=((addrsel & 0x00FFFF00)>>8);									// W5500地址段:Socket n发送缓冲区地址
+	 addrsel |= (_W5500_SPI_WRITE_ | _W5500_SPI_VDM_OP_);	// W5500控制段:写访问
+	 ControlWord=((addrsel & 0x000000FF) >>  0);				 	// W5500控制段:寄存器区域 - Socket n发送缓存区
 	 
 	 // QSPI命令配置 单线传输
    //	| 指令 |  地址   |  交替字节   | 空指令 |  数据   |
 	 // | NULL | RegAddr | ControlWord |	NULL 	|	dat_ptr |
 	 QSPI_Send_Control(RegAddr,ControlWord,0,QSPI_DATA_1_LINE);
-	 hqspi.Instance->DLR=len-1;//len-1;				   //配置数据长度,17个字节不知所踪
+	 hqspi.Instance->DLR=len+17;//len-1;					//配置数据长度 数据长度 bug?
 	 HAL_QSPI_Transmit_DMA(&hqspi, dat_ptr);		   //DMA方式向发送缓冲区写n字节数据 
 	 
 	 while(1)
@@ -332,9 +333,9 @@ uint16_t Read_SOCK_Data_Buffer(uint8_t sn, uint8_t *dat_ptr,uint32_t len)
 	 ptr = getSn_RX_RD(sn);
 	
    addrsel = ((uint32_t)ptr << 8) + (WIZCHIP_RXBUF_BLOCK(sn) << 3);
-   RegAddr = ((addrsel & 0x00FFFF00)>>8);         // W5500地址段:Socket n接收缓冲区地址
-	 addrsel |= _W5500_SPI_READ_ ;	                // W5500控制段:写访问
-	 ControlWord=((addrsel & 0x000000FF) >>  0);    // W5500控制段:寄存器区域 - Socket n接收缓存区
+   RegAddr = ((addrsel & 0x00FFFF00)>>8);       			  // W5500地址段:Socket n接收缓冲区地址
+	 addrsel |= (_W5500_SPI_READ_ | _W5500_SPI_VDM_OP_);	// W5500控制段:读访问
+	 ControlWord=((addrsel & 0x000000FF) >>  0);					// W5500控制段:寄存器区域 - Socket n接收缓存区
 	 
 	 // QSPI命令配置 单线传输
    //	| 指令 |  地址   |  交替字节   | 空指令 |  数据   |

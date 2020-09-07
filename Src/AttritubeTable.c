@@ -20,7 +20,8 @@
  * GLOBAL VARIABLES
  */
 //!< 属性总表
-const Attr_Tbl_t attr_tbl,*pattr_tbl;
+uint32_t* pattr_offset[ATTR_NUM];	//!< 属性偏移地址
+uint8_t* pattr;	//!< 属性表首地址
 
 //!< 工作状态与控制组
 bool 		sampling;
@@ -42,55 +43,78 @@ const Attr_Tbl_t attr_tbl = {
 	/*
 	 *  ===================== 工作状态与控制组 ===========================
 	 */
-	.State_Control = 
-	{
 		
 		//!< 采样控制 0-停止采样 1-开始采样 
 		.Sampling			= {	ATTR_RS,							/* permissions */
+											1,										/* datasize */
 											(uint32_t*)&sampling  /* pValue */
 										},
 		
 		//!< 阻抗测量模式	0- 无阻抗测量 
 		.IMPMeas_Mode	= { ATTR_RS,
+											1,
 											(uint32_t*)&impmeas_mode
 										},
 											
 		//!< 阻抗测量方案	0- 正弦波测AC电阻 1- 测DC电阻 2- 交流激励测阻抗
 		.IMPMeas_fxn	= { ATTR_RS,
+											1,
 										 (uint32_t*)&impmeas_fxn
 										},			 
-	},
 
 	/*
 	 *  ======================== 通信参数组 ==============================
 	 */
-	.COMM_Param = 
-	{
 			 
 		//!< 仪器网口MAC地址  0c-29-ab-7c-00-01 (default) 
 		.Dev_MAC				= { ATTR_RO,
+												6,
 												(uint32_t*)dev_mac
 											},
 		
 		//!< 仪器当前IP地址 192.168.1.10 (default) 
 		.Dev_IP					=	{ ATTR_NV,
-											(uint32_t*)dev_ip
+												4,
+												(uint32_t*)dev_ip
 											},
 			
 		//!< 仪器网口状态
 		.Dev_PortStat		= { ATTR_RA,
-											(uint32_t*)&dev_portstat
+												1,
+												(uint32_t*)&dev_portstat
 											},
 		
 		//!< 目的主机UDP端口号 - 7002 (default)
 		.Host_Port			= { ATTR_NV,
-											(uint32_t*)&host_port
+												1,
+												(uint32_t*)&host_port
 											},
 		
 		//!< 以太网每包含ad样本数 - 10 (default)
 		.SampleNum			= { ATTR_RS,
-											(uint32_t*)&samplenum
+												1,
+												(uint32_t*)&samplenum
 											},   
-	},
 
-}; 
+};
+
+/*********************************************************************
+ * FUNCTIONS
+ */
+void Attr_Tbl_Init()
+{
+	//!< 属性表首地址
+	pattr = (uint8_t*)&attr_tbl;
+	
+	//!< 属性地址偏移映射关系   
+	//!< pattr_offset[n]即属性的物理地址 上位机通过下标进行偏移访问
+	pattr_offset[0] = (uint32_t*)attr_tbl.Sampling.pValue;	
+	pattr_offset[1] = (uint32_t*)attr_tbl.IMPMeas_Mode.pValue;
+	pattr_offset[2] = (uint32_t*)attr_tbl.IMPMeas_fxn.pValue;
+	pattr_offset[3] = (uint32_t*)attr_tbl.Dev_MAC.pValue;
+	pattr_offset[4] = (uint32_t*)attr_tbl.Dev_IP.pValue;
+	pattr_offset[5] = (uint32_t*)attr_tbl.Dev_PortStat.pValue;
+	pattr_offset[6] = (uint32_t*)attr_tbl.Host_Port.pValue;
+	pattr_offset[7] = (uint32_t*)attr_tbl.SampleNum.pValue;
+
+}
