@@ -51,14 +51,13 @@ static SOCKETnParam_t sn_param[2],*Psn_param;   		//Socket n参数配置(n=0,1)
 *******************************************************************************/
 void W5500_Init(void)
 {
-	Pnet_param =&net_param;
-	Psn_param = sn_param;
 	
 	W5500_Config();						//初始化W5500通用寄存器区
 	Detect_Gateway();					//检查网关服务器 
 	W5500_Socket_Init(0);			//Socket 0配置 - TCP 
 	W5500_Socket_Init(1);     //Socket 1配置 - UDP 
  	ProtocolProcessFSMInit();	//TCP帧协议服务初始化
+
 }
 
 /*******************************************************************************
@@ -135,51 +134,47 @@ void W5500_Config(void)
 *******************************************************************************/
 void W5500_Load_Net_Parameters(void)
 {
+	Pnet_param =&net_param;
+	Psn_param = sn_param;
+	uint8_t *Plen;
+	
 	//加载网关参数		
-	net_param.Gateway_IP[0] = 192;
-	net_param.Gateway_IP[1] = 168;
-	net_param.Gateway_IP[2] = 1;
-	net_param.Gateway_IP[3] = 1;
+	Pnet_param->Gateway_IP[0] = 192;
+	Pnet_param->Gateway_IP[1] = 168;
+	Pnet_param->Gateway_IP[2] = 1;
+	Pnet_param->Gateway_IP[3] = 1;
 	
 	//加载子网掩码
-	net_param.Sub_Mask[0] = 255;
-	net_param.Sub_Mask[1] = 255;
-	net_param.Sub_Mask[2] = 255;
-	net_param.Sub_Mask[3] = 0;
+	Pnet_param->Sub_Mask[0] = 255;
+	Pnet_param->Sub_Mask[1] = 255;
+	Pnet_param->Sub_Mask[2] = 255;
+	Pnet_param->Sub_Mask[3] = 0;
 																 
 	//加载MAC地址
-	net_param.Phy_Addr[0] = *DEV_MAC;
-	net_param.Phy_Addr[1] = *((uint8_t*)DEV_MAC+1);
-	net_param.Phy_Addr[2] = *((uint8_t*)DEV_MAC+2);
-	net_param.Phy_Addr[3] = *((uint8_t*)DEV_MAC+3);
-	net_param.Phy_Addr[4] = *((uint8_t*)DEV_MAC+4);
-	net_param.Phy_Addr[5] = *((uint8_t*)DEV_MAC+5);
+	pattr_CBs->pfnReadAttrCB(DEV_MAC,0xFF,(uint8_t*)Pnet_param->Phy_Addr,Plen);
 
 	//加载源/本机IP地址
-	net_param.IP_Addr[0] = *DEV_IP;
-	net_param.IP_Addr[1] = *((uint8_t*)DEV_IP+1);
-	net_param.IP_Addr[2] = *((uint8_t*)DEV_IP+2);
-	net_param.IP_Addr[3] = *((uint8_t*)DEV_IP+3);
+	pattr_CBs->pfnReadAttrCB(DEV_IP,0xFF,(uint8_t*)Pnet_param->IP_Addr,Plen);
 
 	/* Socket 0 配置 */
 	{				
 		//加载Socket 0的端口号: 7001 （default）
-		sn_param[0].Sn_Port = 7001;
+		Psn_param->Sn_Port = 7001;
 	}
 	
 	/* Socket 1 配置 */	
 	{		
 		//加载Socket 1的端口号: 7002 （default）
-		sn_param[1].Sn_Port = 7002;
+		(Psn_param+1)->Sn_Port = 7002;
 
 		//UDP(广播)模式需配置目的主机IP地址
-		sn_param[1].UDP_DIPR[0] = 192;	
-		sn_param[1].UDP_DIPR[1] = 168;
-		sn_param[1].UDP_DIPR[2] = 1;
-		sn_param[1].UDP_DIPR[3] = 101;
+		(Psn_param+1)->UDP_DIPR[0] = 192;	
+		(Psn_param+1)->UDP_DIPR[1] = 168;
+		(Psn_param+1)->UDP_DIPR[2] = 1;
+		(Psn_param+1)->UDP_DIPR[3] = 101;
 
 		//UDP(广播)模式需配置目的主机端口号 7002（default）
-		sn_param[1].UDP_DPORT = *HOST_PORT;	
+		pattr_CBs->pfnReadAttrCB(HOST_PORT,0xFF,(uint8_t*)Psn_param->Sn_DPort,Plen);
 	}
 }
 
@@ -354,8 +349,7 @@ void TCPServer_Service(uint8_t sn)
 			
 			if(TCP_RPY_Size!=0xFF)
 			{
-				send(sn, TCP_Tx_Buff, TCP_RPY_Size); //TCP回复目的主机
-				TCP_RPY_Size=0xFF;
+				send(sn, TCP_Tx_Buff, TCP_Tx_Buff[1]+3); //TCP回复目的主机
 				memset(TCP_Rx_Buff,0xff,sizeof(TCP_Rx_Buff));//清除缓冲区
 			}
 		break;

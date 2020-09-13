@@ -22,8 +22,14 @@ extern "C" {
 /*******************************************************************
  * CONSTANTS
  */
-#define ATTR_NUM						40		//!< 属性表支持的属性数量
-#define CHANNEL_MODE				8			//!< 通道数量
+#define ATTR_NUM						40		//!< 属性表支持的属性数量（除通道属性）
+#define CHANNEL_MODE				8			//!< 通道数量  （x8/x16/x32）
+
+/* 读写回调状态参数 */
+#define	SUCCESS 						0x00	//!< SUCCESS
+#define	ATTR_ERR_RO					0x01	//!< 属性不允许写操作
+#define	ATTR_ERR_SIZE				0x02	//!< 待写数据长度与属性值长度不符 
+#define	ATTR_NOT_FOUND			0x0a	//!< 待读写的属性不存在 
 
 /* 属性权限 */
 #define	ATTR_RO							0x00	//!< 只读属性 
@@ -31,16 +37,16 @@ extern "C" {
 #define	ATTR_RA							0x02	//!< 读写属性，实时更新
 #define	ATTR_NV							0x03	//!< 非易失属性
 
-/* 属性值偏移地址表 */
-#define SAMPLING						pattr_offset
-#define IMPMEAS_MODE				pattr_offset[1]
-#define IMPMEAS_FXN					pattr_offset[2]
-#define	DEV_MAC							pattr_offset[3]
-#define DEV_IP							pattr_offset[4]
-#define DEV_PORTSTAT				pattr_offset[5]
-#define HOST_PORT						pattr_offset[6]
-#define SAMPLE_NUM					pattr_offset[7]
-
+/* 属性编号 */
+#define SAMPLING						0
+#define IMPMEAS_MODE				1
+#define IMPMEAS_FXN					2
+#define	DEV_MAC							3
+#define DEV_IP							4
+#define DEV_PORTSTAT				5
+#define HOST_PORT						6
+#define SAMPLE_NUM					7
+														 
 /*******************************************************************
  * TYPEDEFS
  */
@@ -53,8 +59,8 @@ extern "C" {
 typedef struct 
 {
 	uint8_t					permissions;		//!< 属性权限 - 读写允许
-  uint8_t					datasize;				//!< 属性长度 - 按字节
-	uint32_t* const	pValue;					//!< 属性地址
+  uint8_t					Attrsize;				//!< 属性长度 - 以字节为单位
+	uint32_t* const	pAttrValue;			//!< 属性值地址
 } Attr_t;
 
 /*!
@@ -76,11 +82,11 @@ typedef struct
 	Attr_t	CHx_BIASOUT;			//!< 本通道选件增益							<RS>
 
 }CHx_Param_t;
+
 /*!
  *  @def    Attr_Tbl_t
  *  @brief  属性表结构体（紧凑结构确保连续内存，供上位机地址偏移访问）
  */
-
 #pragma pack(push)
 #pragma pack(1)
 typedef struct
@@ -182,16 +188,43 @@ enum Dev_PortStat_t
 //	 Ref_specCh= -2
 //};
 
+/*!
+ *  @def    读属性回调函数原型
+ *	@param	InsAttrNum - 待读属性编号
+ *					CHxNum - 通道编号（通道属性专用，默认不用	0xFF）
+ *					pValue - 属性值 （to be returned）
+ *					pLen - 属性值大小（to be returned） 
+ *
+ */
+typedef uint8_t (*pfnReadAttrCB_t)( uint8_t InsAttrNum, uint8_t CHxNum, 
+																		uint8_t *pValue, uint8_t *pLen );
+
+/*!
+ *  @def		写属性回调函数原型
+ *	@param	InsAttrNum - 待写入属性编号
+ *					CHxNum - 通道编号（通道属性专用，默认不用	0xFF）
+ *					pValue - 待写入数据的指针
+ *					pLen - 待写入数据大小	
+ */
+typedef uint8_t (*pfnWriteAttrCB_t)(	uint8_t InsAttrNum, uint8_t CHxNum,
+																			uint8_t *pValue, uint8_t len );
+
+/*!
+ *  @def    属性读写回调函数 结构体
+ */
+typedef struct
+{
+  pfnReadAttrCB_t 	pfnReadAttrCB;					//!< 读属性回调函数指针	
+  pfnWriteAttrCB_t 	pfnWriteAttrCB;					//!< 写属性回调函数指针
+} AttrCBs_t;
 
  /********************************************************************
  * EXTERNAL VARIABLES
  */
-extern uint8_t* pattr;
-extern uint32_t* pattr_offset[ATTR_NUM];	//!< 属性偏移地址
+extern AttrCBs_t *pattr_CBs;
 
 /*********************************************************************
  * FUNCTIONS
  */
 void Attr_Tbl_Init();
-
 #endif

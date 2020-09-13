@@ -11,12 +11,14 @@
 /* Modified by Liu Miao 2019.6                                  */
 /****************************************************************/
 
-/* Includes ----------------------------------------------------------*/
+/*********************************************************************
+ * INCLUDES
+ */
 #include "main.h"
 
-
-
-/* Private define ----------------------------------------------------*/
+/*********************************************************************
+ * Macros
+ */
 #define SYS_STATUS_INIT                0
 #define SYS_STATUS_STANDBY             1
 #define SYS_STATUS_ACQUIRING           2
@@ -31,35 +33,30 @@
 #define LED_COP_OFF    LL_GPIO_SetOutputPin(BT_RESET_GPIO_Port, BT_RESET_Pin);
 #define LED1_TOGGLE    LL_GPIO_TogglePin(LED1_GPIO_Port,LED1_Pin);
 #define LED2_TOGGLE    LL_GPIO_TogglePin(LED2_GPIO_Port,LED2_Pin);
-/* Public variables -------------------------------------------------*/
-
+ 
+ /*********************************************************************
+ * EXTERNAL VARIABLES
+ */
 extern uint8_t SYS_Status;
 extern uint8_t BT_USART_Mutex;
 
-
-
-/*     LED Service      */
-
+/**********************************************************************
+ * FUNCTIONS
+ */
+/* LED Service */
 void LED_Service_Init (void);
 void LED_Service_Process(void);
 void LED_Service_Process_INT(void);
 
-
-/*    Trigger Service    */
-
+/* Trigger Service */
 void Trigger_Service_Init(void);
 void Trigger_Service_Process(void);
 
-
-
-/*    BT_HCI Wireless Connection Service    */
-
+/* BT_HCI Wireless Connection Service */
 void BTModule_Service_Init(void);
 void BTModule_Service_Process(void);
 
-
-/*    Timestamp Service    */
-
+/* Timestamp Service */
 void Timestamp_Service_Init(void);
 uint32_t Timestamp_Service_GetTimestamp(void);
 

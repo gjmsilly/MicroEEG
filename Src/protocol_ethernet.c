@@ -16,12 +16,13 @@
 #include "compiler.h"
 #include "ooc.h"
 #include "simple_fsm.h"
+
 #include "protocol_ethernet.h"
+#include "SimpleInsQueue.h"
 #include "main.h"
 #include "microEEG_misc.h"
-#include "ads1299.h"
 #include "AttritubeTable.h"
-
+													 
 /*********************************************************************
  * LOCAL VARIABLES
  */
@@ -42,10 +43,6 @@ static uint8_t	TCP_Recv_FT = 0xCC;				//<! TCP接收帧尾
 static uint8_t	TCP_Send_FH = 0xA2;				//<! TCP发送帧头
 static uint8_t	TCP_Send_FT = 0xC2;				//<! TCP发送帧尾
 
-static uint8_t	TCP_SUCCESS = 0x00;				//<! 指令解析正常
-static uint8_t	TCPERR_Attr_RO = 0x01;		//<! 指令错误：对只读属性写操作
-static uint8_t	TCPERR_Attr_LEN = 0x02;		//<! 指令错误：写指令数据长度错误
-
 /*******************************************************************
  * GLOBAL VARIABLES
  */
@@ -53,11 +50,7 @@ static uint8_t	TCPERR_Attr_LEN = 0x02;		//<! 指令错误：写指令数据长度错误
 uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];		//!< TCP接收数据缓冲区 
 uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];		//!< TCP发送数据缓冲区
 uint8_t UDP_Tx_Buff[UDP_Tx_Buff_Size];		//!< UDP发送数据缓冲区
-uint8_t	DataLength1;// debug
-uint8_t*	pDataLength1;// debug
-uint8_t FrameHeaderBuff;
-uint8_t	TCP_RPY_Size=0xFF;				//!< TCP回复帧长 - 用于通知w5500_app
-uint8_t	Attr_Change_Num;		//!< 属性表值变化的属性号 - 用于通知AttrChangeEvt
+
 /*******************************************************************
  * TYPEDEFS
  */
@@ -87,15 +80,15 @@ simple_fsm
 		TCP_Process,
     def_params
 		(
+				uint8_t	FrameHeader;				//!< 帧头
 				uint8_t FrameLength;				//!< 有效帧长
 				uint8_t DataLength;					//!< 数据帧长
 				uint8_t InsNum;							//!< 指令码							
 				uint8_t InsAttrNum;					//!< 指令作用属性编号
-				uint8_t	AttrPermission;			//!< 属性读写权限
 				uint8_t ChxNum;							//!< 指令作用通道
 				uint8_t ERR_NUM;						//!< 错误码
-				uint8_t* _OP_;							//!< 操作立即数指针 // 9.3 操作数数据类型 bool int8 int32 ???
-				uint32_t* _RPY_;						//!< 属性值指针（用于属性值读取并TCP回复）
+				uint8_t *pDataLength;				//!< 数据帧长指针（读回调用）
+				uint8_t* _OP_;							//!< 操作立即数指针（写回调用）
 				
 				fsm(delay_1s) fsmDelay;			//!< sub fsm delay_1s
     )
@@ -163,21 +156,22 @@ fsm_initialiser(TCP_Process)
 fsm_implementation(TCP_Process)
 
     /*! list all the states used in the FSM */
-    def_states(FRAME_SEEKHEAD,FRAME_LENGTH,FRAME_CHK,FRAME_INS,FRAME_ERR,FRAME_RPY)
+    def_states(FRAME_SEEKHEAD,FRAME_LENGTH,FRAME_CHK,FRAME_INS,FRAME_RPY)
 
     body(
 				/*! TCP接收拆包- 帧头获取 */
         state(FRAME_SEEKHEAD,
 		
-						FrameHeaderBuff = TCP_Rx_Buff[0];
-						if (FrameHeaderBuff == TCP_Recv_FH) 
+						this.FrameHeader = TCP_Rx_Buff[0];
+						if (this.FrameHeader == TCP_Recv_FH) 
 						{
-							this.FrameLength = 0;			//!< 有效帧长
-							this.DataLength =0;				//!< 数据帧长
-							this.InsNum = 0;					//!< 指令码							
-							this.InsAttrNum = 0x00; 	//!< 指令作用属性编号
-							this.ChxNum = 0x00;				//!< 指令作用通道
-							this.ERR_NUM = 0x00;			//!< 错误码
+							/* 复位 */
+							this.FrameLength = 0xFF;	//!< 有效帧长
+							this.DataLength =0xFF;		//!< 数据帧长
+							this.InsNum = 0xFF;				//!< 指令码							
+							this.InsAttrNum = 0xFF; 	//!< 指令作用属性编号
+							this.ChxNum = 0xFF;				//!< 指令作用通道（无通道操作 - 0xFF）
+							this.ERR_NUM = 0xFF;			//!< 错误码
 							
 							printf("S:LENGTH\r\n");
 							transfer_to(FRAME_LENGTH);							//!< 跳转帧长度获取
@@ -222,6 +216,7 @@ fsm_implementation(TCP_Process)
 							{
 								printf("S:ERR-CTFailed\r\n");
 								transfer_to(FRAME_SEEKHEAD);							//!< 此包丢弃
+								memset(TCP_Rx_Buff,0xFF,sizeof(TCP_Rx_Buff_Size));//!< 清空TCP接收缓冲区
 							}																	
        )						
 				
@@ -230,76 +225,57 @@ fsm_implementation(TCP_Process)
             switch (this.InsNum)
             {
             	case CAttr_Read: //!< 读普通属性
-								this._RPY_ = pattr_offset[this.InsAttrNum];	//!< 属性值地址传递
-								this.ERR_NUM = TCP_SUCCESS;
-								transfer_to(FRAME_ERR);        		
+								
+								//!< 读属性回调
+								this.ERR_NUM = pattr_CBs->pfnReadAttrCB(	this.InsAttrNum,this.ChxNum, \
+																													(TCP_Tx_Buff+4),this.pDataLength);
+								this.FrameLength = *(this.pDataLength)+2;								
+								transfer_to(FRAME_RPY);        		
 								break;
             	
 							case CAttr_Write: //!< 写普通属性
-								//!< 属性读写权限检查
-								this.AttrPermission = *(pattr+this.InsAttrNum*6);
-								if(this.AttrPermission == ATTR_RO ||		\
-										this.AttrPermission == ATTR_NV) 
-									{
-										this.ERR_NUM = TCPERR_Attr_RO; //!< 指令错误：对只读属性写操作
-										transfer_to(FRAME_ERR);
-									}
-								//!< 指令数据长度检查
-								else if(*(pattr+this.InsAttrNum*6+1)!= this.DataLength)
-									{
-										this.ERR_NUM = TCPERR_Attr_LEN;//<! 指令错误：写指令数据长度错误
-										transfer_to(FRAME_ERR);
-									}
-								else
-									{
-										this.ERR_NUM = TCP_SUCCESS;
-										this._RPY_ = pattr_offset[this.InsAttrNum];	//!< 属性值地址传递
-										memcpy((uint8_t*)this._RPY_,(TCP_Rx_Buff+5),this.DataLength); //!< 写操作
-										transfer_to(FRAME_ERR);
-									}
-									           		
+								
+								//!< 写属性回调
+								this.ERR_NUM = pattr_CBs->pfnWriteAttrCB(	this.InsAttrNum,this.ChxNum, \
+																													this._OP_,this.DataLength);  										
+								
+								if( this.ERR_NUM == SUCCESS )
+								{
+									//!< 拷贝一份用于回复 
+									memcpy((TCP_Tx_Buff+4),this._OP_,this.DataLength);
+									this.FrameLength = this.DataLength+2;
+								}
+								
+								transfer_to(FRAME_RPY);									           		
 								break;
 							
             	default:
 								printf("WrongINS\r\n");
 								transfer_to(FRAME_SEEKHEAD);							//!< 此包丢弃
+								memset(TCP_Rx_Buff,0xFF,sizeof(TCP_Rx_Buff_Size));//清空TCP接收缓冲区
             		break;
             }						
         )
 						
-				/*! 错误码标记 */				
-        state(FRAME_ERR,
-						
-								TCP_Tx_Buff[2]=this.ERR_NUM; 
-								
-								printf("RPY\r\n");
-								transfer_to(FRAME_RPY);										//!< 跳转回复  
-        )
 
 				/*! TCP回复打包 */	
         state(FRAME_RPY,
 				
-						TCP_Tx_Buff[0] = TCP_Send_FH; //!< 帧头
-						
-						if(this.ERR_NUM == TCP_SUCCESS) //!< 正确接收
+						TCP_Tx_Buff[0] = TCP_Send_FH;					//!< 帧头
+						if( this.ERR_NUM == SUCCESS )
 						{
-							this.DataLength=*(pattr+this.InsAttrNum*6+1); //!< 数据帧长
-							
-							this.FrameLength=this.DataLength+2;  
-							TCP_Tx_Buff[1]= this.FrameLength; //!< 有效帧长						
-							TCP_Tx_Buff[3] = this.InsAttrNum; //!< 回复类型（属性编号）						
-							memcpy((TCP_Tx_Buff+4),(uint8_t*)this._RPY_,this.DataLength); //!< 数据帧
+							TCP_Tx_Buff[1] = this.FrameLength;	//!< 有效帧
+							TCP_Tx_Buff[2] = this.ERR_NUM;			//!< 错误码											
+							TCP_Tx_Buff[3] = this.InsAttrNum; 	//!< 回复类型（属性编号）						
 						}
 						else //!< 错误接收
 						{
 							this.FrameLength=1; //!< 有效帧只含错误码
-							
+							TCP_Tx_Buff[1] = this.FrameLength;	//!< 有效帧							
 						}
 											
 						TCP_Tx_Buff[this.FrameLength+2]=TCP_Send_FT; //!< 帧尾
-						
-						TCP_RPY_Size = this.FrameLength+3; //!< 通知w5500_app回复目的主机
-						
+												
 						printf("S:SEEK\r\n");
 						transfer_to(FRAME_SEEKHEAD);
 						           
@@ -326,98 +302,3 @@ void ProtocolProcessFSM(void)
     }
 }
 						
-
-
-/*
-void BT_DataFrameBuilder (void)
-{
-	static unsigned char lChecksumChar;
-	unsigned char i;
-	
-	//header
-	BT_USART_BUFF[0] = 0xAB;
-	
-	//TimeStamp
-	BT_USART_BUFF[1] = *pcCurTimeStamp;
-	BT_USART_BUFF[2] = *(pcCurTimeStamp+1);
-	BT_USART_BUFF[3] = *(pcCurTimeStamp+2);
-	BT_USART_BUFF[4] = *(pcCurTimeStamp+3);
-	
-	//Event Tag
-	BT_USART_BUFF[5] = *(pcCurEventTag);
-	BT_USART_BUFF[6] = *(pcCurEventTag+1);
-	if(BT_USART_BUFF[5]|BT_USART_BUFF[6])
-	{
-		*(pcCurEventTag) = 0;
-		*(pcCurEventTag+1) = 0;
-	}
-
-	memcpy(BT_USART_BUFF+7,resultval+4,24);
-
-
-	
-	
-	lChecksumChar = 0;
-	for(i=1;i<31;i++)
-	{
-		lChecksumChar += BT_USART_BUFF[i];
-	}
-	
-	BT_USART_BUFF[31] = lChecksumChar;
-	BT_USART_BUFF[32] = 0xCB;
-
-}
-
-void ProtocolDataService_Init(void)
-{
-	
-}
-void ProtocolDataService_Process(void)
-{
-	
-
-	
-	switch (SYS_Status)
-  {
-  	case SYS_STATUS_ACQUIRING:
-		{	
-			if(NewSample)
-			{
-				NewSample = 0;
-				SampleNum++;
-				if(SampleNum >= 125)
-				{
-					SampleNum = 0;
-					LL_GPIO_TogglePin(COP_LED_GPIO_Port, COP_LED_Pin);
-				}
-		
-				BT_DataFrameBuilder();
-				while(BT_USART_Mutex)  // #### While Mutex
-				{}
-				BT_USART_DMASend((uint32_t)BT_USART_BUFF,33);
-				
-			}
-			
-			
-			
-  		break;
-		}
-  	case SYS_STATUS_BTCONNECTIONLOST:
-  		break;
-		case SYS_STATUS_SPECIALMODE:
-			
-  		break;
-  	default:
-  		break;
-  }
-}
-
-inline void ProtocolDataService_Process_INT(void)
-{
-	NewSample = 1;
-}
-						
-*/
-
-
-

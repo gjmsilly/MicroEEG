@@ -1,3 +1,13 @@
+/**
+ * @file    microEEG_misc.c
+ * @author  modified by gjmsilly
+ * @brief   MicroEEG 杂项服务
+ * @version 1.0
+ * @date    2020-09-09
+ * @copyright (c) 2020 gjmsilly
+ *
+ */
+
 #include "microEEG_misc.h"
 
 
@@ -24,135 +34,140 @@ uint8_t BT_USART_Mutex;
 uint8_t BT_USART_Ready;
 
 
-/*    LED Service    */
+///*    LED Service    */
 
-void LED_Service_Init(void)
-{
-	LED1_OFF;
-	LED2_OFF;
-	LED_COP_OFF;
+//void LED_Service_Init(void)
+//{
+//	LED1_OFF;
+//	LED2_OFF;
+//	LED_COP_OFF;
+//	
+//	LED1FlashCounter = 0;
+//	LED2FlashCounter = 0;
+//}
+
+
+//void LED_Service_Process(void)
+//{	
+//	
+//	
+//	switch (SYS_Status)
+//  {
+//  	
+//		case SYS_STATUS_INIT:
+//		{
+//  		LED1_OFF;
+//			LED2_OFF;
+//			break;
+//		}
+//  	
+//		case SYS_STATUS_STANDBY:
+//		{
+//  		LED1_OFF;
+//			LED2_ON;
+//			break;
+//		}
+//		
+//		case SYS_STATUS_ACQUIRING:
+//		{
+
+//			if(LED1FlashCounter > 250)
+//			{
+//				LED2_TOGGLE;
+//				LED1FlashCounter = 0;
+//			}
+//			
+//			LED1_OFF;
+//			break;
+//		}
+//		
+//		case SYS_STATUS_BTCONNECTIONLOST:
+//		{
+//  		LED1_ON;
+//			LED2_OFF;
+//			break;
+//		}
+//		
+//		case SYS_STATUS_SPECIALMODE:
+//		{
+//  		if(LED1FlashCounter > 100)
+//			{
+//				LED1_TOGGLE;
+//				LED1FlashCounter = 0;
+//			}
+//			
+//			LED2_OFF;
+//			break;
+//		}
+//		
+//  	default:
+//  		break;
+//  }
+//	
+//}
+
+
+//inline void LED_Service_Process_INT(void)
+//{
+//	LED1FlashCounter++;
+//}
+
+
+///*    BTModule Service    */
+
+
+//void BTModule_Service_Init(void)
+//{
+//	BT_USART_Ready = 0;
+//	BT_USART_Mutex = 0;
+//}
+
+//void BTModule_Service_Process(void)
+//{
+//	if(LL_GPIO_IsInputPinSet(BT_LINK_GPIO_Port,BT_LINK_Pin))
+//	{
+//		//BT_USART_Ready = 0;
+//		SYS_Status = SYS_STATUS_BTCONNECTIONLOST;
+//	}
+//	else
+//	{
+//		//BT_USART_Ready = 1;
+//		if(SYS_Status == SYS_STATUS_BTCONNECTIONLOST)
+//		{
+//			SYS_Status = SYS_STATUS_STANDBY;
+//		}
+//	}
+//	
+//}
+
+/*  =========================== 系统状态控制 =============================
+ */
+/*! @brief	时间戳服务 
+ *					本服务产生数据包时间增量时间戳 int64 精度1ns 
+ */
+
+
 	
-	LED1FlashCounter = 0;
-	LED2FlashCounter = 0;
-}
-
-
-void LED_Service_Process(void)
-{	
-	
-	
-	switch (SYS_Status)
-  {
-  	
-		case SYS_STATUS_INIT:
-		{
-  		LED1_OFF;
-			LED2_OFF;
-			break;
-		}
-  	
-		case SYS_STATUS_STANDBY:
-		{
-  		LED1_OFF;
-			LED2_ON;
-			break;
-		}
-		
-		case SYS_STATUS_ACQUIRING:
-		{
-
-			if(LED1FlashCounter > 250)
-			{
-				LED2_TOGGLE;
-				LED1FlashCounter = 0;
-			}
-			
-			LED1_OFF;
-			break;
-		}
-		
-		case SYS_STATUS_BTCONNECTIONLOST:
-		{
-  		LED1_ON;
-			LED2_OFF;
-			break;
-		}
-		
-		case SYS_STATUS_SPECIALMODE:
-		{
-  		if(LED1FlashCounter > 100)
-			{
-				LED1_TOGGLE;
-				LED1FlashCounter = 0;
-			}
-			
-			LED2_OFF;
-			break;
-		}
-		
-  	default:
-  		break;
-  }
-	
-}
-
-
-inline void LED_Service_Process_INT(void)
-{
-	LED1FlashCounter++;
-}
-
-
-/*    BTModule Service    */
-
-
-void BTModule_Service_Init(void)
-{
-	BT_USART_Ready = 0;
-	BT_USART_Mutex = 0;
-}
-
-void BTModule_Service_Process(void)
-{
-	if(LL_GPIO_IsInputPinSet(BT_LINK_GPIO_Port,BT_LINK_Pin))
-	{
-		//BT_USART_Ready = 0;
-		SYS_Status = SYS_STATUS_BTCONNECTIONLOST;
-	}
-	else
-	{
-		//BT_USART_Ready = 1;
-		if(SYS_Status == SYS_STATUS_BTCONNECTIONLOST)
-		{
-			SYS_Status = SYS_STATUS_STANDBY;
-		}
-	}
-	
-}
-
-	
-	
-/*    Timestamp Service    */
-
+/*  ============================ 时间戳服务 ==============================
+ */ 
+/*! @brief	时间戳服务 
+ *					本服务产生数据包时间增量时间戳 int64 精度1ns 
+ */
 void TSG_TIM5_Init(void);	
-	
-	
+		
 void Timestamp_Service_Init(void)
 {
 	//pointer Init
 	pcCurTimeStamp = (char*)&CurTimeStamp;
-
 	
 	TSG_TIM5_Init();
 }
 	
-	
-	
+		
 uint32_t Timestamp_Service_GetTimestamp(void)
 {
 
 }
-
 
 // TimeStamp Generator 
 void TSG_TIM5_Init(void)

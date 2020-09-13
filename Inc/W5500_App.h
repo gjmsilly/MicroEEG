@@ -37,8 +37,8 @@ typedef struct
 /*********************************************************************
  * Macros
  */
-#define TRUE							0xff
-#define FALSE							0x00
+#define TRUE							0xaa
+#define FALSE							0xbb
 
 /*******************************************************************************
  * FUNCTIONS

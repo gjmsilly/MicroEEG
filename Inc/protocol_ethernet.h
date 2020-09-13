@@ -10,7 +10,7 @@
 /*********************************************************************
  * Macros
  */
-#define TCP_Rx_Buff_Size		40
+#define TCP_Rx_Buff_Size		16
 #define TCP_Tx_Buff_Size		1024
 #define UDP_Tx_Buff_Size		1024
 
@@ -20,7 +20,7 @@
 extern uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];			//TCP接收数据缓冲区 
 extern uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];			//TCP发送数据缓冲区
 extern uint8_t UDP_Tx_Buff[UDP_Tx_Buff_Size];			//UDP发送数据缓冲区
-extern uint8_t TCP_RPY_Size;
+
 /**********************************************************************
  * FUNCTIONS
  */

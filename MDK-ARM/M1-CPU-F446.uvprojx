@@ -633,6 +633,16 @@
               <FileType>1</FileType>
               <FilePath>..\Src\protocol_ethernet.c</FilePath>
             </File>
+            <File>
+              <FileName>microEEG_misc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\microEEG_misc.c</FilePath>
+            </File>
+            <File>
+              <FileName>simpleInsQueue.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\simpleInsQueue.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
