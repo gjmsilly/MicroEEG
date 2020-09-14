@@ -11,6 +11,7 @@
 #include "microEEG_misc.h"
 
 
+
 /* 
 	 INIT -- LED Green OFF
 	 STANDBY -- LED Green ON
@@ -33,6 +34,8 @@ uint8_t SYS_Status = 0;
 uint8_t BT_USART_Mutex;
 uint8_t BT_USART_Ready;
 
+/*  =========================== 系统状态控制 =============================
+ */
 
 ///*    LED Service    */
 
@@ -140,11 +143,7 @@ uint8_t BT_USART_Ready;
 //	
 //}
 
-/*  =========================== 系统状态控制 =============================
- */
-/*! @brief	时间戳服务 
- *					本服务产生数据包时间增量时间戳 int64 精度1ns 
- */
+
 
 
 	

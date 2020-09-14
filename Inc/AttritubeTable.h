@@ -27,6 +27,7 @@ extern "C" {
 
 /* 读写回调状态参数 */
 #define	SUCCESS 						0x00	//!< SUCCESS
+#define FAILURE							0Xff	//!< FAILURE
 #define	ATTR_ERR_RO					0x01	//!< 属性不允许写操作
 #define	ATTR_ERR_SIZE				0x02	//!< 待写数据长度与属性值长度不符 
 #define	ATTR_NOT_FOUND			0x0a	//!< 待读写的属性不存在 
@@ -46,7 +47,10 @@ extern "C" {
 #define DEV_PORTSTAT				5
 #define HOST_PORT						6
 #define SAMPLE_NUM					7
-														 
+
+/* 属性值 */
+#define SAMPLING						0			//!< 正在采样
+#define STOPSAMPLING				1			//!< 停止采样
 /*******************************************************************
  * TYPEDEFS
  */
@@ -218,7 +222,14 @@ typedef struct
   pfnWriteAttrCB_t 	pfnWriteAttrCB;					//!< 写属性回调函数指针
 } AttrCBs_t;
 
- /********************************************************************
+/*!
+ *  @def    属性值变化回调函数原型
+ *	@param	AttrNum - 值变化的属性
+ *
+ */
+typedef void (*pfnAttrChangeCB_t)( uint8_t AttrNum );
+
+/********************************************************************
  * EXTERNAL VARIABLES
  */
 extern AttrCBs_t *pattr_CBs;
@@ -227,4 +238,5 @@ extern AttrCBs_t *pattr_CBs;
  * FUNCTIONS
  */
 void Attr_Tbl_Init();
+uint8_t Attr_Tbl_RegisterAppCBs( void *appCallbacks);
 #endif

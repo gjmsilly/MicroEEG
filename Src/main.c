@@ -32,6 +32,7 @@
 #include "socket.h"
 #include "AttritubeTable.h"
 #include "protocol_ethernet.h"
+#include "SimpleInsQueue.h"
 
 /* USER CODE END Includes */
 
@@ -42,7 +43,15 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+// Shell
 #define Shell_UART USART1
+ 
+// System events
+#define ATTR_CHANGE_EVT					( 1 << 0 )	//!< 属性值变化
+#define TCP_COMPLETE_EVT				( 1 << 1 ) 	//!< TCP协议处理完毕
+#define EEG_DATA_READY_EVT			( 1 << 2 )	//!< EEG数据封包完成
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,11 +67,12 @@ QSPI_HandleTypeDef hqspi;
 DMA_HandleTypeDef hdma_quadspi;
 
 /* USER CODE BEGIN PV */
-SHELL_TypeDef shell;
-
-uint8_t resultval[28];  					//ADS1299 结果缓存区
+SHELL_TypeDef shell;						//!< shell句柄
+uint8_t resultval[28];  				//!< ADS1299 结果缓存区
 uint8_t ReadResult;
 
+static InsQUEUE InsQueue;				//!< TCP指令队列
+static uint8_t SYS_Event;				//!< 系统状态事件 - @ref System events 									
 
 /* USER CODE END PV */
 
@@ -82,6 +92,9 @@ static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
 
 
+static void AttrChangeCB(uint8_t AttrNum); //!< 属性值变化回调函数	
+static void Sys_Control(); //!< 系统控制函数
+
 //for EXPORT Functions
 void ADC_StartAcq(void);
 void ADC_StopAcq(void);
@@ -96,6 +109,10 @@ void Get_TSG_CNT(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+////////////////////////////////////////////////////////////////////////////////
+/*!		@fn shell_XXX	  
+ *		@brief	fuction for shell
+ */
 int fputc(int ch, FILE* stream)
 {
 
@@ -124,9 +141,10 @@ signed char ShellGetchar(char* ch)
 		return -1;
 	}
 }
-
-// test functions for ADC (exported)
-
+////////////////////////////////////////////////////////////////////////////////
+/*!		@fn ADC_XXX	  
+ *		@brief	test functions for ADC
+ */
 void ADC_StartAcq(void)
 {
 	Mod_DRDY_INT_Enable;
@@ -208,14 +226,48 @@ void checkbuffer6B(unsigned char offset)
 }
 SHELL_EXPORT_CMD(checkbuffer6B, checkbuffer6B, Print buffer 6byte);
 
-
 void Get_TSG_CNT(void)
 {
 	printf("CNT=%d\r\n",TIM5->CNT);
 }
 SHELL_EXPORT_CMD(Get_TSG_CNT, Get_TSG_CNT, Get timestamp generator cnt);
+////////////////////////////////////////////////////////////////////////////////
+/*!		@fn AttrChangeCB	  
+ *		@brief	属性值变化回调
+ */
+static void AttrChangeCB(uint8_t AttrNum)
+{
+	EnQueue(&InsQueue,AttrNum);			//!< 变化的属性编号入队等待系统处理
+	SYS_Event |= ATTR_CHANGE_EVT;
+}
 
+/*!		@fn Sys_Control	  
+ *		@brief	系统状态控制
+ */
+static void Sys_Control()
+{
+	uint8_t AttrChangeNum;
+	uint8_t *pAttrValue;
+	uint8_t *pAttrLen;
+	
+	//!< TCP回复完毕且属性值有变化时做进一步操作
+	if((SYS_Event & ATTR_CHANGE_EVT) && (SYS_Event & TCP_COMPLETE_EVT))  
+	{
+		AttrChangeNum=DeQueue(&InsQueue);	//!< 出队 - 变化的属性值
+		pattr_CBs->pfnReadAttrCB(	AttrChangeNum,0xFF,pAttrValue,pAttrLen); //!< 读取属性当前值		
+		
+		switch(AttrChangeNum)
+		{
+			/* ads1299 采集*/
+			case 0:
+				if(*pAttrValue == SAMPLING )
+				ADS1299_ReadResult(UDP_Tx_Buff);	
 
+			break;
+				
+		}
+	}
+}
 
 /* USER CODE END 0 */
 
@@ -280,6 +332,9 @@ int main(void)
 	//Attribute table Initial
 	Attr_Tbl_Init();
 	
+	//注册属性值变化回调函数
+	Attr_Tbl_RegisterAppCBs(&AttrChangeCB);
+	
 	//LED Initial
 	PWR_LED1_ON;
 	PWR_LED2_OFF;
@@ -293,21 +348,19 @@ int main(void)
 	W5500_RST();//硬件复位
 	W5500_Init(); //W5500初始化，配置Socket
 
-//--------------------------------------------------------------
-/* ADS1299 */	
-//	//Configure the DMA
-//	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
-//	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
-//	
-//	//ADS1299 Initial
-//	LL_SPI_Enable(SPI1);
-//	ADS1299_PowerOn(0);
-//	ADS1299_Reset(0);		
-//	
-//  ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
+	//Configure the DMA for ads1299
+	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
+	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
+	
+	//ADS1299 Initial
+	LL_SPI_Enable(SPI1);
+	ADS1299_PowerOn(0);
+	ADS1299_Reset(0);		
+	
+  ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
 
-//	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7
-//--------------------------------------------------------------	
+	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7
+
  
   /* USER CODE END 2 */
 
@@ -317,12 +370,15 @@ int main(void)
   {
 
     shellTask(&shell);
-
-		TCPServer_Service(0);	//Socket0 TCP服务器服务
-		//UDP_Service(1);				//Socket1 UDP服务
 				
-		//HAL_Delay(500);		
-   
+		if( TCPServer_Service(0)== TCP_COMPLETE ) // Socket0 TCP服务器服务
+		{
+			SYS_Event |= TCP_COMPLETE_EVT;
+		}
+
+//		UDP_Service(1);				//Socket1 UDP服务
+		
+		Sys_Control(); // 系统状态控制					   
 
 		/* USER CODE END WHILE */
 

@@ -18,21 +18,13 @@
 #include "simple_fsm.h"
 
 #include "protocol_ethernet.h"
-#include "SimpleInsQueue.h"
 #include "main.h"
 #include "microEEG_misc.h"
-#include "AttritubeTable.h"
-													 
+#include "AttritubeTable.h"												 
+
 /*********************************************************************
  * LOCAL VARIABLES
  */
-
-/* 指令码 */
-const uint8_t	DummyIns = 0x00;						//<! 空指令
-const uint8_t	CAttr_Read = 0x01;					//<! 读一个普通属性
-const uint8_t	CAttr_Write = 0x10;					//<! 写一个普通属性
-const uint8_t	ChxAttr_Read = 0x02;				//<! 读一个通道属性
-const uint8_t	ChxAttr_Write = 0x20;				//<! 写一个通道属性
 
 /* 控制通道参数（TCP端口） */
 // 上位机->设备 指令解析
@@ -42,6 +34,8 @@ static uint8_t	TCP_Recv_FT = 0xCC;				//<! TCP接收帧尾
 // 设备->上位机 回复
 static uint8_t	TCP_Send_FH = 0xA2;				//<! TCP发送帧头
 static uint8_t	TCP_Send_FT = 0xC2;				//<! TCP发送帧尾
+
+static uint8_t	fsm_status;								//!< 状态机运行状态	
 
 /*******************************************************************
  * GLOBAL VARIABLES
@@ -161,7 +155,7 @@ fsm_implementation(TCP_Process)
     body(
 				/*! TCP接收拆包- 帧头获取 */
         state(FRAME_SEEKHEAD,
-		
+
 						this.FrameHeader = TCP_Rx_Buff[0];
 						if (this.FrameHeader == TCP_Recv_FH) 
 						{
@@ -172,6 +166,7 @@ fsm_implementation(TCP_Process)
 							this.InsAttrNum = 0xFF; 	//!< 指令作用属性编号
 							this.ChxNum = 0xFF;				//!< 指令作用通道（无通道操作 - 0xFF）
 							this.ERR_NUM = 0xFF;			//!< 错误码
+							this.pDataLength = &this.DataLength;	
 							
 							printf("S:LENGTH\r\n");
 							transfer_to(FRAME_LENGTH);							//!< 跳转帧长度获取
@@ -215,8 +210,8 @@ fsm_implementation(TCP_Process)
 							else //!< 帧尾检测失败
 							{
 								printf("S:ERR-CTFailed\r\n");
-								transfer_to(FRAME_SEEKHEAD);							//!< 此包丢弃
 								memset(TCP_Rx_Buff,0xFF,sizeof(TCP_Rx_Buff_Size));//!< 清空TCP接收缓冲区
+								transfer_to(FRAME_SEEKHEAD);							//!< 此包丢弃								
 							}																	
        )						
 				
@@ -229,7 +224,8 @@ fsm_implementation(TCP_Process)
 								//!< 读属性回调
 								this.ERR_NUM = pattr_CBs->pfnReadAttrCB(	this.InsAttrNum,this.ChxNum, \
 																													(TCP_Tx_Buff+4),this.pDataLength);
-								this.FrameLength = *(this.pDataLength)+2;								
+								this.FrameLength = *(this.pDataLength)+2;
+								printf("S:RPY\r\n");								
 								transfer_to(FRAME_RPY);        		
 								break;
             	
@@ -245,15 +241,15 @@ fsm_implementation(TCP_Process)
 									memcpy((TCP_Tx_Buff+4),this._OP_,this.DataLength);
 									this.FrameLength = this.DataLength+2;
 								}
-								
+								printf("S:RPY\r\n");
 								transfer_to(FRAME_RPY);									           		
 								break;
 							
             	default:
 								printf("WrongINS\r\n");
-								transfer_to(FRAME_SEEKHEAD);							//!< 此包丢弃
 								memset(TCP_Rx_Buff,0xFF,sizeof(TCP_Rx_Buff_Size));//清空TCP接收缓冲区
-            		break;
+            		transfer_to(FRAME_SEEKHEAD);							//!< 此包丢弃	
+								break;
             }						
         )
 						
@@ -262,22 +258,18 @@ fsm_implementation(TCP_Process)
         state(FRAME_RPY,
 				
 						TCP_Tx_Buff[0] = TCP_Send_FH;					//!< 帧头
-						if( this.ERR_NUM == SUCCESS )
-						{
-							TCP_Tx_Buff[1] = this.FrameLength;	//!< 有效帧
-							TCP_Tx_Buff[2] = this.ERR_NUM;			//!< 错误码											
-							TCP_Tx_Buff[3] = this.InsAttrNum; 	//!< 回复类型（属性编号）						
-						}
-						else //!< 错误接收
-						{
-							this.FrameLength=1; //!< 有效帧只含错误码
-							TCP_Tx_Buff[1] = this.FrameLength;	//!< 有效帧							
-						}
-											
+						
+						if( this.ERR_NUM != SUCCESS )
+							this.FrameLength=2; //!< 有效帧只含错误码+回复类型
+								
+						TCP_Tx_Buff[1] = this.FrameLength;	//!< 有效帧
+						TCP_Tx_Buff[2] = this.ERR_NUM;			//!< 错误码											
+						TCP_Tx_Buff[3] = this.InsAttrNum; 	//!< 回复类型（属性编号）	
+										
 						TCP_Tx_Buff[this.FrameLength+2]=TCP_Send_FT; //!< 帧尾
-												
-						printf("S:SEEK\r\n");
-						transfer_to(FRAME_SEEKHEAD);
+						
+						printf("S:END\r\n");
+						fsm_cpl(); //!< 状态机完成
 						           
         )       
     )
@@ -294,11 +286,14 @@ void ProtocolProcessFSMInit(void)
 	 }
 }
 
-void ProtocolProcessFSM(void)
+uint8_t ProtocolProcessFSM(void)
 {
+		//!< 状态机完成
 		if (fsm_rt_cpl == call_fsm( TCP_Process, &s_fsmProtocolProcess )) 
 		{
-               /* fsm is complete, do something here */
+			fsm_status=_FSM_CPL_; //!< 通知上层
+        
+			return fsm_status;       
     }
 }
 						

@@ -91,7 +91,7 @@ const Attr_Tbl_t attr_tbl = {
 		
 		//!< 目的主机UDP端口号 - 7002 (default)
 		.Host_Port			= { ATTR_NV,
-												1,
+												2,
 												(uint32_t*)&host_port
 											},
 		
@@ -116,7 +116,9 @@ static uint8_t WriteAttrCB(	uint8_t InsAttrNum,
 														uint8_t CHxNum,
 														uint8_t *pValue,
 														uint8_t len );
-/* 注册回调函数 */
+
+static pfnAttrChangeCB_t pAppCallbacks; 
+	
 static AttrCBs_t attr_CBs =
 {
 	.pfnReadAttrCB = ReadAttrCB,					//!< 读属性回调函数指针 
@@ -132,11 +134,10 @@ static AttrCBs_t attr_CBs =
 void Attr_Tbl_Init()
 {
 	
-	/* 注册回调函数 */
+	/* 注册回调函数，供上层应用调用 */
 	 pattr_CBs =&attr_CBs;
 	
-	/* 建立地址映射 */	
-	
+	/* 建立地址映射 */		
 	pattr = (uint8_t*)&attr_tbl; //!< 属性表首地址
 	
 	//!< 属性地址偏移映射关系   
@@ -150,6 +151,24 @@ void Attr_Tbl_Init()
 	pattr_offset[6] = (uint32_t*)attr_tbl.Host_Port.pAttrValue;
 	pattr_offset[7] = (uint32_t*)attr_tbl.SampleNum.pAttrValue;
 
+}
+
+/*!
+ *  @fn	应用程序注册回调函数的接口
+ *	@return SUCCESS - 回调函数注册成功
+ *					FAILURE - 回调函数注册失败
+ */
+uint8_t Attr_Tbl_RegisterAppCBs(void *appcallbacks)
+{
+	if ( appcallbacks )
+  {
+		pAppCallbacks = appcallbacks;
+    return ( SUCCESS );
+	}
+	else
+	{
+	  return ( FAILURE );
+	}
 }
 
 /*!
@@ -168,7 +187,7 @@ static uint8_t ReadAttrCB(	uint8_t InsAttrNum,uint8_t CHxNum,
 {
 	uint8_t status = SUCCESS;
 	uint8_t *pAttrValue;	//!< 属性值地址
-	
+
 	if( (InsAttrNum > ATTR_NUM ) && ( CHxNum == 0xFF ))
 	{
 		status = ATTR_NOT_FOUND; //!< 属性不存在
@@ -178,8 +197,7 @@ static uint8_t ReadAttrCB(	uint8_t InsAttrNum,uint8_t CHxNum,
 	if(status == SUCCESS)
 	{
 		pAttrValue = (uint8_t*)pattr_offset[InsAttrNum];//!< 属性值地址传递
-		*pLen = *(pattr+InsAttrNum*6+1);	//!< 属性值大小传递（note：值传递，非指针传递）
-		
+		*pLen = *(pattr+InsAttrNum*6+1);	//!< 属性值大小传递（值传递!地址不变 9.13）
 		memcpy(pValue,pAttrValue,*pLen); //!< 属性值读取
 	}
 	
@@ -233,11 +251,12 @@ static uint8_t WriteAttrCB( uint8_t InsAttrNum,uint8_t CHxNum,
 		notifyApp=InsAttrNum;
 	}
 	
-//	if( (notifyApp!=0xFF)
-//	{
-//		NULL;
-//	}
+	if( (notifyApp!=0xFF) && pAppCallbacks )
+	{
+		(*pAppCallbacks)(notifyApp);
+	}
 	
 	return status;
 
 }
+

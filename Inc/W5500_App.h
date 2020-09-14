@@ -33,12 +33,18 @@ typedef struct
 	uint8_t  _UDP_DIPR_[2]; //字节对齐
 }SOCKETnParam_t;
 
-
 /*********************************************************************
  * Macros
  */
-#define TRUE							0xaa
-#define FALSE							0xbb
+#define TRUE							0x00
+#define FALSE							0xff
+
+// 端口状态
+#define Sn_OPEN						0x00	//!< 端口已打开
+#define Sn_LISTEN					0x01	//!< 端口正在监听
+#define Sn_CLOSE					0x02	//!< 端口已关闭
+#define TCP_PROCESS				0x03	//!< TCP端口正在处理数据
+#define TCP_COMPLETE			0x04	//!< TCP端口数据处理完毕
 
 /*******************************************************************************
  * FUNCTIONS
@@ -50,8 +56,8 @@ void W5500_Load_Net_Parameters(void);
 uint8_t Detect_Gateway(void);
 void W5500_Socket_Init(uint8_t sn);
 
-void TCPServer_Service(uint8_t sn);
-void UDP_Service(uint8_t sn);
+uint8_t TCPServer_Service(uint8_t sn);
+uint8_t UDP_Service(uint8_t sn);
 
 
 #endif   // _w5500_app_H_

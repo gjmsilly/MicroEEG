@@ -26,7 +26,7 @@
 /*******************************************************************************
  * GLOBAL VARIABLES
  */
-uint8_t W5500_Send_flag = 0;                //1- 准备向W5500 socket n发送缓冲区写入
+
 
  /*******************************************************************************
  * LOCAL VARIABLES
@@ -174,7 +174,7 @@ void W5500_Load_Net_Parameters(void)
 		(Psn_param+1)->UDP_DIPR[3] = 101;
 
 		//UDP(广播)模式需配置目的主机端口号 7002（default）
-		pattr_CBs->pfnReadAttrCB(HOST_PORT,0xFF,(uint8_t*)Psn_param->Sn_DPort,Plen);
+		pattr_CBs->pfnReadAttrCB(HOST_PORT,0xFF,(uint8_t*)(Psn_param+1)->Sn_DPort,Plen);
 	}
 }
 
@@ -312,14 +312,19 @@ void W5500_Socket_Init(uint8_t sn)
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *
-* 返回值  : 无
+* 返回值  : @Sn_OPEN - 端口已打开
+*						@Sn_LISTEN - 端口正在监听
+*						@Sn_CLOSE - 端口已关闭
+*						@TCP_PROCESS - TCP端口正在处理数据
+*						@TCP_COMPLETE - TCP端口数据处理完毕
 *
 * 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
-void TCPServer_Service(uint8_t sn)
+uint8_t TCPServer_Service(uint8_t sn)
 {
 	uint16_t recvsize=0,sentsize = 0; // 用于回环测试
-	uint32_t taddr;
+	uint8_t	protocol_status; //!< 协议栈运行状态
+	uint8_t TCPserv_status; //!< TCP服务状态
 	
 	switch(getSn_SR(sn))
 	{
@@ -327,11 +332,15 @@ void TCPServer_Service(uint8_t sn)
 		case SOCK_CLOSED:
 			socket(sn,Sn_MR_TCP,(Psn_param+sn)->Sn_Port,0); //打开Socket绑定TCP默认端口
 			setSn_KPALVTR(sn,2);    //设置心跳包自动发送间隔，单位时间为5s
+			
+			TCPserv_status = Sn_OPEN;
 		break;
 		
 		/* Socket n 已完成初始化 */
 		case SOCK_INIT:
 			listen(sn); //开始监听
+		
+			TCPserv_status = Sn_LISTEN;
 		break;
 		
 		/* Socket n 处于连接状态 */
@@ -343,20 +352,27 @@ void TCPServer_Service(uint8_t sn)
 			}	
 
 			if((recvsize = getSn_RX_RSR(sn))>0) //接收目的主机发来的TCP数据			
-				sentsize = DMA_recv(sn,TCP_Rx_Buff,recvsize);  //从接收缓冲区全部读取
+				DMA_recv(sn,TCP_Rx_Buff,recvsize);  //从接收缓冲区全部读取
 			
-			ProtocolProcessFSM(); //TCP帧协议解析及回复封包	
+			protocol_status = ProtocolProcessFSM(); //TCP帧协议解析及回复封包	
 			
-			if(TCP_RPY_Size!=0xFF)
+			if( protocol_status == _FSM_CPL_)
 			{
 				send(sn, TCP_Tx_Buff, TCP_Tx_Buff[1]+3); //TCP回复目的主机
 				memset(TCP_Rx_Buff,0xff,sizeof(TCP_Rx_Buff));//清除缓冲区
+				
+				TCPserv_status = TCP_COMPLETE;
 			}
+			else
+				TCPserv_status = TCP_PROCESS;
+		
 		break;
 			
 		/* Socket n 断开请求 */
 		case SOCK_CLOSE_WAIT:
 			close(sn);
+			
+			TCPserv_status = Sn_CLOSE;
 		break;
 	}		
 }
@@ -372,7 +388,7 @@ void TCPServer_Service(uint8_t sn)
 *
 * 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
-void UDP_Service(uint8_t sn)
+uint8_t UDP_Service(uint8_t sn)
 {
 	switch(getSn_SR(sn))
 	{
@@ -385,16 +401,16 @@ void UDP_Service(uint8_t sn)
 		/* Socket n 已完成初始化 */
 		case SOCK_UDP:
 			
-			HAL_Delay(500);
+		//	HAL_Delay(500);
 			
 			// 准备发送数据包至目的主机
 			///if(W5500_Send_flag)
 			//{
-				sendto(sn, UDP_Tx_Buff,    				  \
-							 sizeof(UDP_Tx_Buff), 				\
-							 (Psn_param+sn)->UDP_DIPR,  \
-							 (Psn_param+sn)->UDP_DPORT);  // test:1024byte
-			//}		
+//				sendto(sn, UDP_Tx_Buff,    				  \
+//							 sizeof(UDP_Tx_Buff), 				\
+//							 (Psn_param+sn)->UDP_DIPR,  \
+//							 (Psn_param+sn)->UDP_DPORT);  // test:1024byte
+//			//}		
 		break;
 		
 	}
