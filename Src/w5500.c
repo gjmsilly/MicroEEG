@@ -54,7 +54,6 @@
 //#include <stdio.h>
 #include "stm32f4xx_hal.h"
 #include "w5500.h"
-#include "w5500_app.h"
 #include "qspi_conf.h"
 
 extern QSPI_HandleTypeDef hqspi; 

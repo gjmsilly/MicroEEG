@@ -48,9 +48,7 @@ extern "C" {
 #define HOST_PORT						6
 #define SAMPLE_NUM					7
 
-/* 属性值 */
-#define SAMPLING						0			//!< 正在采样
-#define STOPSAMPLING				1			//!< 停止采样
+
 /*******************************************************************
  * TYPEDEFS
  */
@@ -192,35 +190,7 @@ enum Dev_PortStat_t
 //	 Ref_specCh= -2
 //};
 
-/*!
- *  @def    读属性回调函数原型
- *	@param	InsAttrNum - 待读属性编号
- *					CHxNum - 通道编号（通道属性专用，默认不用	0xFF）
- *					pValue - 属性值 （to be returned）
- *					pLen - 属性值大小（to be returned） 
- *
- */
-typedef uint8_t (*pfnReadAttrCB_t)( uint8_t InsAttrNum, uint8_t CHxNum, 
-																		uint8_t *pValue, uint8_t *pLen );
 
-/*!
- *  @def		写属性回调函数原型
- *	@param	InsAttrNum - 待写入属性编号
- *					CHxNum - 通道编号（通道属性专用，默认不用	0xFF）
- *					pValue - 待写入数据的指针
- *					pLen - 待写入数据大小	
- */
-typedef uint8_t (*pfnWriteAttrCB_t)(	uint8_t InsAttrNum, uint8_t CHxNum,
-																			uint8_t *pValue, uint8_t len );
-
-/*!
- *  @def    属性读写回调函数 结构体
- */
-typedef struct
-{
-  pfnReadAttrCB_t 	pfnReadAttrCB;					//!< 读属性回调函数指针	
-  pfnWriteAttrCB_t 	pfnWriteAttrCB;					//!< 写属性回调函数指针
-} AttrCBs_t;
 
 /*!
  *  @def    属性值变化回调函数原型
@@ -229,14 +199,11 @@ typedef struct
  */
 typedef void (*pfnAttrChangeCB_t)( uint8_t AttrNum );
 
-/********************************************************************
- * EXTERNAL VARIABLES
- */
-extern AttrCBs_t *pattr_CBs;
 
 /*********************************************************************
  * FUNCTIONS
  */
 void Attr_Tbl_Init();
+
 uint8_t Attr_Tbl_RegisterAppCBs( void *appCallbacks);
 #endif

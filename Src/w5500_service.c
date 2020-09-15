@@ -1,7 +1,7 @@
 /**
- * @file    w5500_app.c
+ * @file    w5500_service.c
  * @author  gjmsilly
- * @brief   W5500应用程序（轮询方式/配置Socket 0 - TCP Socket 1 - UDP）
+ * @brief   W5500服务 - 以太网通讯服务
  * @version 1.0
  * @date    2020-08-29
  *
@@ -16,23 +16,29 @@
 
 #include "stm32f4xx_hal.h"
 #include "main.h"
-#include "w5500_app.h"
+#include "w5500_service.h"
 #include "w5500.h"
 #include "wizchip_conf.h"
 #include "socket.h"
-#include "protocol_ethernet.h"
-#include "AttritubeTable.h"
 
-/*******************************************************************************
+/******************************************************************************
  * GLOBAL VARIABLES
- */
+ */  
+uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];		//!< TCP接收数据缓冲区 
+uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];		//!< TCP发送数据缓冲区
+uint8_t UDP_Tx_Buff[UDP_Tx_Buff_Size];		//!< UDP发送数据缓冲区
 
-
- /*******************************************************************************
+ /*****************************************************************************
  * LOCAL VARIABLES
  */
 static NETWORKParam_t net_param,*Pnet_param;    		//网络参数配置
 static SOCKETnParam_t sn_param[2],*Psn_param;   		//Socket n参数配置(n=0,1)
+
+static void W5500_Load_Net_Parameters(void);
+static void W5500_RST(void);
+static void W5500_Config(void);
+static uint8_t Detect_Gateway(void);
+static void W5500_Socket_Init(uint8_t sn);
 
 /*******************************************************************************
  * FUNCTIONS
@@ -47,18 +53,39 @@ static SOCKETnParam_t sn_param[2],*Psn_param;   		//Socket n参数配置(n=0,1)
 *
 * 返回值  : 无
 *
-* 说明    : 完成W5500硬件复位之后最先调用本函数 - @ref W5500_RST
+* 说明    : 无
 *******************************************************************************/
 void W5500_Init(void)
 {
+	W5500_Load_Net_Parameters();	//装载网络参数	
+	W5500_RST();									//硬件复位
 	
-	W5500_Config();						//初始化W5500通用寄存器区
-	Detect_Gateway();					//检查网关服务器 
-	W5500_Socket_Init(0);			//Socket 0配置 - TCP 
-	W5500_Socket_Init(1);     //Socket 1配置 - UDP 
- 	ProtocolProcessFSMInit();	//TCP帧协议服务初始化
-
+	W5500_Config();								//初始化W5500通用寄存器区
+	Detect_Gateway();							//检查网关服务器 
+	W5500_Socket_Init(0);					//Socket 0配置 - TCP 
+	W5500_Socket_Init(1);     		//Socket 1配置 - UDP 
 }
+
+/*******************************************************************************
+* 函数名  : W5500_RST
+*
+* 描述    : W5500_RST引脚初始化配置(PA3)
+*
+* 输入    : 无
+*
+* 返回值  : 无
+*
+* 说明    : 低电平有效，低电平至少保持500us以上
+*******************************************************************************/
+static void W5500_RST(void)
+{
+	LL_GPIO_ResetOutputPin(W5500_nRST_GPIO_Port,W5500_nRST_Pin);//复位引脚拉低
+	HAL_Delay(50);
+	LL_GPIO_SetOutputPin(W5500_nRST_GPIO_Port,W5500_nRST_Pin);//复位引脚拉高
+	HAL_Delay(100);
+	while((WIZCHIP_READ(PHYCFGR)&PHYCFGR_LNK_ON)==0);//等待以太网连接完成
+
+} 
 
 /*******************************************************************************
 * 函数名  : W5500_Config
@@ -71,7 +98,7 @@ void W5500_Init(void)
 *
 * 说明    : 调用本函数前需先配置网络参数 - @ref W5500_Load_Net_Parameters
 *******************************************************************************/
-void W5500_Config(void)
+static void W5500_Config(void)
 {
 
   setMR(MR_RST);	//软件复位W5500,置1有效,复位后自动清0
@@ -132,7 +159,7 @@ void W5500_Config(void)
 *						@UDP_DIPR     目的主机IP地址						
 *														- Socket 1              32bit				192.168.1.101
 *******************************************************************************/
-void W5500_Load_Net_Parameters(void)
+static void W5500_Load_Net_Parameters(void)
 {
 	Pnet_param =&net_param;
 	Psn_param = sn_param;
@@ -150,21 +177,29 @@ void W5500_Load_Net_Parameters(void)
 	Pnet_param->Sub_Mask[2] = 255;
 	Pnet_param->Sub_Mask[3] = 0;
 																 
-	//加载MAC地址
-	pattr_CBs->pfnReadAttrCB(DEV_MAC,0xFF,(uint8_t*)Pnet_param->Phy_Addr,Plen);
+	//加载MAC地址（default 锁死）
+	Pnet_param->Phy_Addr[0] = 0x0c;
+	Pnet_param->Phy_Addr[1] = 0x29;
+	Pnet_param->Phy_Addr[2] = 0xab;
+	Pnet_param->Phy_Addr[3] = 0x7c;
+	Pnet_param->Phy_Addr[4] = 0x00;
+	Pnet_param->Phy_Addr[5] = 0x01;
 
-	//加载源/本机IP地址
-	pattr_CBs->pfnReadAttrCB(DEV_IP,0xFF,(uint8_t*)Pnet_param->IP_Addr,Plen);
+	//加载源/本机IP地址（default 锁死）
+	Pnet_param->IP_Addr[0] = 192;
+	Pnet_param->IP_Addr[1] = 168;
+	Pnet_param->IP_Addr[2] = 1;
+	Pnet_param->IP_Addr[3] = 10;	
 
 	/* Socket 0 配置 */
 	{				
-		//加载Socket 0的端口号: 7001 （default）
+		//加载Socket 0的端口号: 7001 （default 锁死）
 		Psn_param->Sn_Port = 7001;
 	}
 	
 	/* Socket 1 配置 */	
 	{		
-		//加载Socket 1的端口号: 7002 （default）
+		//加载Socket 1的端口号: 7002 （default 锁死）
 		(Psn_param+1)->Sn_Port = 7002;
 
 		//UDP(广播)模式需配置目的主机IP地址
@@ -173,8 +208,8 @@ void W5500_Load_Net_Parameters(void)
 		(Psn_param+1)->UDP_DIPR[2] = 1;
 		(Psn_param+1)->UDP_DIPR[3] = 101;
 
-		//UDP(广播)模式需配置目的主机端口号 7002（default）
-		pattr_CBs->pfnReadAttrCB(HOST_PORT,0xFF,(uint8_t*)(Psn_param+1)->Sn_DPort,Plen);
+		//UDP(广播)模式需配置目的主机端口号 7002（default 上位机可修改）
+		(Psn_param+1)->Sn_DPort =7002;
 	}
 }
 
@@ -190,7 +225,7 @@ void W5500_Load_Net_Parameters(void)
 *
 * 说明    : 无
 *******************************************************************************/
-uint8_t Detect_Gateway(void)
+static uint8_t Detect_Gateway(void)
 {
 	uint8_t ip_adde[4];
 	
@@ -252,7 +287,7 @@ uint8_t Detect_Gateway(void)
 *
 * 说明    : 无
 *******************************************************************************/
-void W5500_Socket_Init(uint8_t sn)
+static void W5500_Socket_Init(uint8_t sn)
 {
 	
 	/* Socket 寄存器区设置 */
@@ -311,6 +346,7 @@ void W5500_Socket_Init(uint8_t sn)
 * 描述    : TCP服务器服务: 采取轮询的方式获取Socket n状态，完成TCP请求
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*						@Procesflag：TCP协议处理完成标志位
 *
 * 返回值  : @Sn_OPEN - 端口已打开
 *						@Sn_LISTEN - 端口正在监听
@@ -320,13 +356,12 @@ void W5500_Socket_Init(uint8_t sn)
 *
 * 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
-uint8_t TCPServer_Service(uint8_t sn)
+uint8_t TCPServer_Service(uint8_t sn , uint8_t Procesflag)
 {
 	uint16_t recvsize=0,sentsize = 0; // 用于回环测试
-	uint8_t	protocol_status; //!< 协议栈运行状态
 	uint8_t TCPserv_status; //!< TCP服务状态
 	
-	switch(getSn_SR(sn))
+	switch(getSn_SR(sn)) //检查该socket的状态
 	{
 		/* Socket n 关闭 */
 		case SOCK_CLOSED:
@@ -348,23 +383,23 @@ uint8_t TCPServer_Service(uint8_t sn)
 		
 			if(getSn_IR(sn) & Sn_IR_CON)
 			{
-				setSn_IR(sn,Sn_IR_CON); //清除标志位
+				setSn_IR(sn,Sn_IR_CON); //清除socket标志位
 			}	
 
 			if((recvsize = getSn_RX_RSR(sn))>0) //接收目的主机发来的TCP数据			
-				DMA_recv(sn,TCP_Rx_Buff,recvsize);  //从接收缓冲区全部读取
-			
-			protocol_status = ProtocolProcessFSM(); //TCP帧协议解析及回复封包	
-			
-			if( protocol_status == _FSM_CPL_)
 			{
+				DMA_recv(sn,TCP_Rx_Buff,recvsize);  //从接收缓冲区全部读取
+				
+				TCPserv_status = TCP_RECV;
+			}			
+			
+			if( Procesflag & TCP_COMPLETE_EVT )
+			{			
 				send(sn, TCP_Tx_Buff, TCP_Tx_Buff[1]+3); //TCP回复目的主机
-				memset(TCP_Rx_Buff,0xff,sizeof(TCP_Rx_Buff));//清除缓冲区
+				memset(TCP_Rx_Buff,0xff,sizeof(TCP_Rx_Buff));//清除TCP接收缓冲区
 				
 				TCPserv_status = TCP_COMPLETE;
 			}
-			else
-				TCPserv_status = TCP_PROCESS;
 		
 		break;
 			
@@ -374,7 +409,9 @@ uint8_t TCPServer_Service(uint8_t sn)
 			
 			TCPserv_status = Sn_CLOSE;
 		break;
-	}		
+	}
+	
+	return( TCPserv_status );
 }
 
 /*******************************************************************************
@@ -417,24 +454,5 @@ uint8_t UDP_Service(uint8_t sn)
 		
 }
 
-/*******************************************************************************
-* 函数名  : W5500_RST
-*
-* 描述    : W5500_RST引脚初始化配置(PA3)
-*
-* 输入    : 无
-*
-* 返回值  : 无
-*
-* 说明    : 低电平有效，低电平至少保持500us以上
-*******************************************************************************/
-void W5500_RST(void)
-{
-	LL_GPIO_ResetOutputPin(W5500_nRST_GPIO_Port,W5500_nRST_Pin);//复位引脚拉低
-	HAL_Delay(50);
-	LL_GPIO_SetOutputPin(W5500_nRST_GPIO_Port,W5500_nRST_Pin);//复位引脚拉高
-	HAL_Delay(100);
-	while((WIZCHIP_READ(PHYCFGR)&PHYCFGR_LNK_ON)==0);//等待以太网连接完成
 
-}
 

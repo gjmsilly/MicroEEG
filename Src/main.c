@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include "shell.h"
 #include "ads1299.h"
-#include "w5500_app.h"
+#include "w5500_service.h"
 #include "w5500.h"
 #include "wizchip_conf.h"
 #include "socket.h"
@@ -46,11 +46,6 @@
 
 // Shell
 #define Shell_UART USART1
- 
-// System events
-#define ATTR_CHANGE_EVT					( 1 << 0 )	//!< 属性值变化
-#define TCP_COMPLETE_EVT				( 1 << 1 ) 	//!< TCP协议处理完毕
-#define EEG_DATA_READY_EVT			( 1 << 2 )	//!< EEG数据封包完成
 
 /* USER CODE END PD */
 
@@ -68,11 +63,13 @@ DMA_HandleTypeDef hdma_quadspi;
 
 /* USER CODE BEGIN PV */
 SHELL_TypeDef shell;						//!< shell句柄
+uint8_t SYS_Event;							//!< 系统状态事件 - @ref System events 
+
 uint8_t resultval[28];  				//!< ADS1299 结果缓存区
 uint8_t ReadResult;
 
 static InsQUEUE InsQueue;				//!< TCP指令队列
-static uint8_t SYS_Event;				//!< 系统状态事件 - @ref System events 									
+									
 
 /* USER CODE END PV */
 
@@ -232,12 +229,17 @@ void Get_TSG_CNT(void)
 }
 SHELL_EXPORT_CMD(Get_TSG_CNT, Get_TSG_CNT, Get timestamp generator cnt);
 ////////////////////////////////////////////////////////////////////////////////
-/*!		@fn AttrChangeCB	  
+
+/*!		@fn AttrChangeCB
+ *
+ *		@param	AttrNum 变化的属性编号
+ *
  *		@brief	属性值变化回调
  */
 static void AttrChangeCB(uint8_t AttrNum)
 {
 	EnQueue(&InsQueue,AttrNum);			//!< 变化的属性编号入队等待系统处理
+
 	SYS_Event |= ATTR_CHANGE_EVT;
 }
 
@@ -247,26 +249,32 @@ static void AttrChangeCB(uint8_t AttrNum)
 static void Sys_Control()
 {
 	uint8_t AttrChangeNum;
-	uint8_t *pAttrValue;
-	uint8_t *pAttrLen;
-	
-	//!< TCP回复完毕且属性值有变化时做进一步操作
-	if((SYS_Event & ATTR_CHANGE_EVT) && (SYS_Event & TCP_COMPLETE_EVT))  
-	{
-		AttrChangeNum=DeQueue(&InsQueue);	//!< 出队 - 变化的属性值
-		pattr_CBs->pfnReadAttrCB(	AttrChangeNum,0xFF,pAttrValue,pAttrLen); //!< 读取属性当前值		
 		
-		switch(AttrChangeNum)
-		{
-			/* ads1299 采集*/
-			case 0:
-				if(*pAttrValue == SAMPLING )
-				ADS1299_ReadResult(UDP_Tx_Buff);	
-
-			break;
-				
+		// TCP 通讯服务
+		if ( TCPServer_Service(0,SYS_Event) == TCP_RECV )
+		{ 
+			SYS_Event |= TCP_RECV_EVT;  
 		}
-	}
+		
+		if( SYS_Event& TCP_RECV_EVT )
+		{
+			if( TCP_ProcessFSM() == _FSM_CPL_) // TCP帧服务
+			{			
+				SYS_Event|= TCP_COMPLETE_EVT; //!< TCP帧协议服务处理完毕 
+				SYS_Event&= ~TCP_RECV_EVT;	//!< 准备下一次接收
+			}
+		}
+		//!< TCP回复完毕且属性值有变化时做进一步操作
+		else if(( SYS_Event& TCP_COMPLETE_EVT )&( SYS_Event& ATTR_CHANGE_EVT ))
+		{
+			AttrChangeNum=DeQueue(&InsQueue);	//!< 出队 - 变化的属性值
+			
+			switch(AttrChangeNum)
+			
+			SYS_Event&= ~TCP_COMPLETE_EVT;
+			SYS_Event&= ~ATTR_CHANGE_EVT;	
+		}
+
 }
 
 /* USER CODE END 0 */
@@ -324,18 +332,24 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 	
-	//Shell Initial	
+	//Shell 初始化
 	shell.read = ShellGetchar;
 	shell.write = ShellPutchar;
 	shellInit(&shell);
 	
-	//Attribute table Initial
+	//W5500初始化
+	W5500_Init(); //W5500初始化，配置Socket
+	
+	//TCP帧协议服务初始化
+	TCP_ProcessFSMInit();			
+	
+	//属性表服务初始化
 	Attr_Tbl_Init();
 	
-	//注册属性值变化回调函数
+	//主应用程序向属性表服务注册属性值变化回调函数
 	Attr_Tbl_RegisterAppCBs(&AttrChangeCB);
 	
-	//LED Initial
+	//LED初始化
 	PWR_LED1_ON;
 	PWR_LED2_OFF;
 	ACQ_LED1_OFF;
@@ -343,16 +357,11 @@ int main(void)
 	ERR_LED1_OFF;
 	ERR_LED2_OFF;	
 	
-	//W5500 Initial
-	W5500_Load_Net_Parameters(); //装载网络参数	
-	W5500_RST();//硬件复位
-	W5500_Init(); //W5500初始化，配置Socket
-
 	//Configure the DMA for ads1299
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
 	
-	//ADS1299 Initial
+	//ADS1299 初始化
 	LL_SPI_Enable(SPI1);
 	ADS1299_PowerOn(0);
 	ADS1299_Reset(0);		
@@ -368,17 +377,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
+		// shell 服务
     shellTask(&shell);
-				
-		if( TCPServer_Service(0)== TCP_COMPLETE ) // Socket0 TCP服务器服务
-		{
-			SYS_Event |= TCP_COMPLETE_EVT;
-		}
-
-//		UDP_Service(1);				//Socket1 UDP服务
 		
-		Sys_Control(); // 系统状态控制					   
+		// 系统状态控制
+		Sys_Control(); 
+						   
 
 		/* USER CODE END WHILE */
 

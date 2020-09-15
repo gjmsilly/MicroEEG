@@ -1,7 +1,7 @@
 /**
  * @file    protocol_ethernet.c
  * @author  gjmsilly
- * @brief   以太网帧协议服务（TCP封包拆包，UDP封包）
+ * @brief   以太网帧协议服务（TCP帧解析+回复，UDP帧发送）
  * @version 1.0
  * @date    2020-09-02
  * @ref			https://www.amobbs.com/forum.php?mod=viewthread&tid=5668532
@@ -16,13 +16,11 @@
 #include "compiler.h"
 #include "ooc.h"
 #include "simple_fsm.h"
-
 #include "protocol_ethernet.h"
-#include "main.h"
-#include "microEEG_misc.h"
-#include "AttritubeTable.h"												 
+#include "w5500_service.h"
+#include "main.h"											 
 
-/*********************************************************************
+/*******************************************************************
  * LOCAL VARIABLES
  */
 
@@ -35,17 +33,37 @@ static uint8_t	TCP_Recv_FT = 0xCC;				//<! TCP接收帧尾
 static uint8_t	TCP_Send_FH = 0xA2;				//<! TCP发送帧头
 static uint8_t	TCP_Send_FT = 0xC2;				//<! TCP发送帧尾
 
-static uint8_t	fsm_status;								//!< 状态机运行状态	
+static uint8_t	fsm_status;								//!< 状态机运行状态
 
-/*******************************************************************
- * GLOBAL VARIABLES
+/*********************************************************************
+ *  Callbacks
  */
-  
-uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];		//!< TCP接收数据缓冲区 
-uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];		//!< TCP发送数据缓冲区
-uint8_t UDP_Tx_Buff[UDP_Tx_Buff_Size];		//!< UDP发送数据缓冲区
 
-/*******************************************************************
+static AttrCBs_t *pattr_CBs = NULL;				//!< 属性表服务回调指针
+
+/*!
+ *  @fn	属性表服务注册回调函数的接口
+ *
+ *	@param 属性表读写回调结构体指针
+ *
+ *	@return SUCCESS - 回调函数注册成功
+ *					FAILURE - 回调函数注册失败
+ */
+uint8_t protocol_RegisterAttrCBs(AttrCBs_t *pAttrcallbacks)
+{
+	if ( pAttrcallbacks )
+  {
+		pattr_CBs = pAttrcallbacks;
+    
+		return ( SUCCESS );
+	}
+	else
+	{
+		
+	}
+}
+
+/********************************************************************
  * TYPEDEFS
  */
  
@@ -135,7 +153,8 @@ fsm_implementation(delay_1s)
         )
     )
 /* End of fsm implementation */
-
+						
+///////////////////////////////////////////////////////////////////////
 /*
  *  ======================== TCP帧协议服务 ============================
  */ 						
@@ -275,10 +294,13 @@ fsm_implementation(TCP_Process)
     )
 /* End of fsm implementation */								
 						
-/* FSM calling */
+/*!
+ *  @fn	fsm_xxx
+ *	@brief 状态机初始化 / 对外调用函数
+ */
 static fsm( TCP_Process ) s_fsmProtocolProcess;
 
-void ProtocolProcessFSMInit(void)
+void TCP_ProcessFSMInit(void)
 {
 		if (NULL == init_fsm(TCP_Process, &s_fsmProtocolProcess,
 			)) {      //!< String Length
@@ -286,14 +308,17 @@ void ProtocolProcessFSMInit(void)
 	 }
 }
 
-uint8_t ProtocolProcessFSM(void)
+uint8_t TCP_ProcessFSM(void)
 {
 		//!< 状态机完成
 		if (fsm_rt_cpl == call_fsm( TCP_Process, &s_fsmProtocolProcess )) 
 		{
-			fsm_status=_FSM_CPL_; //!< 通知上层
+			fsm_status=_FSM_CPL_; 
         
 			return fsm_status;       
     }
 }
-						
+
+
+///////////////////////////////////////////////////////////////////////
+

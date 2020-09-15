@@ -11,16 +11,12 @@
 /***********************************************************************
  * INCLUDES
  */ 
-#include "AttritubeTable.h" 
+#include "AttritubeTable.h"
+#include "protocol_ethernet.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-/***********************************************************************
- * GLOBAL VARIABLES
- */
-AttrCBs_t  *pattr_CBs;
-
 /***********************************************************************
  * LOCAL VARIABLES
  */
@@ -105,8 +101,9 @@ const Attr_Tbl_t attr_tbl = {
 
 
 /************************************************************************
- *  Attributes Callbacks
+ *  Callbacks
  */
+/* Attribute table callbacks */
 static uint8_t ReadAttrCB(	uint8_t InsAttrNum,
 														uint8_t CHxNum,
 														uint8_t *pValue,
@@ -117,44 +114,21 @@ static uint8_t WriteAttrCB(	uint8_t InsAttrNum,
 														uint8_t *pValue,
 														uint8_t len );
 
-static pfnAttrChangeCB_t pAppCallbacks; 
-	
 static AttrCBs_t attr_CBs =
 {
 	.pfnReadAttrCB = ReadAttrCB,					//!< 读属性回调函数指针 
 	.pfnWriteAttrCB = WriteAttrCB					//!< 写属性回调函数指针
 };
- /************************************************************************
- * FUNCTIONS
- */
-/*!
- *  @fn	属性表初始化
- *	@brief 初始化属性表接口函数（读写回调）
- */
-void Attr_Tbl_Init()
-{
-	
-	/* 注册回调函数，供上层应用调用 */
-	 pattr_CBs =&attr_CBs;
-	
-	/* 建立地址映射 */		
-	pattr = (uint8_t*)&attr_tbl; //!< 属性表首地址
-	
-	//!< 属性地址偏移映射关系   
-	//!< pattr_offset[n]即属性的物理地址 上位机通过下标进行偏移访问
-	pattr_offset[0] = (uint32_t*)attr_tbl.Sampling.pAttrValue;	
-	pattr_offset[1] = (uint32_t*)attr_tbl.IMPMeas_Mode.pAttrValue;
-	pattr_offset[2] = (uint32_t*)attr_tbl.IMPMeas_fxn.pAttrValue;
-	pattr_offset[3] = (uint32_t*)attr_tbl.Dev_MAC.pAttrValue;
-	pattr_offset[4] = (uint32_t*)attr_tbl.Dev_IP.pAttrValue;
-	pattr_offset[5] = (uint32_t*)attr_tbl.Dev_PortStat.pAttrValue;
-	pattr_offset[6] = (uint32_t*)attr_tbl.Host_Port.pAttrValue;
-	pattr_offset[7] = (uint32_t*)attr_tbl.SampleNum.pAttrValue;
 
-}
+//////////////////////////////////////////////////////////////////////////
+
+static pfnAttrChangeCB_t pAppCallbacks; //!< 应用程序回调函数指针 
 
 /*!
  *  @fn	应用程序注册回调函数的接口
+ *
+ *	@param 应用程序的属性值变化回调函数
+ *
  *	@return SUCCESS - 回调函数注册成功
  *					FAILURE - 回调函数注册失败
  */
@@ -259,4 +233,30 @@ static uint8_t WriteAttrCB( uint8_t InsAttrNum,uint8_t CHxNum,
 	return status;
 
 }
+ /************************************************************************
+ * FUNCTIONS
+ */
+/*!
+ *  @fn	属性表初始化
+ *	@brief 初始化属性表接口函数（读写回调）
+ */
+void Attr_Tbl_Init()
+{
+	/* 向以太网帧协议服务注册读写回调函数 */
+	protocol_RegisterAttrCBs(&attr_CBs);
+	
+	/* 建立地址映射 */		
+	pattr = (uint8_t*)&attr_tbl; //!< 属性表首地址
+	
+	//!< 属性地址偏移映射关系   
+	//!< pattr_offset[n]即属性的物理地址 上位机通过下标进行偏移访问
+	pattr_offset[SAMPLING] = (uint32_t*)attr_tbl.Sampling.pAttrValue;	
+	pattr_offset[IMPMEAS_MODE] = (uint32_t*)attr_tbl.IMPMeas_Mode.pAttrValue;
+	pattr_offset[IMPMEAS_FXN] = (uint32_t*)attr_tbl.IMPMeas_fxn.pAttrValue;
+	pattr_offset[DEV_MAC] = (uint32_t*)attr_tbl.Dev_MAC.pAttrValue;
+	pattr_offset[DEV_IP] = (uint32_t*)attr_tbl.Dev_IP.pAttrValue;
+	pattr_offset[DEV_PORTSTAT] = (uint32_t*)attr_tbl.Dev_PortStat.pAttrValue;
+	pattr_offset[HOST_PORT] = (uint32_t*)attr_tbl.Host_Port.pAttrValue;
+	pattr_offset[SAMPLE_NUM] = (uint32_t*)attr_tbl.SampleNum.pAttrValue;
 
+}

@@ -23,8 +23,7 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ADS1299.h"
-#include "W5500_App.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
