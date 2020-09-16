@@ -206,4 +206,5 @@ typedef void (*pfnAttrChangeCB_t)( uint8_t AttrNum );
 void Attr_Tbl_Init();
 
 uint8_t Attr_Tbl_RegisterAppCBs( void *appCallbacks);
+uint8_t App_GetAttr(uint8_t InsAttrNum, uint8_t *pValue);
 #endif

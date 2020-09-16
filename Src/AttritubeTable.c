@@ -25,9 +25,9 @@ static uint32_t* pattr_offset[ATTR_NUM];	//!< 属性偏移地址
 static uint8_t* pattr;										//!< 属性表首地址
 
 //!< 工作状态与控制组 属性
-bool 		sampling;
-int8_t	impmeas_mode;
-int8_t	impmeas_fxn;
+static bool 		sampling;
+static int8_t	impmeas_mode;
+static int8_t	impmeas_fxn;
 
 //!< 通信参数组 属性
 const uint8_t  dev_mac[6] = {0x0c,0x29,0xab,0x7c,0x00,0x01};
@@ -259,4 +259,27 @@ void Attr_Tbl_Init()
 	pattr_offset[HOST_PORT] = (uint32_t*)attr_tbl.Host_Port.pAttrValue;
 	pattr_offset[SAMPLE_NUM] = (uint32_t*)attr_tbl.SampleNum.pAttrValue;
 
+}
+
+/*!
+ *  @fn			读属性函数 （供上层应用获取属性）
+ *
+ *	@param	InsAttrNum - 待写入属性编号
+ *					pValue - 待写入数据的指针
+ *
+ *	@return SUCCESS 读取属性值成功
+ *					ATTR_NOT_FOUND 属性不存在
+ */
+uint8_t App_GetAttr(uint8_t InsAttrNum, uint8_t *pValue)
+{
+	uint8_t ret = SUCCESS;
+	
+	switch(InsAttrNum)
+	{
+		case SAMPLING:
+			memcpy(pValue,&sampling,1);
+			break;		
+		
+	}
+  return ( ret );	
 }

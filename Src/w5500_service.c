@@ -346,7 +346,7 @@ static void W5500_Socket_Init(uint8_t sn)
 * 描述    : TCP服务器服务: 采取轮询的方式获取Socket n状态，完成TCP请求
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
-*						@Procesflag：TCP协议处理完成标志位
+*						@Procesflag：TCP数据处理完成标志位
 *
 * 返回值  : @Sn_OPEN - 端口已打开
 *						@Sn_LISTEN - 端口正在监听
@@ -392,13 +392,14 @@ uint8_t TCPServer_Service(uint8_t sn , uint8_t Procesflag)
 				
 				TCPserv_status = TCP_RECV;
 			}			
+			/* 若无TCP帧服务，需手动添加以处理接收的TCP数据 */
 			
-			if( Procesflag & TCP_COMPLETE_EVT )
+			if( Procesflag & TCP_PROCESSCLP_EVT ) // 帧服务完成
 			{			
 				send(sn, TCP_Tx_Buff, TCP_Tx_Buff[1]+3); //TCP回复目的主机
 				memset(TCP_Rx_Buff,0xff,sizeof(TCP_Rx_Buff));//清除TCP接收缓冲区
 				
-				TCPserv_status = TCP_COMPLETE;
+				TCPserv_status = TCP_SEND;
 			}
 		
 		break;

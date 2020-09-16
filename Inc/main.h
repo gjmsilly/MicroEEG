@@ -68,8 +68,9 @@ extern "C" {
 // System events
 #define ATTR_CHANGE_EVT					( 1 << 0 )	//!< 属性值变化
 #define TCP_RECV_EVT						( 1 << 1 ) 	//!< TCP端口接收到一帧
-#define TCP_COMPLETE_EVT				( 1 << 2 ) 	//!< TCP帧协议处理完毕（TCP帧解析+回复）
-#define EEG_DATA_READY_EVT			( 1 << 3 )	//!< EEG数据封包完成 
+#define TCP_SEND_EVT            ( 1 << 2 )	//!< TCP端口回复完成
+#define TCP_PROCESSCLP_EVT			( 1 << 3 ) 	//!< TCP帧协议处理完//毕
+#define EEG_DATA_READY_EVT			( 1 << 4 )	//!< EEG数据封包完成 
 
 /* USER CODE END EM */
 

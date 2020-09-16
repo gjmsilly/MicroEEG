@@ -46,7 +46,7 @@ typedef struct
 #define Sn_LISTEN					0x01	//!< 端口正在监听
 #define Sn_CLOSE					0x02	//!< 端口已关闭
 #define TCP_RECV					0x03	//!< TCP端口接收一帧
-#define TCP_COMPLETE			0x04	//!< TCP端口完成帧解析并回复
+#define TCP_SEND					0x04	//!< TCP端口发送完毕
 
 // 通讯收发缓冲区参数
 #define TCP_Rx_Buff_Size		16

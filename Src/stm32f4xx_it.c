@@ -21,6 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_it.h"
+#include "ads1299.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -60,7 +61,6 @@
 
 /* USER CODE BEGIN EV */
 extern uint8_t resultval[28];  		// ads1299 结果缓存区
-extern uint8_t W5500_Interrupt;		// W5500中断标志
 /* USER CODE END EV */
 
 /******************************************************************************/

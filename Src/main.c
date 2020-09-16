@@ -33,6 +33,7 @@
 #include "AttritubeTable.h"
 #include "protocol_ethernet.h"
 #include "SimpleInsQueue.h"
+#include "microEEG_misc.h"
 
 /* USER CODE END Includes */
 
@@ -249,31 +250,46 @@ static void AttrChangeCB(uint8_t AttrNum)
 static void Sys_Control()
 {
 	uint8_t AttrChangeNum;
+	uint8_t tcpstate;
+	uint8_t *pValue;
+	
+	tcpstate = TCPServer_Service(0,SYS_Event);
 		
-		// TCP 通讯服务
-		if ( TCPServer_Service(0,SYS_Event) == TCP_RECV )
-		{ 
-			SYS_Event |= TCP_RECV_EVT;  
-		}
+	// TCP 通讯服务事件
+	if ( tcpstate == TCP_RECV )
+	{ 
+		SYS_Event |= TCP_RECV_EVT;	//!< TCP端口接收一帧  
+	}
+	else if ( tcpstate == TCP_SEND )
+	{ 
+		SYS_Event |= TCP_SEND_EVT;	//!< TCP端口回复完成
 		
-		if( SYS_Event& TCP_RECV_EVT )
-		{
-			if( TCP_ProcessFSM() == _FSM_CPL_) // TCP帧服务
-			{			
-				SYS_Event|= TCP_COMPLETE_EVT; //!< TCP帧协议服务处理完毕 
-				SYS_Event&= ~TCP_RECV_EVT;	//!< 准备下一次接收
-			}
+		SYS_Event &= ~TCP_PROCESSCLP_EVT; //!< 清除前序事件 - TCP帧协议服务
+	}
+
+
+	// TCP帧协议服务事件 （接收帧事件触发） 
+	if( SYS_Event& TCP_RECV_EVT )
+	{
+		if( TCP_ProcessFSM() == _FSM_CPL_)	//!< TCP帧协议服务处理完毕
+		{			
+			SYS_Event |= TCP_PROCESSCLP_EVT;
+
+			SYS_Event &= ~TCP_RECV_EVT;	//!< 清除前序事件 - TCP接收一帧			
 		}
-		//!< TCP回复完毕且属性值有变化时做进一步操作
-		else if(( SYS_Event& TCP_COMPLETE_EVT )&( SYS_Event& ATTR_CHANGE_EVT ))
-		{
-			AttrChangeNum=DeQueue(&InsQueue);	//!< 出队 - 变化的属性值
-			
-			switch(AttrChangeNum)
-			
-			SYS_Event&= ~TCP_COMPLETE_EVT;
-			SYS_Event&= ~ATTR_CHANGE_EVT;	
-		}
+	}
+	
+	// 属性变化事件
+	if(( SYS_Event& TCP_SEND_EVT )&& ( SYS_Event& ATTR_CHANGE_EVT ))
+	{
+		AttrChangeNum=DeQueue(&InsQueue);	//!< 出队 - 变化的属性值
+		AttrChangeProcess(AttrChangeNum); //!< 属性变化处理函数
+		
+		SYS_Event &= ~ATTR_CHANGE_EVT; //!< 清除前序事件 - 属性变化
+		SYS_Event &= ~TCP_SEND_EVT; //!< 清除前序事件 - TCP回复完成			
+	}
+	else if(SYS_Event& TCP_SEND_EVT )
+		SYS_Event &= ~TCP_SEND_EVT; //!< 清除前序事件 - TCP回复完成事件		
 
 }
 
@@ -332,6 +348,14 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 	
+	//LED初始化
+	PWR_LED1_ON;
+	PWR_LED2_OFF;
+	ACQ_LED1_OFF;
+	ACQ_LED2_OFF;
+	ERR_LED1_OFF;
+	ERR_LED2_OFF;	
+	
 	//Shell 初始化
 	shell.read = ShellGetchar;
 	shell.write = ShellPutchar;
@@ -348,27 +372,20 @@ int main(void)
 	
 	//主应用程序向属性表服务注册属性值变化回调函数
 	Attr_Tbl_RegisterAppCBs(&AttrChangeCB);
-	
-	//LED初始化
-	PWR_LED1_ON;
-	PWR_LED2_OFF;
-	ACQ_LED1_OFF;
-	ACQ_LED2_OFF;
-	ERR_LED1_OFF;
-	ERR_LED2_OFF;	
-	
-	//Configure the DMA for ads1299
-	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
-	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
-	
-	//ADS1299 初始化
-	LL_SPI_Enable(SPI1);
-	ADS1299_PowerOn(0);
-	ADS1299_Reset(0);		
-	
-  ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
 
-	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7
+	
+//	//Configure the DMA for ads1299
+//	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
+//	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
+//	
+//	//ADS1299 初始化
+//	LL_SPI_Enable(SPI1);
+//	ADS1299_PowerOn(0);
+//	ADS1299_Reset(0);		
+//	
+//  ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
+
+//	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7
 
  
   /* USER CODE END 2 */
@@ -381,8 +398,7 @@ int main(void)
     shellTask(&shell);
 		
 		// 系统状态控制
-		Sys_Control(); 
-						   
+		Sys_Control();    
 
 		/* USER CODE END WHILE */
 
