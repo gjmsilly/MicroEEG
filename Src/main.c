@@ -245,22 +245,22 @@ static void AttrChangeCB(uint8_t AttrNum)
 }
 
 /*!		@fn Sys_Control	  
- *		@brief	系统状态控制
+ *		@brief	系统状态控制 - 事件驱动
  */
 static void Sys_Control()
 {
 	uint8_t AttrChangeNum;
-	uint8_t tcpstate;
-	uint8_t *pValue;
+	uint8_t TCPstate;
 	
-	tcpstate = TCPServer_Service(0,SYS_Event);
-		
+
 	// TCP 通讯服务事件
-	if ( tcpstate == TCP_RECV )
+	TCPstate = TCPServer_Service(0,SYS_Event);
+	
+	if ( TCPstate == TCP_RECV )
 	{ 
 		SYS_Event |= TCP_RECV_EVT;	//!< TCP端口接收一帧  
 	}
-	else if ( tcpstate == TCP_SEND )
+	else if ( TCPstate == TCP_SEND )
 	{ 
 		SYS_Event |= TCP_SEND_EVT;	//!< TCP端口回复完成
 		
@@ -289,7 +289,23 @@ static void Sys_Control()
 		SYS_Event &= ~TCP_SEND_EVT; //!< 清除前序事件 - TCP回复完成			
 	}
 	else if(SYS_Event& TCP_SEND_EVT )
-		SYS_Event &= ~TCP_SEND_EVT; //!< 清除前序事件 - TCP回复完成事件		
+		SYS_Event &= ~TCP_SEND_EVT; //!< 清除前序事件 - TCP回复完成事件
+
+	// AD采集完成事件
+	if( SYS_Event&EEG_DATA_READY_EVT )
+	{
+		if( UDP_PROCESS()== SUCCESS)
+			{
+				SYS_Event |=  UDP_PROCESSCLP_EVT;
+				SYS_Event &= ~ EEG_DATA_READY_EVT;
+			}
+	}
+	
+	if( SYS_Event&UDP_PROCESSCLP_EVT )
+	{
+		if(UDP_Service(1) ==SUCCESS)
+		SYS_Event &= ~ UDP_PROCESSCLP_EVT;		
+	}
 
 }
 
@@ -360,34 +376,36 @@ int main(void)
 	shell.read = ShellGetchar;
 	shell.write = ShellPutchar;
 	shellInit(&shell);
-	
+
 	//W5500初始化
 	W5500_Init(); //W5500初始化，配置Socket
+	
+	//Configure the DMA for ads1299
+	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
+	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
+	
+	//ADS1299 初始化
+	LL_SPI_Enable(SPI1);
+	ADS1299_PowerOn(0);
+	ADS1299_Reset(0);		
+	
+  ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
+
+	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7	
+	
+
+	//时间戳服务初始化
+	//Timestamp_Service_Init();
 	
 	//TCP帧协议服务初始化
 	TCP_ProcessFSMInit();			
 	
 	//属性表服务初始化
 	Attr_Tbl_Init();
-	
+		
 	//主应用程序向属性表服务注册属性值变化回调函数
 	Attr_Tbl_RegisterAppCBs(&AttrChangeCB);
-
 	
-//	//Configure the DMA for ads1299
-//	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
-//	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
-//	
-//	//ADS1299 初始化
-//	LL_SPI_Enable(SPI1);
-//	ADS1299_PowerOn(0);
-//	ADS1299_Reset(0);		
-//	
-//  ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
-
-//	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7
-
- 
   /* USER CODE END 2 */
 
   /* Infinite loop */

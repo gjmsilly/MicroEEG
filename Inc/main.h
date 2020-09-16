@@ -54,12 +54,11 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
-
-
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+extern uint8_t SYS_Event;							//!< 系统状态事件 - @ref System events 
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -69,8 +68,10 @@ extern "C" {
 #define ATTR_CHANGE_EVT					( 1 << 0 )	//!< 属性值变化
 #define TCP_RECV_EVT						( 1 << 1 ) 	//!< TCP端口接收到一帧
 #define TCP_SEND_EVT            ( 1 << 2 )	//!< TCP端口回复完成
-#define TCP_PROCESSCLP_EVT			( 1 << 3 ) 	//!< TCP帧协议处理完//毕
-#define EEG_DATA_READY_EVT			( 1 << 4 )	//!< EEG数据封包完成 
+#define TCP_PROCESSCLP_EVT			( 1 << 3 ) 	//!< TCP帧协议处理完毕
+#define EEG_DATA_READY_EVT			( 1 << 4 )	//!< 一包ad数据采集完成 
+#define UDP_PROCESSCLP_EVT			( 1 << 5 )	//!< UDP帧协议处理完毕
+
 
 /* USER CODE END EM */
 

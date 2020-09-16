@@ -19,11 +19,6 @@
 /*********************************************************************
  * Macros
  */
-//#define SYS_STATUS_INIT                0
-//#define SYS_STATUS_STANDBY             1
-//#define SYS_STATUS_ACQUIRING           2
-//#define SYS_STATUS_BTCONNECTIONLOST    3
-//#define SYS_STATUS_SPECIALMODE         4
  
 //#define LED1_ON        LL_GPIO_ResetOutputPin(LED1_GPIO_Port,LED1_Pin);
 //#define LED2_ON        LL_GPIO_ResetOutputPin(LED2_GPIO_Port,LED2_Pin);
@@ -53,7 +48,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum);
 //void BTModule_Service_Init(void);
 //void BTModule_Service_Process(void);
 
-///* Timestamp Service */
+///* 时间戳服务 */
 //void Timestamp_Service_Init(void);
 //uint32_t Timestamp_Service_GetTimestamp(void);
 

@@ -13,7 +13,6 @@
 #include "w5500_service.h"
 #include "AttritubeTable.h"
 
-
 /* 
 	 INIT -- LED Green OFF
 	 STANDBY -- LED Green ON
@@ -25,16 +24,10 @@
 //uint8_t LED1FlashCounter;
 //uint8_t LED2FlashCounter;
 
-//uint32_t CurTimeStamp = 0;
-//char* pcCurTimeStamp;
-//uint16_t CurEventTag = 0;
-//char* pcCurEventTag = (char*)&CurEventTag;
-
-
-//uint8_t SYS_Status = 0;
-
-//uint8_t BT_USART_Mutex;
-//uint8_t BT_USART_Ready;
+uint32_t CurTimeStamp = 0;
+char* pcCurTimeStamp;
+uint16_t CurEventTag = 0;
+char* pcCurEventTag = (char*)&CurEventTag;
 
 /*  ======================== 属性值变化处理服务 ============================
  */
@@ -54,12 +47,19 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 	{
 		case SAMPLING: 
 			App_GetAttr(SAMPLING,pValue); //获取属性值
-			if(*pValue == 1)
+			
+			if(*pValue == SAMPLLE_START )
 			{
-				ERR_LED1_ON;
+			 /* ads1299 开始采集 */
+			 ADS1299_SendCommand(ADS1299_CMD_RDATAC);				
+			 ADS1299_SendCommand(ADS1299_CMD_START);
 			}else
-			 ERR_LED2_ON;
+			/* ads1299 停止采集 */
+			 ADS1299_SendCommand(ADS1299_CMD_STOP);
+			
+			break;
 	}
+	
 }
 
 	

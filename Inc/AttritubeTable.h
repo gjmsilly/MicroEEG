@@ -48,6 +48,10 @@ extern "C" {
 #define HOST_PORT						6
 #define SAMPLE_NUM					7
 
+/* 属性值定义 */
+#define SAMPLENUM						10	//!< 以太网每包含ad样本数
+#define SAMPLLE_START				1		//!< 开始采集
+#define SAMPLLE_STOP				0   //!< 停止采集
 
 /*******************************************************************
  * TYPEDEFS

@@ -61,6 +61,7 @@ typedef struct
  */
 void TCP_ProcessFSMInit(void);
 uint8_t TCP_ProcessFSM(void);
+uint8_t UDP_PROCESS(void);
 
 uint8_t protocol_RegisterAttrCBs(AttrCBs_t *pAttrcallbacks);
 

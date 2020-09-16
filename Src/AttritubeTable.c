@@ -34,7 +34,7 @@ const uint8_t  dev_mac[6] = {0x0c,0x29,0xab,0x7c,0x00,0x01};
 const uint8_t  dev_ip[4] = {192,168,1,10}; 
 enum  Dev_PortStat_t dev_portstat; 
 const uint16_t host_port = 7002;
-const uint16_t samplenum = 10;
+const uint16_t samplenum = SAMPLENUM;
 
 /************************************************************************
  *  Attributes  Table

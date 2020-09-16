@@ -27,6 +27,7 @@
 uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];		//!< TCP接收数据缓冲区 
 uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];		//!< TCP发送数据缓冲区
 uint8_t UDP_Tx_Buff[UDP_Tx_Buff_Size];		//!< UDP发送数据缓冲区
+uint8_t *pUDP_Tx_Buff;										//!< UDP发送数据帧指针
 
  /*****************************************************************************
  * LOCAL VARIABLES
@@ -64,6 +65,8 @@ void W5500_Init(void)
 	Detect_Gateway();							//检查网关服务器 
 	W5500_Socket_Init(0);					//Socket 0配置 - TCP 
 	W5500_Socket_Init(1);     		//Socket 1配置 - UDP 
+	
+	pUDP_Tx_Buff = UDP_Tx_Buff+15; //!< UDP发送缓冲数据域指针
 }
 
 /*******************************************************************************
@@ -209,7 +212,7 @@ static void W5500_Load_Net_Parameters(void)
 		(Psn_param+1)->UDP_DIPR[3] = 101;
 
 		//UDP(广播)模式需配置目的主机端口号 7002（default 上位机可修改）
-		(Psn_param+1)->Sn_DPort =7002;
+		(Psn_param+1)->UDP_DPORT = 5555;
 	}
 }
 
@@ -439,21 +442,14 @@ uint8_t UDP_Service(uint8_t sn)
 		/* Socket n 已完成初始化 */
 		case SOCK_UDP:
 			
-		//	HAL_Delay(500);
-			
-			// 准备发送数据包至目的主机
-			///if(W5500_Send_flag)
-			//{
-//				sendto(sn, UDP_Tx_Buff,    				  \
-//							 sizeof(UDP_Tx_Buff), 				\
-//							 (Psn_param+sn)->UDP_DIPR,  \
-//							 (Psn_param+sn)->UDP_DPORT);  // test:1024byte
-//			//}		
+				sendto(sn, UDP_Tx_Buff,    				  \
+							 sizeof(UDP_Tx_Buff), 				\
+							 (Psn_param+sn)->UDP_DIPR,  	\
+							 (Psn_param+sn)->UDP_DPORT);  // test:1024byte
+							 
+				 return SUCCESS;
 		break;
 		
 	}
 		
 }
-
-
-

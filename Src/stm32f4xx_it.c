@@ -22,6 +22,7 @@
 #include "main.h"
 #include "stm32f4xx_it.h"
 #include "ads1299.h"
+#include "AttritubeTable.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -44,7 +45,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+uint8_t SampleNum ;	//!< 采样样本数
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,7 +61,7 @@
 /* External variables --------------------------------------------------------*/
 
 /* USER CODE BEGIN EV */
-extern uint8_t resultval[28];  		// ads1299 结果缓存区
+extern uint8_t *pUDP_Tx_Buff;	//!< UDP发送缓冲数据域指针
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -218,11 +219,16 @@ void EXTI9_5_IRQHandler(void)
   {
     LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_7);
     /* USER CODE BEGIN LL_EXTI_LINE_7 */
- 		ADS1299_ReadResult(resultval);	
+ 		ADS1299_ReadResult(pUDP_Tx_Buff+27*SampleNum);
+		SampleNum++;		
     /* USER CODE END LL_EXTI_LINE_7 */
   }
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
-
+		if(SampleNum == SAMPLENUM )
+		{
+			SYS_Event |= EEG_DATA_READY_EVT; //!< 事件更新 - 一包ad数据采集完成
+			SampleNum=0;
+		}
   /* USER CODE END EXTI9_5_IRQn 1 */
 }
 
