@@ -15,8 +15,8 @@
 #include <string.h>
 
 #include "stm32f4xx_hal.h"
-#include "w5500_service.h"
 #include "main.h"
+#include "w5500_service.h"
 #include "w5500.h"
 #include "wizchip_conf.h"
 #include "socket.h"
@@ -29,15 +29,12 @@ uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];		//!< TCP发送数据缓冲区
 uint8_t UDP_Tx_Buff[UDP_Tx_Buff_Size];		//!< UDP发送数据缓冲区
 uint8_t *pUDP_Tx_Buff;										//!< UDP发送数据帧指针
 
- /******************************************************************************
+ /*****************************************************************************
  * LOCAL VARIABLES
  */
 static NETWORKParam_t net_param,*Pnet_param;    		//网络参数配置
 static SOCKETnParam_t sn_param[2],*Psn_param;   		//Socket n参数配置(n=0,1)
-																																							 
- /******************************************************************************
- * LOCAL FUNCTIONS
- */
+
 static void W5500_Load_Net_Parameters(void);
 static void W5500_RST(void);
 static void W5500_Config(void);
@@ -69,7 +66,7 @@ void W5500_Init(void)
 	W5500_Socket_Init(0);					//Socket 0配置 - TCP 
 	W5500_Socket_Init(1);     		//Socket 1配置 - UDP 
 	
-	pUDP_Tx_Buff = UDP_Tx_Buff;		//UDP发送缓冲数据域指针
+	pUDP_Tx_Buff = UDP_Tx_Buff+15; //!< UDP发送缓冲数据域指针
 }
 
 /*******************************************************************************
@@ -305,7 +302,7 @@ static void W5500_Socket_Init(uint8_t sn)
 	//		setSn_TXBUF_SIZE(i, 0x02);//Socket Tx mempry size=2k
 	//	}
 	
-	// 屏蔽所有的Socket中断，采用轮询的方式
+	// 屏蔽所有的Socket中断，采用轮询的方式 @ref DO_TCP_Server
 	setSIMR(1);
 	
 	//设置指定Socket
@@ -397,12 +394,10 @@ uint8_t TCPServer_Service(uint8_t sn , uint8_t Procesflag)
 				DMA_recv(sn,TCP_Rx_Buff,recvsize);  //从接收缓冲区全部读取
 				
 				TCPserv_status = TCP_RECV;
-			}
+			}			
+			/* 若无TCP帧服务，需手动添加以处理接收的TCP数据 */
 			
-			/*	若无TCP帧服务，需手动添加以处理接收的TCP数据
-					通过上层应用传入Procesflag来控制TCP回复			 */
-			
-			if( Procesflag & TCP_PROCESSCLP_EVT ) // 帧协议服务完成
+			if( Procesflag & TCP_PROCESSCLP_EVT ) // 帧服务完成
 			{			
 				send(sn, TCP_Tx_Buff, TCP_Tx_Buff[1]+3); //TCP回复目的主机
 				memset(TCP_Rx_Buff,0xff,sizeof(TCP_Rx_Buff));//清除TCP接收缓冲区
