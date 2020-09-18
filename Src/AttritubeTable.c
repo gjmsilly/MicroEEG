@@ -141,7 +141,7 @@ uint8_t Attr_Tbl_RegisterAppCBs(void *appcallbacks)
 	}
 	else
 	{
-	  return ( FAILURE );
+	  return ( ERROR );
 	}
 }
 

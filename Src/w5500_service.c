@@ -212,7 +212,7 @@ static void W5500_Load_Net_Parameters(void)
 		(Psn_param+1)->UDP_DIPR[3] = 101;
 
 		//UDP(广播)模式需配置目的主机端口号 7002（default 上位机可修改）
-		(Psn_param+1)->UDP_DPORT = 5555;
+		(Psn_param+1)->UDP_DPORT = 7002;
 	}
 }
 
@@ -425,7 +425,7 @@ uint8_t TCPServer_Service(uint8_t sn , uint8_t Procesflag)
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
 *
-* 返回值  : 无
+* 返回值  : @SUCCESS - UDP发送完毕
 *
 * 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
@@ -445,7 +445,7 @@ uint8_t UDP_Service(uint8_t sn)
 				sendto(sn, UDP_Tx_Buff,    				  \
 							 sizeof(UDP_Tx_Buff), 				\
 							 (Psn_param+sn)->UDP_DIPR,  	\
-							 (Psn_param+sn)->UDP_DPORT);  // test:1024byte
+							 (Psn_param+sn)->UDP_DPORT); 
 							 
 				 return SUCCESS;
 		break;

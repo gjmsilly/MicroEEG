@@ -64,14 +64,11 @@ DMA_HandleTypeDef hdma_quadspi;
 
 /* USER CODE BEGIN PV */
 SHELL_TypeDef shell;						//!< shell句柄
-uint8_t SYS_Event;							//!< 系统状态事件 - @ref System events 
+uint8_t SYS_Event;							//!< 系统状态事件
+static InsQUEUE InsQueue;				//!< TCP指令队列									
 
-uint8_t resultval[28];  				//!< ADS1299 结果缓存区
+uint8_t resultval[28];  				//!< ADS1299结果缓存区（shell调试用）
 uint8_t ReadResult;
-
-static InsQUEUE InsQueue;				//!< TCP指令队列
-									
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,7 +88,7 @@ static void MX_RTC_Init(void);
 
 
 static void AttrChangeCB(uint8_t AttrNum); //!< 属性值变化回调函数	
-static void Sys_Control(); //!< 系统控制函数
+static void Sys_Control(); //!< 系统状态控制器
 
 //for EXPORT Functions
 void ADC_StartAcq(void);
@@ -239,13 +236,13 @@ SHELL_EXPORT_CMD(Get_TSG_CNT, Get_TSG_CNT, Get timestamp generator cnt);
  */
 static void AttrChangeCB(uint8_t AttrNum)
 {
-	EnQueue(&InsQueue,AttrNum);			//!< 变化的属性编号入队等待系统处理
+	EnQueue(&InsQueue,AttrNum);			//!< 变化的属性编号入队等待系统状态控制器处理
 
-	SYS_Event |= ATTR_CHANGE_EVT;
+	SYS_Event |= ATTR_CHANGE_EVT;   //!< 更新事件：属性值变化
 }
 
 /*!		@fn Sys_Control	  
- *		@brief	系统状态控制 - 事件驱动
+ *		@brief	系统状态控制器 - 事件驱动
  */
 static void Sys_Control()
 {
@@ -258,24 +255,24 @@ static void Sys_Control()
 	
 	if ( TCPstate == TCP_RECV )
 	{ 
-		SYS_Event |= TCP_RECV_EVT;	//!< TCP端口接收一帧  
+		SYS_Event |= TCP_RECV_EVT;	//!< 更新事件：TCP端口接收一帧 -> 跳转TCP帧协议服务  
 	}
 	else if ( TCPstate == TCP_SEND )
 	{ 
-		SYS_Event |= TCP_SEND_EVT;	//!< TCP端口回复完成
+		SYS_Event |= TCP_SEND_EVT;	//!< 更新事件：TCP端口回复完成
 		
 		SYS_Event &= ~TCP_PROCESSCLP_EVT; //!< 清除前序事件 - TCP帧协议服务
 	}
 
 
-	// TCP帧协议服务事件 （接收帧事件触发） 
+	// TCP帧协议服务事件 
 	if( SYS_Event& TCP_RECV_EVT )
 	{
-		if( TCP_ProcessFSM() == _FSM_CPL_)	//!< TCP帧协议服务处理完毕
+		if( TCP_ProcessFSM() == _FSM_CPL_)	//!< 更新事件：TCP帧协议服务处理完毕 -> 跳转TCP端口回复
 		{			
 			SYS_Event |= TCP_PROCESSCLP_EVT;
 
-			SYS_Event &= ~TCP_RECV_EVT;	//!< 清除前序事件 - TCP接收一帧			
+			SYS_Event &= ~TCP_RECV_EVT;	//!< 清除前序事件 - TCP端口接收一帧			
 		}
 	}
 	
@@ -294,17 +291,18 @@ static void Sys_Control()
 	// AD采集完成事件
 	if( SYS_Event&EEG_DATA_READY_EVT )
 	{
-		if( UDP_PROCESS()== SUCCESS)
+		if( UDP_PROCESS(0xFF,SYS_Event)== SUCCESS)
 			{
-				SYS_Event |=  UDP_PROCESSCLP_EVT;
-				SYS_Event &= ~ EEG_DATA_READY_EVT;
+				SYS_Event |=  UDP_PROCESSCLP_EVT; //!< 更新事件：UDP协议服务处理完毕
+				SYS_Event &= ~ EEG_DATA_READY_EVT; //!< 清除前序事件 - AD采集完成
 			}
 	}
-	
+
+	// UDP协议服务事件	
 	if( SYS_Event&UDP_PROCESSCLP_EVT )
 	{
-		if(UDP_Service(1) ==SUCCESS)
-		SYS_Event &= ~ UDP_PROCESSCLP_EVT;		
+		if(UDP_Service(1) ==SUCCESS) //!< UDP缓冲区数据全部发送
+		SYS_Event &= ~ UDP_PROCESSCLP_EVT; //!< 清除前序事件 - UDP协议服务处理完毕		
 	}
 
 }
@@ -328,19 +326,7 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 	Mod_DRDY_INT_Disable
-	
-//	memset(UDP_Tx_Buff,0xff,sizeof(UDP_Tx_Buff));//清除缓冲区
-//	//memset(Rx_Buffer,0,sizeof(Rx_Buffer));//清除缓冲区
-//	// for test
-//	UDP_Tx_Buff[0]=0x00;
-//	UDP_Tx_Buff[1]=0x01;
-//	UDP_Tx_Buff[10]=0x10;
-//	UDP_Tx_Buff[20]=0x20;
-//	UDP_Tx_Buff[982]=0xdd;
-//	UDP_Tx_Buff[983]=0xaa;
-//	UDP_Tx_Buff[999]=0xbb;
-//	UDP_Tx_Buff[1023]=0xcc;
-//	
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -376,26 +362,25 @@ int main(void)
 	shell.read = ShellGetchar;
 	shell.write = ShellPutchar;
 	shellInit(&shell);
+	
 
 	//W5500初始化
 	W5500_Init(); //W5500初始化，配置Socket
-	
+		
+	//ADS1299 初始化	
 	//Configure the DMA for ads1299
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
-	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX	
+	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX
+		
+	LL_SPI_Enable(SPI1);	
 	
-	//ADS1299 初始化
-	LL_SPI_Enable(SPI1);
-	ADS1299_PowerOn(0);
-	ADS1299_Reset(0);		
+	ADS1299_Init(0);
 	
-  ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
-
 	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7	
 	
 
 	//时间戳服务初始化
-	//Timestamp_Service_Init();
+	Timestamp_Service_Init();
 	
 	//TCP帧协议服务初始化
 	TCP_ProcessFSMInit();			
@@ -415,7 +400,7 @@ int main(void)
 		// shell 服务
     shellTask(&shell);
 		
-		// 系统状态控制
+		// 运行系统状态控制器
 		Sys_Control();    
 
 		/* USER CODE END WHILE */

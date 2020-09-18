@@ -21,7 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_it.h"
-#include "ads1299.h"
+#include "protocol_ethernet.h"
 #include "AttritubeTable.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -45,7 +45,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-uint8_t SampleNum ;	//!< 采样样本数
+uint8_t SampleNum =0 ;	//!< 采样样本数
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,7 +61,8 @@ uint8_t SampleNum ;	//!< 采样样本数
 /* External variables --------------------------------------------------------*/
 
 /* USER CODE BEGIN EV */
-extern uint8_t *pUDP_Tx_Buff;	//!< UDP发送缓冲数据域指针
+extern uint32_t CurTimeStamp;		//!< 当前时间
+
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -207,6 +208,7 @@ void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 
+	
   /* USER CODE END EXTI9_5_IRQn 0 */
   if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_6) != RESET)
   {
@@ -219,16 +221,30 @@ void EXTI9_5_IRQHandler(void)
   {
     LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_7);
     /* USER CODE BEGIN LL_EXTI_LINE_7 */
- 		ADS1299_ReadResult(pUDP_Tx_Buff+27*SampleNum);
-		SampleNum++;		
+		
+		if(SampleNum == 0)
+		{ 
+			TIM5->CNT=0; //!< 每样本初始时间增量为0
+			CurTimeStamp = TIM5->CNT;  //!< 获取当前时间
+		}else
+		 CurTimeStamp = TIM5->CNT;  //!< 获取当前时间
+		
+		SYS_Event |= EEG_DATA_START_EVT; //!< 更新事件：ad采集开始
+		
+		UDP_PROCESS(SampleNum,SYS_Event);
+		SampleNum++;
+		
+		if(SampleNum == SAMPLENUM )
+		{
+			SYS_Event |= EEG_DATA_READY_EVT; //!< 更新事件：一包ad数据采集完成 -> 跳转UDP协议服务
+			
+			SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - ad采集开始
+			SampleNum=0;
+		}			
     /* USER CODE END LL_EXTI_LINE_7 */
   }
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
-		if(SampleNum == SAMPLENUM )
-		{
-			SYS_Event |= EEG_DATA_READY_EVT; //!< 事件更新 - 一包ad数据采集完成
-			SampleNum=0;
-		}
+	
   /* USER CODE END EXTI9_5_IRQn 1 */
 }
 

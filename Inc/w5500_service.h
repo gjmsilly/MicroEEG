@@ -38,20 +38,20 @@ typedef struct
 /*********************************************************************
  * Macros
  */
-#define TRUE							0x00
-#define FALSE							0xff
+#define TRUE								0x00
+#define FALSE								0xff
 
 // 端口状态
-#define Sn_OPEN						0x00	//!< 端口已打开
-#define Sn_LISTEN					0x01	//!< 端口正在监听
-#define Sn_CLOSE					0x02	//!< 端口已关闭
-#define TCP_RECV					0x03	//!< TCP端口接收一帧
-#define TCP_SEND					0x04	//!< TCP端口发送完毕
+#define Sn_OPEN							0x00	//!< 端口已打开
+#define Sn_LISTEN						0x01	//!< 端口正在监听
+#define Sn_CLOSE						0x02	//!< 端口已关闭
+#define TCP_RECV						0x03	//!< TCP端口接收一帧
+#define TCP_SEND						0x04	//!< TCP端口发送完毕
 
 // 通讯收发缓冲区参数
 #define TCP_Rx_Buff_Size		16
 #define TCP_Tx_Buff_Size		16
-#define UDP_Tx_Buff_Size		286
+#define UDP_Tx_Buff_Size		353
 
 /***********************************************************************
  * EXTERNAL VARIABLES

@@ -26,8 +26,12 @@ extern "C" {
 #define CHANNEL_MODE				8			//!< 通道数量  （x8/x16/x32）
 
 /* 读写回调状态参数 */
+#ifndef SUCCESS
 #define	SUCCESS 						0x00	//!< SUCCESS
-#define FAILURE							0Xff	//!< FAILURE
+#endif
+#ifndef ERROR
+#define ERROR								0Xff	//!< ERROE
+#endif
 #define	ATTR_ERR_RO					0x01	//!< 属性不允许写操作
 #define	ATTR_ERR_SIZE				0x02	//!< 待写数据长度与属性值长度不符 
 #define	ATTR_NOT_FOUND			0x0a	//!< 待读写的属性不存在 

@@ -5,6 +5,34 @@
 uint8_t ResultByte = 0;
 uint8_t DummyByte;
 
+
+/****************************************************************/
+/* ADS1299_Init                                                  */
+/** Operation:
+ *      - Initial ads1299 chip
+ *
+ * Parameters:
+ *      -  dev:ADS1299 chip number
+ *
+ * Return value:
+ *     - None
+ *
+ * Globals modified:
+ *     - None
+ *
+ * Resources used:
+ *     - None
+ */
+/****************************************************************/
+void ADS1299_Init(uint8_t dev)
+{
+	
+	ADS1299_PowerOn(dev);
+	ADS1299_Reset(dev);	
+	
+	ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
+}
+
 /****************************************************************/
 /* Wait()                 Modified                              */
 /** Operation:

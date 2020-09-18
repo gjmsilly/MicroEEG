@@ -10,7 +10,7 @@
 /*********************************************************************
  * Macros
  */ 
- 
+
 /* 指令码 */
 #define	DummyIns						0x00	//!< 空指令
 #define	CAttr_Read					0x01	//!< 读一个普通属性
@@ -22,6 +22,10 @@
 #define _FSM_CPL_						0x00	//!< 状态机运行完成
 #define _FSM_ON_GOING_			0x01	//!< 状态机正在运行
 #define _FSM_ERR_						0x02	//!< 状态机错误
+
+/* 数据通道参数（UDP端口） */
+#define HEAD_SIZE						23		//!< UDP帧头长度 - 按字节
+#define DATA_SIZE						24		//!< UDP帧数据域每样本长度 - 按字节
 
 /*******************************************************************
  * TYPEDEFS
@@ -61,7 +65,7 @@ typedef struct
  */
 void TCP_ProcessFSMInit(void);
 uint8_t TCP_ProcessFSM(void);
-uint8_t UDP_PROCESS(void);
+uint8_t UDP_PROCESS(uint8_t SampleNum ,uint8_t Procesflag);
 
 uint8_t protocol_RegisterAttrCBs(AttrCBs_t *pAttrcallbacks);
 

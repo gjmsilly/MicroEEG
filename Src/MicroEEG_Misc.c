@@ -13,19 +13,11 @@
 #include "w5500_service.h"
 #include "AttritubeTable.h"
 
-/* 
-	 INIT -- LED Green OFF
-	 STANDBY -- LED Green ON
-	 ACQUIRING -- LED Green FLASH
-	 BTCONNECTLOST -- LED Red ON/ Green OFF
-*/
-
-/* Private variables ----------------------------------------------------*/
-//uint8_t LED1FlashCounter;
-//uint8_t LED2FlashCounter;
-
-uint32_t CurTimeStamp = 0;
-char* pcCurTimeStamp;
+/******************************************************************************
+ * GLOBAL VARIABLES
+ */
+uint32_t CurTimeStamp = 0;	//!< 当前时间
+uint8_t* pCurTimeStamp;			//!< 当前时间指针		
 uint16_t CurEventTag = 0;
 char* pcCurEventTag = (char*)&CurEventTag;
 
@@ -36,7 +28,7 @@ char* pcCurEventTag = (char*)&CurEventTag;
  *	@param AttrChangeNum - 变化的属性值编号
  *
  *	@return SUCCESS 处理完成
- *					FAILURE 处理异常
+ *					ERROR 处理异常
  */
 uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 {
@@ -68,40 +60,33 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 /*! @brief	时间戳服务 
  *					本服务产生数据包时间增量时间戳 int64 精度1ns 
  */
-//void TSG_TIM5_Init(void);	
-//		
-//void Timestamp_Service_Init(void)
-//{
-//	//pointer Init
-//	pcCurTimeStamp = (char*)&CurTimeStamp;
-//	
-//	TSG_TIM5_Init();
-//}
-//	
-//		
-//uint32_t Timestamp_Service_GetTimestamp(void)
-//{
 
-//}
+static void TSG_TIM5_Init(void);	
 
-//// TimeStamp Generator 
-//void TSG_TIM5_Init(void)
-//{
-//	LL_TIM_InitTypeDef TIM_InitStruct;
+//时间戳服务		
+void Timestamp_Service_Init(void)
+{
+	pCurTimeStamp = (uint8_t*)&CurTimeStamp;	//!< 时间戳初始化
+	
+	TSG_TIM5_Init();	//!< 计时器初始化
+}
 
-//	
-//  /* Peripheral clock enable */
-//  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM5);
-//	
-//  TIM_InitStruct.Prescaler = 800;      // 80MHz APB1_TIM 10us/1Count
-//  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-//  TIM_InitStruct.Autoreload = 0xFFFFFFFF;
-//  TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
-//  LL_TIM_Init(TIM5, &TIM_InitStruct);
+// 时间戳服务初始化
+static void TSG_TIM5_Init(void)
+{
+	LL_TIM_InitTypeDef TIM_InitStruct;
+	
+  /* Peripheral clock enable */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM5);
+	
+  TIM_InitStruct.Prescaler = 80;      //!< 80MHz APB1_TIM 1us/1Count
+  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+  TIM_InitStruct.Autoreload = 0xFFFFFFFF; //!< 2^32 
+  TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
+  LL_TIM_Init(TIM5, &TIM_InitStruct);
 
-//  LL_TIM_DisableMasterSlaveMode(TIM5);
-//	
-//	TIM5->CNT = 0;
-//	LL_TIM_EnableCounter(TIM5);
-//}
-
+  LL_TIM_DisableMasterSlaveMode(TIM5);
+	
+	TIM5->CNT = 0;	//!< 计数值初始化
+	LL_TIM_EnableCounter(TIM5);
+}

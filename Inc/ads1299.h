@@ -558,6 +558,7 @@ typedef struct
 
 
 void WaitUs(int iWaitUs);
+void ADS1299_Init(uint8_t dev);
 void ADS1299_Reset(uint8_t dev);
 void ADS1299_PowerOn(uint8_t dev);
 void ADS1299_WriteREG(uint8_t dev, uint8_t address, uint8_t value);

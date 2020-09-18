@@ -18,22 +18,30 @@
 #include "simple_fsm.h"
 #include "protocol_ethernet.h"
 #include "w5500_service.h"
+#include "microEEG_misc.h"
+#include "ads1299.h"
 #include "main.h"											 
 
 /*******************************************************************
  * LOCAL VARIABLES
  */
 
-/* 控制通道参数（TCP端口） */
+/* 控制通道变量（TCP端口） */
 // 上位机->设备 指令解析
-static uint8_t	TCP_Recv_FH = 0xAC;				//<! TCP接收帧头
-static uint8_t	TCP_Recv_FT = 0xCC;				//<! TCP接收帧尾
+static uint8_t	TCP_Recv_FH = 0xAC;				//!< TCP接收帧头
+static uint8_t	TCP_Recv_FT = 0xCC;				//!< TCP接收帧尾
 
 // 设备->上位机 回复
-static uint8_t	TCP_Send_FH = 0xA2;				//<! TCP发送帧头
-static uint8_t	TCP_Send_FT = 0xC2;				//<! TCP发送帧尾
+static uint8_t	TCP_Send_FH = 0xA2;				//!< TCP发送帧头
+static uint8_t	TCP_Send_FT = 0xC2;				//!< TCP发送帧尾
+
+/* 数据通道变量（UDP端口） */
+static uint8_t	UDP_SAMPLE_FH = 0x23;			//!< UDP帧数据域 样起始分隔符
+static uint8_t	*DevID;										//!< 设备唯一识别码
+static uint32_t	UDPNum;										//!< UDP帧服务执行次数
 
 static uint8_t	fsm_status;								//!< 状态机运行状态
+
 
 /*******************************************************************
  * GLOBAL VARIABLES
@@ -52,7 +60,7 @@ static AttrCBs_t *pattr_CBs = NULL;				//!< 属性表服务回调指针
  *	@param 属性表读写回调结构体指针
  *
  *	@return SUCCESS - 回调函数注册成功
- *					FAILURE - 回调函数注册失败
+ *					ERROR - 回调函数注册失败
  */
 uint8_t protocol_RegisterAttrCBs(AttrCBs_t *pAttrcallbacks)
 {
@@ -60,11 +68,11 @@ uint8_t protocol_RegisterAttrCBs(AttrCBs_t *pAttrcallbacks)
   {
 		pattr_CBs = pAttrcallbacks;
     
-		return ( SUCCESS );
+		return SUCCESS;
 	}
 	else
 	{
-		
+		 return ERROR;
 	}
 }
 
@@ -332,19 +340,71 @@ uint8_t TCP_ProcessFSM(void)
 /*!
  *  @fn	UDP帧协议服务处理函数
  *
+ *	@param	Procesflag - AD数据采集状态标志位
+ *					SampleNum - 目前待封包的AD样本序数	- 无需封包则0xFF
+ *
  *	@return SUCCESS - UDP帧协议服务打包完成
- *					FAILURE - 异常
+ *					ERROR - 异常
  */
-uint8_t UDP_PROCESS()
+uint8_t UDP_PROCESS(uint8_t SampleNum ,uint8_t Procesflag)
 {
+
+		/* AD数据采集中，对数据域进行封包 */
+	 if(Procesflag&EEG_DATA_START_EVT)
+	 {
+		 if(SampleNum!= 0xFF )
+		 {
+			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum] = UDP_SAMPLE_FH;		//!< 样本起始分隔符 
+			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+1]=SampleNum;			//!< 样本序号 - 显示从0开始的序数
+			
+			ADS1299_ReadResult((UDP_Tx_Buff+(DATA_SIZE+9)*SampleNum+HEAD_SIZE+6));	//!< 样本每通道量化值 //!< 前三字节覆盖问题需改进 20/9/18			
+			
+			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+3]=*pCurTimeStamp;	//!< 样本时间戳 - 增量型（每样本相对第一样本时间增量）精度10us，注意小端对齐
+			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+4]=*(pCurTimeStamp+1);
+			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+5]=*(pCurTimeStamp+2);
+			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+6]= *(pCurTimeStamp+3);
+			
+			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+7]=0xAA;	//!< 样本事件标记 - 默认0xAAAA
+			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+8]=0xAA;
+			 
+
+		}
+		 else
+			 return ERROR; 
+	}
+	 
+		/* AD数据采集完毕，对UDP帧头封包 */
+	 if(Procesflag&EEG_DATA_READY_EVT)
+	 {
+		 	uint8_t* len;
+			len = (uint8_t*)malloc(2);
+		 
+			/* 数据源 */
+		  DevID = (uint8_t*)0x1FFF7A10;	//!< STM32F4唯一ID起始地址
+			memcpy(UDP_Tx_Buff,DevID,4);		 
+		 
+			/* UDP包累加滚动码 */
+			UDP_Tx_Buff[4]=(uint8_t) UDPNum; //!< UDP包累加滚动码,也即UDP帧头封包执行次数，注意小端对齐
+			UDP_Tx_Buff[5]=(uint8_t)(UDPNum >> 8);
+			UDP_Tx_Buff[6]=(uint8_t)(UDPNum >> 16);
+			UDP_Tx_Buff[7]=(uint8_t)(UDPNum >> 24);
+			UDPNum++;	
+		 
+			/* 本UDP包总样数 */
+			pattr_CBs->pfnReadAttrCB(	7,0xFF,(UDP_Tx_Buff+8),len);
+			
+			/* 本UDP包有效通道总数 */
+			UDP_Tx_Buff[10]=8; //BUG 先锁定该值
+			
+			/* 首样时间戳 */		 
+		 
+			/* 包头保留数 */	
+			memset(UDP_Tx_Buff+19,0xff,4);
+		 
+			free(len);
 	
-	
-	// 数据帧头部封装
-	memset(UDP_Tx_Buff,0xff,120);
-	UDP_Tx_Buff[4]=0x01;
-	UDP_Tx_Buff[9]=10;
-	UDP_Tx_Buff[10]=0x08;
-	UDP_Tx_Buff[285]=0xCC;	
-	return SUCCESS; 
+			return SUCCESS; 
+	 }		 
+
 	
 }
