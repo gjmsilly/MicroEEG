@@ -29,8 +29,8 @@ void ADS1299_Init(uint8_t dev)
 	
 	ADS1299_PowerOn(dev);
 	ADS1299_Reset(dev);	
-	
-	ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
+	WaitUs(400);
+	//ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
 }
 
 /****************************************************************/
@@ -219,7 +219,7 @@ uint8_t ADS1299_ReadREG (uint8_t dev, uint8_t address)
 	__disable_irq();
 	
 	Mod_CS_Enable;
-	
+	WaitUs(2);	
 	DRchar = SPI1->DR;
 	while(!LL_SPI_IsActiveFlag_TXE(SPI1));
 	SPI1->DR = address;
@@ -332,13 +332,8 @@ void ADS1299_ReadResult(uint8_t *result)
 	uint8_t i;
   Mod_CS_Enable;
 	WaitUs(2); // 6ns Delay time - CS low to first SCLK 
-
-	//	for(i=0;i<27;i++)
-//	{
-//		*(result++) = ADS1299_ReadByte();
-//	}
 	
-	//DMA test
+	//DMA
 	ADS1299_ReadResult_DMA((uint32_t)result, 27); //DMA Read Bug Temporal fixed 5-13
 	
 	while(!LL_DMA_IsActiveFlag_TC0(DMA2)); // Wait until all data trasferred from SPI1_RX

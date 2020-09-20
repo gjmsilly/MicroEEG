@@ -32,8 +32,8 @@ uint8_t *pUDP_Tx_Buff;										//!< UDP发送数据帧指针
  /*****************************************************************************
  * LOCAL VARIABLES
  */
-static NETWORKParam_t net_param,*Pnet_param;    		//网络参数配置
-static SOCKETnParam_t sn_param[2],*Psn_param;   		//Socket n参数配置(n=0,1)
+NETWORKParam_t net_param,*Pnet_param;    		//网络参数配置
+SOCKETnParam_t sn_param[2],*Psn_param;   		//Socket n参数配置(n=0,1)
 
 static void W5500_Load_Net_Parameters(void);
 static void W5500_RST(void);

@@ -58,7 +58,8 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-extern uint8_t SYS_Event;							//!< 系统状态事件 - @ref System events 
+extern uint8_t SYS_Event;									//!< 系统状态事件 - @ref System events
+
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/

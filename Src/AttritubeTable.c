@@ -13,6 +13,7 @@
  */ 
 #include "AttritubeTable.h"
 #include "protocol_ethernet.h"
+#include "w5500_service.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -24,22 +25,42 @@
 static uint32_t* pattr_offset[ATTR_NUM];	//!< 属性偏移地址
 static uint8_t* pattr;										//!< 属性表首地址
 
+//!< 基本信息组 属性
+const	uint16_t channelnum = CHANNEL_NUM;
+
 //!< 工作状态与控制组 属性
-static bool 		sampling;
+static bool 	sampling;
 static int8_t	impmeas_mode;
 static int8_t	impmeas_fxn;
 
 //!< 通信参数组 属性
-const uint8_t  dev_mac[6] = {0x0c,0x29,0xab,0x7c,0x00,0x01};
-const uint8_t  dev_ip[4] = {192,168,1,10}; 
 enum  Dev_PortStat_t dev_portstat; 
-const uint16_t host_port = 7002;
-const uint16_t samplenum = SAMPLENUM;
+uint16_t samplenum = SAMPLENUM;
+
+//!< 采样参数组 属性
+enum Samprate_tbl Samprate = SPS_500;
+enum Gain_tbl curgain = GAIN_X1;
 
 /************************************************************************
  *  Attributes  Table
  */
 const Attr_Tbl_t attr_tbl = {
+
+	/*
+	 *  ======================== 基本信息组 ==============================
+	 */
+		//!< 仪器UID  
+		.Dev_UID			= {	ATTR_RO,									/* permissions */
+											4,												/* datasize */
+											(uint32_t*)CPU_UUID_ADDR  /* pAttrValue */
+										},
+		
+		//!< 仪器总通道数
+		.Dev_ChNum		= { ATTR_RO,
+											2,
+											(uint32_t*)&channelnum
+										},
+															
 	
 	/*
 	 *  ===================== 工作状态与控制组 ===========================
@@ -51,17 +72,17 @@ const Attr_Tbl_t attr_tbl = {
 											(uint32_t*)&sampling  /* pAttrValue */
 										},
 		
-		//!< 阻抗测量模式	0- 无阻抗测量 
-		.IMPMeas_Mode	= { ATTR_RS,
-											1,
-											(uint32_t*)&impmeas_mode
-										},
-											
-		//!< 阻抗测量方案	0- 正弦波测AC电阻 1- 测DC电阻 2- 交流激励测阻抗
-		.IMPMeas_fxn	= { ATTR_RS,
-											1,
-										 (uint32_t*)&impmeas_fxn
-										},			 
+//		//!< 阻抗测量模式	0- 无阻抗测量 
+//		.IMPMeas_Mode	= { ATTR_RS,
+//											1,
+//											(uint32_t*)&impmeas_mode
+//										},
+//											
+//		//!< 阻抗测量方案	0- 正弦波测AC电阻 1- 测DC电阻 2- 交流激励测阻抗
+//		.IMPMeas_fxn	= { ATTR_RS,
+//											1,
+//										 (uint32_t*)&impmeas_fxn
+//										},			 
 
 	/*
 	 *  ======================== 通信参数组 ==============================
@@ -70,26 +91,26 @@ const Attr_Tbl_t attr_tbl = {
 		//!< 仪器网口MAC地址  0c-29-ab-7c-00-01 (default) 
 		.Dev_MAC				= { ATTR_RO,
 												6,
-												(uint32_t*)dev_mac
+												(uint32_t*)net_param.Phy_Addr
 											},
 		
 		//!< 仪器当前IP地址 192.168.1.10 (default) 
 		.Dev_IP					=	{ ATTR_NV,
 												4,
-												(uint32_t*)dev_ip
+												(uint32_t*)net_param.IP_Addr
 											},
 			
-		//!< 仪器网口状态
-		.Dev_PortStat		= { ATTR_RA,
-												1,
-												(uint32_t*)&dev_portstat
-											},
+//		//!< 仪器网口状态
+//		.Dev_PortStat		= { ATTR_RA,
+//												1,
+//												(uint32_t*)&dev_portstat
+//											},
 		
-		//!< 目的主机UDP端口号 - 7002 (default)
-		.Host_Port			= { ATTR_NV,
-												2,
-												(uint32_t*)&host_port
-											},
+//		//!< 目的主机UDP端口号 - 7002 (default)
+//		.Host_Port			= { ATTR_NV,
+//												2,
+//												(uint32_t*)&sn_param[1].UDP_DPORT
+//											},
 		
 		//!< 以太网每包含ad样本数 - 10 (default)
 		.SampleNum			= { ATTR_RS,
@@ -97,6 +118,33 @@ const Attr_Tbl_t attr_tbl = {
 												(uint32_t*)&samplenum
 											},   
 
+	/*
+	 *  ======================== 通信参数组 ==============================
+	 */
+			 
+		//!< 支持的采样率
+		.Samprate				= { ATTR_RO,
+												2,
+												(uint32_t*)&Samprate
+											},
+		
+		//!< 当前全局采样率 1ksps (default) 
+		.CurSamprate		=	{ ATTR_RS,
+												2,
+												(uint32_t*)&Samprate
+											},
+		
+		//!< 支持的增益
+		.Gain						= { ATTR_RO,
+												2,
+												(uint32_t*)&curgain
+											},
+		
+		//!< 当前全局增益 x1 (default) 
+		.CurGain				=	{ ATTR_RS,
+												2,
+												(uint32_t*)&curgain
+											},		
 };
 
 
@@ -250,14 +298,20 @@ void Attr_Tbl_Init()
 	
 	//!< 属性地址偏移映射关系   
 	//!< pattr_offset[n]即属性的物理地址 上位机通过下标进行偏移访问
+	pattr_offset[DEV_UID] = (uint32_t*)attr_tbl.Dev_UID.pAttrValue;
+	pattr_offset[DEV_CHANNEL_NUM] = (uint32_t*)attr_tbl.Dev_ChNum.pAttrValue;
 	pattr_offset[SAMPLING] = (uint32_t*)attr_tbl.Sampling.pAttrValue;	
-	pattr_offset[IMPMEAS_MODE] = (uint32_t*)attr_tbl.IMPMeas_Mode.pAttrValue;
-	pattr_offset[IMPMEAS_FXN] = (uint32_t*)attr_tbl.IMPMeas_fxn.pAttrValue;
+//	pattr_offset[IMPMEAS_MODE] = (uint32_t*)attr_tbl.IMPMeas_Mode.pAttrValue;
+//	pattr_offset[IMPMEAS_FXN] = (uint32_t*)attr_tbl.IMPMeas_fxn.pAttrValue;
 	pattr_offset[DEV_MAC] = (uint32_t*)attr_tbl.Dev_MAC.pAttrValue;
 	pattr_offset[DEV_IP] = (uint32_t*)attr_tbl.Dev_IP.pAttrValue;
-	pattr_offset[DEV_PORTSTAT] = (uint32_t*)attr_tbl.Dev_PortStat.pAttrValue;
-	pattr_offset[HOST_PORT] = (uint32_t*)attr_tbl.Host_Port.pAttrValue;
+//	pattr_offset[DEV_PORTSTAT] = (uint32_t*)attr_tbl.Dev_PortStat.pAttrValue;
+//	pattr_offset[HOST_PORT] = (uint32_t*)attr_tbl.Host_Port.pAttrValue;
 	pattr_offset[SAMPLE_NUM] = (uint32_t*)attr_tbl.SampleNum.pAttrValue;
+	pattr_offset[SAMPLERATE] = (uint32_t*)attr_tbl.Samprate.pAttrValue;
+	pattr_offset[CURSAMPLERATE] = (uint32_t*)attr_tbl.CurSamprate.pAttrValue;
+	pattr_offset[GAIN] = (uint32_t*)attr_tbl.Gain.pAttrValue;
+	pattr_offset[CURGAIN] = (uint32_t*)attr_tbl.CurGain.pAttrValue;	
 
 }
 

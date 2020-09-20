@@ -23,7 +23,7 @@ extern "C" {
  * CONSTANTS
  */
 #define ATTR_NUM						40		//!< 属性表支持的属性数量（除通道属性）
-#define CHANNEL_MODE				8			//!< 通道数量  （x8/x16/x32）
+
 
 /* 读写回调状态参数 */
 #ifndef SUCCESS
@@ -43,19 +43,23 @@ extern "C" {
 #define	ATTR_NV							0x03	//!< 非易失属性
 
 /* 属性编号 */
-#define SAMPLING						0
-#define IMPMEAS_MODE				1
-#define IMPMEAS_FXN					2
+#define DEV_UID							0
+#define	DEV_CHANNEL_NUM			1
+#define SAMPLING						2
 #define	DEV_MAC							3
 #define DEV_IP							4
-#define DEV_PORTSTAT				5
-#define HOST_PORT						6
-#define SAMPLE_NUM					7
+#define SAMPLE_NUM					5
+#define SAMPLERATE					6
+#define CURSAMPLERATE				7
+#define GAIN								8
+#define CURGAIN							9
 
 /* 属性值定义 */
-#define SAMPLENUM						10	//!< 以太网每包含ad样本数
-#define SAMPLLE_START				1		//!< 开始采集
-#define SAMPLLE_STOP				0   //!< 停止采集
+#define CPU_UUID_ADDR				0x1FFF7A10	//!< STM32F446 UUID首地址
+#define CHANNEL_NUM					8						//!< 通道数量  （x8/x16/x32）
+#define SAMPLENUM						10					//!< 以太网每包含ad样本数
+#define SAMPLLE_START				1						//!< 开始采集
+#define SAMPLLE_STOP				0 					//!< 停止采集
 
 /*******************************************************************
  * TYPEDEFS
@@ -102,35 +106,35 @@ typedef struct
 typedef struct
 {
 
-//	/* 基本信息组 */
-//	Attr_t 	Dev_UID;					//!< 仪器UID										<RO>
-//	Attr_t 	Dev_ChNum;				//!< 仪器总通道数								<RO>
+	/* 基本信息组 */
+	Attr_t 	Dev_UID;					//!< 仪器UID										<RO>
+	Attr_t 	Dev_ChNum;				//!< 仪器总通道数								<RO>
 //	Attr_t 	Dev_ChxType;			//!< 仪器逐通道类型							<RO>
 //	Attr_t	Dev_ConType;			//!< 仪器选件类型								<RO>
 
 	/* 工作状态与控制组 */
 	Attr_t	Sampling;					//!< 正在采样										<RS>
-	Attr_t	IMPMeas_Mode;			//!< 阻抗测量模式								<RS>
-	Attr_t	IMPMeas_fxn;			//!< 阻抗测量方案								<RS>
+//	Attr_t	IMPMeas_Mode;			//!< 阻抗测量模式								<RS>
+//	Attr_t	IMPMeas_fxn;			//!< 阻抗测量方案								<RS>
 
 	/* 通信参数组 */
 	Attr_t 	Dev_MAC;					//!< 仪器网口MAC地址						<RO>
 	Attr_t 	Dev_IP;						//!< 仪器当前IP地址							<NV>
-	Attr_t	Dev_PortStat;			//!< 仪器网口状态								<RA>
-	Attr_t	Host_Port;				//!< 目的主机UDP端口号					<NV>
+//	Attr_t	Dev_PortStat;			//!< 仪器网口状态								<RA>
+//	Attr_t	Host_Port;				//!< 目的主机UDP端口号					<NV>
 	Attr_t	SampleNum;				//!< 以太网每包含ad样本数				<RO>
 
-//	/* 采样参数组 */
-//	Attr_t	Samprate;					//!< 支持的采样率								<RO>
-//	Attr_t	CurSamprate;			//!< 当前全局采样率							<RS>
+	/* 采样参数组 */
+	Attr_t	Samprate;					//!< 支持的采样率								<RO>
+	Attr_t	CurSamprate;			//!< 当前全局采样率							<RS>
 //	Attr_t	Samprate_tbl;			//!< 支持的分档采样率表					<RO>
-//	
-//	Attr_t	Gain;							//!< 支持的增益									<RO>
-//	Attr_t	CurGain;					//!< 当前全局增益								<RS>
+	
+	Attr_t	Gain;							//!< 支持的增益									<RO>
+	Attr_t	CurGain;					//!< 当前全局增益								<RS>
 //	Attr_t	Gain_tbl;					//!< 支持的分档增益表						<RO>
 	
 //	/* 逐通道参数组 */
-//	CHx_Param_t	CHx_Param[CHANNEL_MODE];
+//	CHx_Param_t	CHx_Param[CHANNEL_NUM];
 
 //	/* 外触发组 */
 //	Attr_t	Trig_en;					//!< 外触发允许									<RS>
@@ -164,28 +168,30 @@ enum Dev_PortStat_t
 	PORT_1000M 
 };
 
-///*!
-// *  @brief	支持的分档采样率表
-// */
-//enum Samprate_tbl
-//{
-//	SPS_250 = 250,
-//	SPS_500 = 500,
-//	SPS_1K = 1000
-//};
+/*!
+ *  @brief	支持的分档采样率表
+ */
+enum Samprate_tbl
+{
+	SPS_250 = 250,
+	SPS_500 = 500,
+	SPS_1K = 1000,
+	SPS_2K = 2000,
+	SPS_4K = 4000,
+};
 
-///*!
-// *  @brief	支持的分档增益表
-// */
-//enum Gain_tbl
-//{
-//	GAIN_X1 = 1,
-//	GAIN_X2 = 2,
-//	GAIN_X4 = 4,
-//	GAIN_X6 = 6,
-//	GAIN_X8 = 8,
-//	GAIN_X24 = 24
-//};
+/*!
+ *  @brief	支持的分档增益表
+ */
+enum Gain_tbl
+{
+	GAIN_X1 = 1,
+	GAIN_X2 = 2,
+	GAIN_X4 = 4,
+	GAIN_X6 = 6,
+	GAIN_X8 = 8,
+	GAIN_X24 = 24
+};
 
 ///*!
 // *  @brief	仪器逐通道类型

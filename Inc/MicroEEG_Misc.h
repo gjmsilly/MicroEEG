@@ -32,6 +32,7 @@ extern uint8_t* pCurTimeStamp;	//!< 当前时间指针
 uint8_t AttrChangeProcess (uint8_t AttrChangeNum);
 
 /* 时间戳服务 */
-void Timestamp_Service_Init(void);
+void SampleTimestamp_Service_Init(void);
+void UNIXTimestamp_Service(uint8_t *pout);
 
 #endif   /* __MICROEEG_MISC_H__ */

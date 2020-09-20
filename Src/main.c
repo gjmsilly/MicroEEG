@@ -363,10 +363,8 @@ int main(void)
 	shell.write = ShellPutchar;
 	shellInit(&shell);
 	
-
-	//W5500初始化
-	W5500_Init(); //W5500初始化，配置Socket
-		
+	 /* 以下按照层级顺序由底层向高层依次初始化 */
+	 		
 	//ADS1299 初始化	
 	//Configure the DMA for ads1299
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
@@ -376,11 +374,18 @@ int main(void)
 	
 	ADS1299_Init(0);
 	
+	ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode		
+	
+	ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF6);		//250HZ采样
+	ADS1299_WriteREG(0,ADS1299_REG_CONFIG2,0xC0);   //internal test signal off
+
 	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7	
 	
-
-	//时间戳服务初始化
-	Timestamp_Service_Init();
+	//W5500初始化
+	W5500_Init(); //W5500初始化，配置Socket
+	
+	//样本时间戳服务初始化
+	SampleTimestamp_Service_Init();
 	
 	//TCP帧协议服务初始化
 	TCP_ProcessFSMInit();			
@@ -697,13 +702,14 @@ static void MX_RTC_Init(void)
   */
   if(LL_RTC_BAK_GetRegister(RTC, LL_RTC_BKP_DR0) != 0x32F2){
 
-  RTC_TimeStruct.Hours = 0;
+  RTC_TimeStruct.Hours = 17;
   RTC_TimeStruct.Minutes = 0;
   RTC_TimeStruct.Seconds = 0;
   LL_RTC_TIME_Init(RTC, LL_RTC_FORMAT_BCD, &RTC_TimeStruct);
-  RTC_DateStruct.WeekDay = LL_RTC_WEEKDAY_MONDAY;
-  RTC_DateStruct.Month = LL_RTC_MONTH_JANUARY;
-  RTC_DateStruct.Year = 0;
+  RTC_DateStruct.WeekDay = LL_RTC_WEEKDAY_SATURDAY;
+  RTC_DateStruct.Month = LL_RTC_MONTH_SEPTEMBER;
+	RTC_DateStruct.Day = 19;
+  RTC_DateStruct.Year = 20;
   LL_RTC_DATE_Init(RTC, LL_RTC_FORMAT_BCD, &RTC_DateStruct);
     LL_RTC_BAK_SetRegister(RTC,LL_RTC_BKP_DR0,0x32F2);
   }
@@ -851,7 +857,7 @@ static void MX_SPI2_Init(void)
   SPI_InitStruct.ClockPolarity = LL_SPI_POLARITY_LOW;
   SPI_InitStruct.ClockPhase = LL_SPI_PHASE_2EDGE;
   SPI_InitStruct.NSS = LL_SPI_NSS_SOFT;
-  SPI_InitStruct.BaudRate = LL_SPI_BAUDRATEPRESCALER_DIV2;
+  SPI_InitStruct.BaudRate = LL_SPI_BAUDRATEPRESCALER_DIV4;
   SPI_InitStruct.BitOrder = LL_SPI_MSB_FIRST;
   SPI_InitStruct.CRCCalculation = LL_SPI_CRCCALCULATION_DISABLE;
   SPI_InitStruct.CRCPoly = 10;

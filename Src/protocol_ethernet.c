@@ -37,7 +37,6 @@ static uint8_t	TCP_Send_FT = 0xC2;				//!< TCP发送帧尾
 
 /* 数据通道变量（UDP端口） */
 static uint8_t	UDP_SAMPLE_FH = 0x23;			//!< UDP帧数据域 样起始分隔符
-static uint8_t	*DevID;										//!< 设备唯一识别码
 static uint32_t	UDPNum;										//!< UDP帧服务执行次数
 
 static uint8_t	fsm_status;								//!< 状态机运行状态
@@ -357,7 +356,7 @@ uint8_t UDP_PROCESS(uint8_t SampleNum ,uint8_t Procesflag)
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum] = UDP_SAMPLE_FH;		//!< 样本起始分隔符 
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+1]=SampleNum;			//!< 样本序号 - 显示从0开始的序数
 			
-			ADS1299_ReadResult((UDP_Tx_Buff+(DATA_SIZE+9)*SampleNum+HEAD_SIZE+6));	//!< 样本每通道量化值 //!< 前三字节覆盖问题需改进 20/9/18			
+			ADS1299_ReadResult((UDP_Tx_Buff+HEAD_SIZE+DATA_SIZE*SampleNum+6));	//!< 样本每通道量化值 //!< 前三字节覆盖问题需改进 20/9/18			
 			
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+3]=*pCurTimeStamp;	//!< 样本时间戳 - 增量型（每样本相对第一样本时间增量）精度10us，注意小端对齐
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+4]=*(pCurTimeStamp+1);
@@ -376,32 +375,32 @@ uint8_t UDP_PROCESS(uint8_t SampleNum ,uint8_t Procesflag)
 		/* AD数据采集完毕，对UDP帧头封包 */
 	 if(Procesflag&EEG_DATA_READY_EVT)
 	 {
-		 	uint8_t* len;
-			len = (uint8_t*)malloc(2);
-		 
-			/* 数据源 */
-		  DevID = (uint8_t*)0x1FFF7A10;	//!< STM32F4唯一ID起始地址
-			memcpy(UDP_Tx_Buff,DevID,4);		 
-		 
-			/* UDP包累加滚动码 */
-			UDP_Tx_Buff[4]=(uint8_t) UDPNum; //!< UDP包累加滚动码,也即UDP帧头封包执行次数，注意小端对齐
-			UDP_Tx_Buff[5]=(uint8_t)(UDPNum >> 8);
-			UDP_Tx_Buff[6]=(uint8_t)(UDPNum >> 16);
-			UDP_Tx_Buff[7]=(uint8_t)(UDPNum >> 24);
-			UDPNum++;	
-		 
-			/* 本UDP包总样数 */
-			pattr_CBs->pfnReadAttrCB(	7,0xFF,(UDP_Tx_Buff+8),len);
-			
-			/* 本UDP包有效通道总数 */
-			UDP_Tx_Buff[10]=8; //BUG 先锁定该值
-			
-			/* 首样时间戳 */		 
-		 
-			/* 包头保留数 */	
-			memset(UDP_Tx_Buff+19,0xff,4);
-		 
-			free(len);
+		uint8_t* len;
+		len = (uint8_t*)malloc(2);
+			 
+		/* 数据源 */
+		pattr_CBs->pfnReadAttrCB(	0,0xFF,UDP_Tx_Buff,len);		 
+	 
+		/* UDP包累加滚动码 */
+		UDP_Tx_Buff[4]=(uint8_t) UDPNum; //!< UDP包累加滚动码,也即UDP帧头封包执行次数，注意小端对齐
+		UDP_Tx_Buff[5]=(uint8_t)(UDPNum >> 8);
+		UDP_Tx_Buff[6]=(uint8_t)(UDPNum >> 16);
+		UDP_Tx_Buff[7]=(uint8_t)(UDPNum >> 24);
+		UDPNum++;	
+	 
+		/* 本UDP包总样数 */
+		pattr_CBs->pfnReadAttrCB(	5,0xFF,(UDP_Tx_Buff+8),len);
+		
+		/* 本UDP包有效通道总数 */
+		pattr_CBs->pfnReadAttrCB(	1,0xFF,(UDP_Tx_Buff+10),len);
+		
+		/* 首样时间戳 */		 
+		UNIXTimestamp_Service(UDP_Tx_Buff+11);
+		
+		/* 包头保留数 */	
+		memset(UDP_Tx_Buff+19,0xff,4);
+	 
+		free(len);
 	
 			return SUCCESS; 
 	 }		 
