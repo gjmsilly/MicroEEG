@@ -20,6 +20,9 @@
  */
 uint32_t CurTimeStamp = 0;	//!< 当前时间
 uint8_t* pCurTimeStamp;			//!< 当前时间指针		
+uint32_t attrvalue=0;				//!< 属性值
+uint32_t *pValue =&attrvalue;	//!< 属性值指针
+
 uint16_t CurEventTag = 0;
 char* pcCurEventTag = (char*)&CurEventTag;
 
@@ -35,8 +38,10 @@ char* pcCurEventTag = (char*)&CurEventTag;
 uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 {
 	uint8_t ret = SUCCESS;
-	uint8_t *pValue;
-
+	
+	//!< ads1299 参数配置
+	TADS1299CHnSET ChVal; 
+	
 	switch(AttrChangeNum)
 	{
 		case SAMPLING: 
@@ -50,7 +55,71 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			}else
 			/* ads1299 停止采集 */
 			 ADS1299_SendCommand(ADS1299_CMD_STOP);
+			 ADS1299_SendCommand(ADS1299_CMD_SDATAC);
 			break;
+			
+		case CURSAMPLERATE:
+			App_GetAttr(CURSAMPLERATE,pValue); //获取属性值
+		
+			switch(*pValue)
+			{
+				case 250:
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF6);		//250HZ采样
+				break;
+				
+				case 500:
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF5);		//500HZ采样
+				break;
+				
+				case 1000:
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF4);		//1000HZ采样
+				break;				
+				
+				case 2000:
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF3);		//2000HZ采样
+				break;
+				
+				default:
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF4);		//1000HZ采样
+				break;					
+			}				
+					
+		break;
+		
+		case CURGAIN:
+			App_GetAttr(CURGAIN,pValue); //获取属性值
+			
+			switch(*(uint8_t*)pValue)
+			{
+				case 1:
+					ChVal.control_bit.gain = 0;
+				break;
+				
+				case 2:
+					ChVal.control_bit.gain = 1;
+				break;
+				
+				case 4:
+					ChVal.control_bit.gain = 2;
+				break;
+				
+				case 6:
+					ChVal.control_bit.gain = 3;
+				break;
+				
+				default:
+					ChVal.control_bit.gain = 0;
+				break;					
+			}	
+			ChVal.control_bit.pd = 0;
+			ChVal.control_bit.mux = 0;			
+			
+			for(uint8_t i=0;i<8;i++)
+			{
+				ADS1299_Channel_Config(0,i,ChVal);
+				WaitUs(2);
+			}
+		break;
 	}
 	
 }

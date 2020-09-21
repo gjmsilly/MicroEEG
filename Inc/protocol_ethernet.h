@@ -60,12 +60,25 @@ typedef struct
   pfnWriteAttrCB_t 	pfnWriteAttrCB;					//!< 写属性回调函数指针
 } AttrCBs_t;
 
+/*!
+ *  @def    UDP帧头数据 结构体
+ *
+ *	@brief	本结构体内数据需通过属性表获取
+ */
+ typedef struct
+{
+	uint8_t	UDP_DevID[4];				//!< UDP数据源
+	uint8_t	UDP_SampleNum[2];		//!< UDP包总样数
+	uint8_t	UDP_ChannelNum;			//!< UDP包有效通道总数
+	uint8_t AttrLen;						//!< 属性长度 - 按字节 （for debug）
+} UDPHeader_t;
+
 /**********************************************************************
  * FUNCTIONS
  */
 void TCP_ProcessFSMInit(void);
 uint8_t TCP_ProcessFSM(void);
-uint8_t UDP_PROCESS(uint8_t SampleNum ,uint8_t Procesflag);
+uint8_t UDP_Process(uint8_t SampleNum ,uint8_t Procesflag);
 
 uint8_t protocol_RegisterAttrCBs(AttrCBs_t *pAttrcallbacks);
 

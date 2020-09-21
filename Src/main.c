@@ -63,10 +63,10 @@ QSPI_HandleTypeDef hqspi;
 DMA_HandleTypeDef hdma_quadspi;
 
 /* USER CODE BEGIN PV */
-SHELL_TypeDef shell;						//!< shell句柄
 uint8_t SYS_Event;							//!< 系统状态事件
-static InsQUEUE InsQueue;				//!< TCP指令队列									
+static InsQUEUE InsQueue;				//!< TCP指令队列
 
+SHELL_TypeDef shell;						//!< shell句柄
 uint8_t resultval[28];  				//!< ADS1299结果缓存区（shell调试用）
 uint8_t ReadResult;
 /* USER CODE END PV */
@@ -291,7 +291,7 @@ static void Sys_Control()
 	// AD采集完成事件
 	if( SYS_Event&EEG_DATA_READY_EVT )
 	{
-		if( UDP_PROCESS(0xFF,SYS_Event)== SUCCESS)
+		if( UDP_Process(0xFF,SYS_Event)== SUCCESS)
 			{
 				SYS_Event |=  UDP_PROCESSCLP_EVT; //!< 更新事件：UDP协议服务处理完毕
 				SYS_Event &= ~ EEG_DATA_READY_EVT; //!< 清除前序事件 - AD采集完成
@@ -366,19 +366,21 @@ int main(void)
 	 /* 以下按照层级顺序由底层向高层依次初始化 */
 	 		
 	//ADS1299 初始化	
-	//Configure the DMA for ads1299
+	//	配置DMA
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX
-		
+	//	使能SPI	
 	LL_SPI_Enable(SPI1);	
-	
+	//	初始化ADS1299
 	ADS1299_Init(0);
-	
-	ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode		
-	
-	ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF6);		//250HZ采样
+	//////////////////////////////////////////////////////////////////////////////
+	//	for test
+		
+	ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF4);		//1kHZ采样
 	ADS1299_WriteREG(0,ADS1299_REG_CONFIG2,0xC0);   //internal test signal off
-
+	ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
+//////////////////////////////////////////////////////////////////////////////
+	//	使能nDReady中断
 	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7	
 	
 	//W5500初始化

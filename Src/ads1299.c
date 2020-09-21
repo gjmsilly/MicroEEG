@@ -68,7 +68,7 @@ void WaitUs(int iWaitUs)
 	  int iCounterTargetValue;
 	  int iCounterTargetInterval;
 	   
-	  iCounterTargetInterval = iWaitUs * (HAL_RCC_GetHCLKFreq()/1000000) -32;
+	  iCounterTargetInterval = iWaitUs * (HAL_RCC_GetHCLKFreq()/1000000);
 	  if(iPreTickVal < iCounterTargetInterval)
 	  {
 			iCounterTargetValue =  iPreTickVal + SysTick->LOAD - iCounterTargetInterval;

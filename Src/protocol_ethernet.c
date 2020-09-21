@@ -4,7 +4,7 @@
  * @brief   以太网帧协议服务（TCP帧解析+回复，UDP帧发送）
  * @version 1.0
  * @date    2020-09-02
- * @ref			https://www.amobbs.com/forum.php?mod=viewthread&tid=5668532
+ * @ref			https://www.amobbs.com/forum.php?mod=viewthread&tid=5668532 //傻孩子状态机
  * @copyright (c) 2020 gjmsilly
  *
  */
@@ -41,7 +41,9 @@ static uint32_t	UDPNum;										//!< UDP帧服务执行次数
 
 static uint8_t	fsm_status;								//!< 状态机运行状态
 
-
+/* 数据通道变量（UDP端口） */
+static UDPHeader_t UDPHeader;							//!< UDP帧头数据
+static uint8_t* len;											//!< for debug
 /*******************************************************************
  * GLOBAL VARIABLES
  */
@@ -333,6 +335,9 @@ uint8_t TCP_ProcessFSM(void)
 
 
 ///////////////////////////////////////////////////////////////////////
+
+static void UDP_FrameHeaderGet();
+
 /*
  *  ======================== UDP帧协议服务 ============================
  */ 
@@ -345,7 +350,7 @@ uint8_t TCP_ProcessFSM(void)
  *	@return SUCCESS - UDP帧协议服务打包完成
  *					ERROR - 异常
  */
-uint8_t UDP_PROCESS(uint8_t SampleNum ,uint8_t Procesflag)
+uint8_t UDP_Process(uint8_t SampleNum ,uint8_t Procesflag)
 {
 
 		/* AD数据采集中，对数据域进行封包 */
@@ -356,7 +361,7 @@ uint8_t UDP_PROCESS(uint8_t SampleNum ,uint8_t Procesflag)
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum] = UDP_SAMPLE_FH;		//!< 样本起始分隔符 
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+1]=SampleNum;			//!< 样本序号 - 显示从0开始的序数
 			
-			ADS1299_ReadResult((UDP_Tx_Buff+HEAD_SIZE+DATA_SIZE*SampleNum+6));	//!< 样本每通道量化值 //!< 前三字节覆盖问题需改进 20/9/18			
+			ADS1299_ReadResult((UDP_Tx_Buff+HEAD_SIZE+DATA_SIZE*SampleNum+6));	//!< 样本每通道量化值 //!< 前三字节舍去 (被覆盖)	
 			
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+3]=*pCurTimeStamp;	//!< 样本时间戳 - 增量型（每样本相对第一样本时间增量）精度10us，注意小端对齐
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+4]=*(pCurTimeStamp+1);
@@ -375,11 +380,13 @@ uint8_t UDP_PROCESS(uint8_t SampleNum ,uint8_t Procesflag)
 		/* AD数据采集完毕，对UDP帧头封包 */
 	 if(Procesflag&EEG_DATA_READY_EVT)
 	 {
-		uint8_t* len;
-		len = (uint8_t*)malloc(2);
-			 
+		 if(UDPNum == 0)	//!< 考虑暂停采集该值的情况，待改进
+		 {
+				UDP_FrameHeaderGet(); // 执行一次 
+		 }
+
 		/* 数据源 */
-		pattr_CBs->pfnReadAttrCB(	0,0xFF,UDP_Tx_Buff,len);		 
+		memcpy(UDP_Tx_Buff,UDPHeader.UDP_DevID,4);		 
 	 
 		/* UDP包累加滚动码 */
 		UDP_Tx_Buff[4]=(uint8_t) UDPNum; //!< UDP包累加滚动码,也即UDP帧头封包执行次数，注意小端对齐
@@ -389,21 +396,42 @@ uint8_t UDP_PROCESS(uint8_t SampleNum ,uint8_t Procesflag)
 		UDPNum++;	
 	 
 		/* 本UDP包总样数 */
-		pattr_CBs->pfnReadAttrCB(	5,0xFF,(UDP_Tx_Buff+8),len);
+		memcpy((UDP_Tx_Buff+8),UDPHeader.UDP_SampleNum,2);
 		
 		/* 本UDP包有效通道总数 */
-		pattr_CBs->pfnReadAttrCB(	1,0xFF,(UDP_Tx_Buff+10),len);
+		memcpy((UDP_Tx_Buff+10),&UDPHeader.UDP_ChannelNum,1);
 		
 		/* 首样时间戳 */		 
 		UNIXTimestamp_Service(UDP_Tx_Buff+11);
 		
 		/* 包头保留数 */	
 		memset(UDP_Tx_Buff+19,0xff,4);
-	 
-		free(len);
-	
-			return SUCCESS; 
-	 }		 
+	 	
+		return SUCCESS; 
+	 }		 	
+}
 
+/*!
+ *  @fn	UDP帧协议帧头数据获取
+ *
+ *	@brief	对UDP帧头封包需要获取属性表中的属性值，为了避免打包时
+ *					频繁的回调造成系统不可预计的崩溃，只在UDP第一次帧头封
+ *					包时调用本函数，将属性值存到静态变量中方便后续封包。					
+ *
+ */
+static void UDP_FrameHeaderGet()
+{
+	len = &UDPHeader.AttrLen;
+	
+	//!< 回调读取属性的方式待优化 9.21
+	
+	/* 数据源 */
+	pattr_CBs->pfnReadAttrCB(	0,0xFF,UDPHeader.UDP_DevID,len);		//!< 属性编号 0 
+
+	/* 本UDP包总样数 */
+	pattr_CBs->pfnReadAttrCB(	5,0xFF,UDPHeader.UDP_SampleNum,len); //!< 属性编号 5
+	
+	/* 本UDP包有效通道总数 - 目前用总通道数代替*/
+	pattr_CBs->pfnReadAttrCB(	1,0xFF,&UDPHeader.UDP_ChannelNum,len); //!< 属性编号 1	
 	
 }

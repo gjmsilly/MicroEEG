@@ -231,7 +231,7 @@ void EXTI9_5_IRQHandler(void)
 		
 		SYS_Event |= EEG_DATA_START_EVT; //!< 更新事件：ad采集开始
 		
-		UDP_PROCESS(SampleNum,SYS_Event);
+		UDP_Process(SampleNum,SYS_Event);
 		SampleNum++;
 		
 		if(SampleNum == SAMPLENUM )

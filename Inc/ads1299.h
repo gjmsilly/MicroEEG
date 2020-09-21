@@ -65,10 +65,10 @@ typedef union
    struct
    {
        
-       uint8_t revid              :3;
-		   uint8_t res4               :1;
-       uint8_t devid              :2;
-		   uint8_t nuch							 :2;
+     uint8_t revid              :3;
+	   uint8_t res4               :1;
+     uint8_t devid              :2;
+	   uint8_t nuch							  :2;
    } control_bit;
 } TADS1299ID;
 
@@ -82,11 +82,12 @@ typedef union
    struct
    {
        
-       uint8_t res7               :1;
-       uint8_t daisyen            :1;
-       uint8_t clken              :1;
-       uint8_t rsv4               :2;
        uint8_t dr                 :3;
+       uint8_t rsv4               :2;
+       uint8_t clken              :1;
+       uint8_t daisyen            :1;
+       uint8_t res7               :1;
+
    } control_bit;
 } TADS1299CONFIG1;
 
@@ -99,12 +100,11 @@ typedef union
    uint8_t value;
    struct
    {
-       
-       uint8_t rsv7               :3;
-       uint8_t inttest            :1;
-       uint8_t rsv3               :1;
-       uint8_t testamp            :1;
        uint8_t testfreq           :2;
+       uint8_t testamp            :1;
+       uint8_t rsv3               :1;
+       uint8_t inttest            :1;
+       uint8_t rsv7               :3;
    } control_bit;
 } TADS1299CONFIG2;
 
@@ -118,13 +118,14 @@ typedef union
    struct
    {
        
-       uint8_t pdbrefbuf          :1;
-       uint8_t rsv6               :2;
-       uint8_t biasmeas           :1;
-       uint8_t biasrefint         :1;
-       uint8_t pdbbias            :1;
-       uint8_t biasloff           :1;
        uint8_t biasstat           :1;
+       uint8_t biasloff           :1;
+       uint8_t pdbbias            :1;
+       uint8_t biasrefint         :1;
+       uint8_t biasmeas           :1;
+       uint8_t rsv6               :2;
+       uint8_t pdbrefbuf          :1;
+
    } control_bit;
 } TADS1299CONFIG3;
 
@@ -138,10 +139,11 @@ typedef union
    struct
    {
        
-       uint8_t compth             :3;
-       uint8_t rsv4               :1;
-       uint8_t ileadoff           :2;
        uint8_t fleadoff           :2;
+       uint8_t ileadoff           :2;
+       uint8_t rsv4               :1;
+       uint8_t compth             :3;
+
    } control_bit;
 } TADS1299LOFF;
 
@@ -154,10 +156,11 @@ typedef union
    uint8_t value;
    struct
    {
-       uint8_t pd                 :1;
-       uint8_t gain               :3;
-       uint8_t srb2               :1;
        uint8_t mux                :3;
+       uint8_t srb2               :1;
+       uint8_t gain               :3;
+       uint8_t pd                 :1;
+
    } control_bit;
 } TADS1299CHnSET;
 
@@ -171,14 +174,15 @@ typedef union
    struct
    {
        
-       uint8_t BIAS8p             :1;
-       uint8_t BIAS7p             :1;
-       uint8_t BIAS6p             :1;
-       uint8_t BIAS5p             :1;
-       uint8_t BIAS4p             :1;
-       uint8_t BIAS3p             :1;
-       uint8_t BIAS2p             :1;
        uint8_t BIAS1p             :1;
+       uint8_t BIAS2p             :1;
+       uint8_t BIAS3p             :1;
+       uint8_t BIAS4p             :1;
+       uint8_t BIAS5p             :1;
+       uint8_t BIAS6p             :1;
+       uint8_t BIAS7p             :1;
+       uint8_t BIAS8p             :1;
+
    } control_bit;
 } TADS1299BIASSENSP;
 
@@ -192,14 +196,14 @@ typedef union
    struct
    {
        
-       uint8_t BIAS8n             :1;
-       uint8_t BIAS7n             :1;
-       uint8_t BIAS6n             :1;
-       uint8_t BIAS5n             :1;
-       uint8_t BIAS4n             :1;
-       uint8_t BIAS3n             :1;
-       uint8_t BIAS2n             :1;
        uint8_t BIAS1n             :1;
+       uint8_t BIAS2n             :1;
+       uint8_t BIAS3n             :1;
+       uint8_t BIAS4n             :1;
+       uint8_t BIAS5n             :1;
+       uint8_t BIAS6n             :1;
+       uint8_t BIAS7n             :1;
+       uint8_t BIAS8n             :1;
 
    } control_bit;
 } TADS1299BIASSENSN;
@@ -214,14 +218,15 @@ typedef union
    struct
    {
        
-       uint8_t loff8p             :1;
-       uint8_t loff7p             :1;
-       uint8_t loff6p             :1;
-       uint8_t loff5p             :1;
-       uint8_t loff4p             :1;
-       uint8_t loff3p             :1;
-       uint8_t loff2p             :1;
        uint8_t loff1p             :1;
+       uint8_t loff2p             :1;
+       uint8_t loff3p             :1;
+       uint8_t loff4p             :1;
+       uint8_t loff5p             :1;
+       uint8_t loff6p             :1;
+       uint8_t loff7p             :1;
+       uint8_t loff8p             :1;
+
    } control_bit;
 } TADS1299LOFFSENSP;
 
@@ -235,14 +240,15 @@ typedef union
    struct
    {
        
-       uint8_t loff8n             :1;
-       uint8_t loff7n             :1;
-       uint8_t loff6n             :1;
-       uint8_t loff5n             :1;
-       uint8_t loff4n             :1;
-       uint8_t loff3n             :1;
-       uint8_t loff2n             :1;
        uint8_t loff1n             :1;
+       uint8_t loff2n             :1;
+       uint8_t loff3n             :1;
+       uint8_t loff4n             :1;
+       uint8_t loff5n             :1;
+       uint8_t loff6n             :1;
+       uint8_t loff7n             :1;
+       uint8_t loff8n             :1;
+
    } control_bit;
 } TADS1299LOFFSENSN;
 
@@ -256,14 +262,15 @@ typedef union
    struct
    {
        
-       uint8_t loffflip8          :1;
-       uint8_t loffflip7          :1;
-       uint8_t loffflip6          :1;
-       uint8_t loffflip5          :1;
-       uint8_t loffflip4          :1;
-       uint8_t loffflip3          :1;
-       uint8_t loffflip2          :1;
        uint8_t loffflip1          :1;
+       uint8_t loffflip2          :1;
+       uint8_t loffflip3          :1;
+       uint8_t loffflip4          :1;
+       uint8_t loffflip5          :1;
+       uint8_t loffflip6          :1;
+       uint8_t loffflip7          :1;
+       uint8_t loffflip8          :1;
+
    } control_bit;
 } TADS1299LOFFFLIP;
 
@@ -278,14 +285,15 @@ typedef union
    struct
    {
        
-       uint8_t in8poff            :1;
-       uint8_t in7poff            :1;
-       uint8_t in6poff            :1;
-       uint8_t in5poff            :1;
-       uint8_t in4poff            :1;
-       uint8_t in3poff            :1;
-       uint8_t in2poff            :1;
        uint8_t in1poff            :1;
+       uint8_t in2poff            :1;
+       uint8_t in3poff            :1;
+       uint8_t in4poff            :1;
+       uint8_t in5poff            :1;
+       uint8_t in6poff            :1;
+       uint8_t in7poff            :1;
+       uint8_t in8poff            :1;
+
    } control_bit;
 } TADS1299LOFFSTATP;
 
@@ -300,14 +308,15 @@ typedef union
    struct
    {
        
-       uint8_t in8noff            :1;
-       uint8_t in7noff            :1;
-       uint8_t in6noff            :1;
-       uint8_t in5noff            :1;
-       uint8_t in4noff            :1;
-       uint8_t in3noff            :1;
-       uint8_t in2noff            :1;
        uint8_t in1noff            :1;
+       uint8_t in2noff            :1;
+       uint8_t in3noff            :1;
+       uint8_t in4noff            :1;
+       uint8_t in5noff            :1;
+       uint8_t in6noff            :1;
+       uint8_t in7noff            :1;
+       uint8_t in8noff            :1;
+
    } control_bit;
 } TADS1299LOFFSTATN;
 
@@ -321,14 +330,15 @@ typedef union
    struct
    {
        
-       uint8_t gpiod4             :1;
-       uint8_t gpiod3             :1;
-       uint8_t gpiod2             :1;
-       uint8_t gpiod1             :1;
-       uint8_t gpioc4             :1;
-       uint8_t gpioc3             :1;
-       uint8_t gpioc2             :1;
        uint8_t gpioc1             :1;
+       uint8_t gpioc2             :1;
+       uint8_t gpioc3             :1;
+       uint8_t gpioc4             :1;
+       uint8_t gpiod1             :1;
+       uint8_t gpiod2             :1;
+       uint8_t gpiod3             :1;
+       uint8_t gpiod4             :1;
+
    } control_bit;
 } TADS1299GPIO;
 
@@ -341,10 +351,10 @@ typedef union
    uint8_t value;
    struct
    {
-       
-       uint8_t rsv7               :2;
-       uint8_t srb1               :1;
        uint8_t rsv4               :5;
+       uint8_t srb1               :1;
+       uint8_t rsv7               :2;
+
   } control_bit;
 } TADS1299MISC1;
 
@@ -359,6 +369,7 @@ typedef union
   {
       
       uint8_t rsv                :8;
+
  } control_bit;
 } TADS1299MISC2;
 
@@ -372,11 +383,12 @@ typedef union
    struct
    {
        
-       uint8_t rsv7               :4;
-       uint8_t singleshot         :1;
-       uint8_t rsv2               :1;
-       uint8_t pdbloffcomp        :1;
        uint8_t rsv0               :1;
+       uint8_t pdbloffcomp        :1;
+       uint8_t rsv2               :1;
+       uint8_t singleshot         :1;
+       uint8_t rsv7               :4;
+
   } control_bit;
 } TADS1299CONFIG4;
 

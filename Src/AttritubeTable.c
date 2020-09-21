@@ -22,8 +22,7 @@
  * LOCAL VARIABLES
  */
 //!< 属性总表
-static uint32_t* pattr_offset[ATTR_NUM];	//!< 属性偏移地址
-static uint8_t* pattr;										//!< 属性表首地址
+static uint8_t* pattr_offset[ATTR_NUM];		//!< 属性偏移地址
 
 //!< 基本信息组 属性
 const	uint16_t channelnum = CHANNEL_NUM;
@@ -34,13 +33,15 @@ static int8_t	impmeas_mode;
 static int8_t	impmeas_fxn;
 
 //!< 通信参数组 属性
-enum  Dev_PortStat_t dev_portstat; 
+Dev_PortStat_t dev_portstat; 
 uint16_t samplenum = SAMPLENUM;
 
 //!< 采样参数组 属性
-enum Samprate_tbl Samprate = SPS_500;
-enum Gain_tbl curgain = GAIN_X1;
-
+static uint32_t cursamprate = SPS_500;
+static uint32_t samprate_tbl[]={SPS_250,SPS_500,SPS_1K,SPS_2K,SPS_4K};
+static uint32_t curgain = GAIN_X1;
+static uint32_t gain_tbl[]={GAIN_X1,GAIN_X2,GAIN_X4,GAIN_X6,GAIN_X8,GAIN_X24};
+	
 /************************************************************************
  *  Attributes  Table
  */
@@ -72,17 +73,17 @@ const Attr_Tbl_t attr_tbl = {
 											(uint32_t*)&sampling  /* pAttrValue */
 										},
 		
-//		//!< 阻抗测量模式	0- 无阻抗测量 
-//		.IMPMeas_Mode	= { ATTR_RS,
-//											1,
-//											(uint32_t*)&impmeas_mode
-//										},
-//											
-//		//!< 阻抗测量方案	0- 正弦波测AC电阻 1- 测DC电阻 2- 交流激励测阻抗
-//		.IMPMeas_fxn	= { ATTR_RS,
-//											1,
-//										 (uint32_t*)&impmeas_fxn
-//										},			 
+		//!< 阻抗测量模式	0- 无阻抗测量 
+		.IMPMeas_Mode	= { ATTR_RS,
+											1,
+											(uint32_t*)&impmeas_mode
+										},
+											
+		//!< 阻抗测量方案	0- 正弦波测AC电阻 1- 测DC电阻 2- 交流激励测阻抗
+		.IMPMeas_fxn	= { ATTR_RS,
+											1,
+										 (uint32_t*)&impmeas_fxn
+										},			 
 
 	/*
 	 *  ======================== 通信参数组 ==============================
@@ -100,17 +101,17 @@ const Attr_Tbl_t attr_tbl = {
 												(uint32_t*)net_param.IP_Addr
 											},
 			
-//		//!< 仪器网口状态
-//		.Dev_PortStat		= { ATTR_RA,
-//												1,
-//												(uint32_t*)&dev_portstat
-//											},
+		//!< 仪器网口状态
+		.Dev_PortStat		= { ATTR_RA,
+												1,
+												(uint32_t*)&dev_portstat
+											},
 		
-//		//!< 目的主机UDP端口号 - 7002 (default)
-//		.Host_Port			= { ATTR_NV,
-//												2,
-//												(uint32_t*)&sn_param[1].UDP_DPORT
-//											},
+		//!< 目的主机UDP端口号 - 7002 (default)
+		.Host_Port			= { ATTR_NV,
+												2,
+												(uint32_t*)&sn_param[1].UDP_DPORT
+											},
 		
 		//!< 以太网每包含ad样本数 - 10 (default)
 		.SampleNum			= { ATTR_RS,
@@ -122,27 +123,27 @@ const Attr_Tbl_t attr_tbl = {
 	 *  ======================== 通信参数组 ==============================
 	 */
 			 
-		//!< 支持的采样率
-		.Samprate				= { ATTR_RO,
-												2,
-												(uint32_t*)&Samprate
+		//!< 支持的采样率挡位		
+		.Samprate_tbl		= { ATTR_RO,
+												sizeof(samprate_tbl),
+												(uint32_t*)&samprate_tbl
 											},
 		
 		//!< 当前全局采样率 1ksps (default) 
 		.CurSamprate		=	{ ATTR_RS,
-												2,
-												(uint32_t*)&Samprate
+												4,
+												(uint32_t*)&cursamprate
 											},
 		
-		//!< 支持的增益
-		.Gain						= { ATTR_RO,
-												2,
-												(uint32_t*)&curgain
+		//!< 支持的增益挡位
+		.Gain_tbl				= { ATTR_RO,
+												sizeof(gain_tbl),
+												(uint32_t*)&gain_tbl
 											},
 		
 		//!< 当前全局增益 x1 (default) 
 		.CurGain				=	{ ATTR_RS,
-												2,
+												4,
 												(uint32_t*)&curgain
 											},		
 };
@@ -218,8 +219,8 @@ static uint8_t ReadAttrCB(	uint8_t InsAttrNum,uint8_t CHxNum,
 	//!< 读属性值
 	if(status == SUCCESS)
 	{
-		pAttrValue = (uint8_t*)pattr_offset[InsAttrNum];//!< 属性值地址传递
-		*pLen = *(pattr+InsAttrNum*6+1);	//!< 属性值大小传递（值传递!地址不变 9.13）
+		pAttrValue = (uint8_t*)*(uint32_t*)(pattr_offset[InsAttrNum]+2);//!< 属性值地址传递
+		*pLen = *(pattr_offset[InsAttrNum]+1); //!< 属性值大小传递（值传递!地址不变 9.13）
 		memcpy(pValue,pAttrValue,*pLen); //!< 属性值读取
 	}
 	
@@ -247,8 +248,8 @@ static uint8_t WriteAttrCB( uint8_t InsAttrNum,uint8_t CHxNum,
 	uint8_t AttrLen;				//!< 属性值大小
 	uint8_t *pAttrValue;		//!< 属性值地址	
 	
-	AttrPermission = *(pattr+InsAttrNum*6); 
-	AttrLen = *(pattr+InsAttrNum*6+1); 
+	AttrPermission = *(pattr_offset[InsAttrNum]); 
+	AttrLen = *(pattr_offset[InsAttrNum]+1); 
 	
 	if( (InsAttrNum > ATTR_NUM ) && ( CHxNum == 0xFF ))
 	{
@@ -267,7 +268,7 @@ static uint8_t WriteAttrCB( uint8_t InsAttrNum,uint8_t CHxNum,
 	//!< 写属性值并通知上层应用程序（AttrChange_Process）
 	if(status == SUCCESS)
 	{
-		pAttrValue = (uint8_t*)pattr_offset[InsAttrNum];//!< 属性值地址传递
+		pAttrValue = (uint8_t*)*(uint32_t*)(pattr_offset[InsAttrNum]+2);//!< 属性值地址传递
 		
 		memcpy(pAttrValue,pValue,len); //!< 属性值写入
 		notifyApp=InsAttrNum;
@@ -294,24 +295,19 @@ void Attr_Tbl_Init()
 	protocol_RegisterAttrCBs(&attr_CBs);
 	
 	/* 建立地址映射 */		
-	pattr = (uint8_t*)&attr_tbl; //!< 属性表首地址
 	
 	//!< 属性地址偏移映射关系   
-	//!< pattr_offset[n]即属性的物理地址 上位机通过下标进行偏移访问
-	pattr_offset[DEV_UID] = (uint32_t*)attr_tbl.Dev_UID.pAttrValue;
-	pattr_offset[DEV_CHANNEL_NUM] = (uint32_t*)attr_tbl.Dev_ChNum.pAttrValue;
-	pattr_offset[SAMPLING] = (uint32_t*)attr_tbl.Sampling.pAttrValue;	
-//	pattr_offset[IMPMEAS_MODE] = (uint32_t*)attr_tbl.IMPMeas_Mode.pAttrValue;
-//	pattr_offset[IMPMEAS_FXN] = (uint32_t*)attr_tbl.IMPMeas_fxn.pAttrValue;
-	pattr_offset[DEV_MAC] = (uint32_t*)attr_tbl.Dev_MAC.pAttrValue;
-	pattr_offset[DEV_IP] = (uint32_t*)attr_tbl.Dev_IP.pAttrValue;
-//	pattr_offset[DEV_PORTSTAT] = (uint32_t*)attr_tbl.Dev_PortStat.pAttrValue;
-//	pattr_offset[HOST_PORT] = (uint32_t*)attr_tbl.Host_Port.pAttrValue;
-	pattr_offset[SAMPLE_NUM] = (uint32_t*)attr_tbl.SampleNum.pAttrValue;
-	pattr_offset[SAMPLERATE] = (uint32_t*)attr_tbl.Samprate.pAttrValue;
-	pattr_offset[CURSAMPLERATE] = (uint32_t*)attr_tbl.CurSamprate.pAttrValue;
-	pattr_offset[GAIN] = (uint32_t*)attr_tbl.Gain.pAttrValue;
-	pattr_offset[CURGAIN] = (uint32_t*)attr_tbl.CurGain.pAttrValue;	
+	//!< pattr_offset[n]即该属性的物理首地址 上位机通过下标进行偏移访问
+	pattr_offset[DEV_UID] = (uint8_t*)&attr_tbl.Dev_UID.permissions;
+	pattr_offset[DEV_CHANNEL_NUM] = (uint8_t*)&attr_tbl.Dev_ChNum.permissions;
+	pattr_offset[SAMPLING] = (uint8_t*)&attr_tbl.Sampling.permissions;	
+	pattr_offset[DEV_MAC] = (uint8_t*)&attr_tbl.Dev_MAC.permissions;
+	pattr_offset[DEV_IP] = (uint8_t*)&attr_tbl.Dev_IP.permissions;
+	pattr_offset[SAMPLE_NUM] = (uint8_t*)&attr_tbl.SampleNum.permissions;
+	pattr_offset[SAMPLERATE_TBL] = (uint8_t*)&attr_tbl.Samprate_tbl.permissions;
+	pattr_offset[CURSAMPLERATE] = (uint8_t*)&attr_tbl.CurSamprate.permissions;
+	pattr_offset[GAIN_TBL] = (uint8_t*)&attr_tbl.Gain_tbl.permissions;
+	pattr_offset[CURGAIN] = (uint8_t*)&attr_tbl.CurGain.permissions;	
 
 }
 
@@ -324,7 +320,7 @@ void Attr_Tbl_Init()
  *	@return SUCCESS 读取属性值成功
  *					ATTR_NOT_FOUND 属性不存在
  */
-uint8_t App_GetAttr(uint8_t InsAttrNum, uint8_t *pValue)
+uint8_t App_GetAttr(uint8_t InsAttrNum, uint32_t *pValue)
 {
 	uint8_t ret = SUCCESS;
 	
@@ -332,8 +328,15 @@ uint8_t App_GetAttr(uint8_t InsAttrNum, uint8_t *pValue)
 	{
 		case SAMPLING:
 			memcpy(pValue,&sampling,1);
-			break;		
+			break;
 		
+		case CURSAMPLERATE:
+			memcpy(pValue,&cursamprate,4);
+			break;
+		
+		case CURGAIN:
+			memcpy(pValue,&curgain,4);
+			break;		
 	}
   return ( ret );	
 }
