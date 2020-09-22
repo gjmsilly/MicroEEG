@@ -70,10 +70,10 @@ extern uint8_t SYS_Event;									//!< 系统状态事件 - @ref System events
 #define TCP_RECV_EVT						( 1 << 1 ) 	//!< TCP端口接收到一帧
 #define TCP_SEND_EVT            ( 1 << 2 )	//!< TCP端口回复完成
 #define TCP_PROCESSCLP_EVT			( 1 << 3 ) 	//!< TCP帧协议处理完毕
-#define EEG_DATA_START_EVT			( 1 << 4 )	//!< ad数据开始采集
-#define EEG_DATA_READY_EVT			( 1 << 5 )	//!< 一包ad数据采集完成 
+#define EEG_DATA_START_EVT			( 1 << 4 )	//!< 一包AD数据开始采集
+#define EEG_DATA_CPL_EVT				( 1 << 5 )	//!< 一包AD数据采集完成
 #define UDP_PROCESSCLP_EVT			( 1 << 6 )	//!< UDP帧协议处理完毕
-
+#define EEG_STOP_EVT						( 1 << 7 )	//!< AD数据暂停采集
 
 /* USER CODE END EM */
 

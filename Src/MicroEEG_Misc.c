@@ -20,7 +20,7 @@
  */
 uint32_t CurTimeStamp = 0;	//!< 当前时间
 uint8_t* pCurTimeStamp;			//!< 当前时间指针		
-uint32_t attrvalue=0;				//!< 属性值
+static uint32_t attrvalue=0;	//!< 属性值
 uint32_t *pValue =&attrvalue;	//!< 属性值指针
 
 uint16_t CurEventTag = 0;
@@ -46,17 +46,26 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 	{
 		case SAMPLING: 
 			App_GetAttr(SAMPLING,pValue); //获取属性值
-			
-			if(*pValue == SAMPLLE_START )
+
+			if((*pValue&0x0000FF) == SAMPLLE_START )
 			{
 			 /* ads1299 开始采集 */
-			 ADS1299_SendCommand(ADS1299_CMD_RDATAC);				
-			 ADS1299_SendCommand(ADS1299_CMD_START);
+				Mod_DRDY_INT_Enable //	使能nDReady中断
+				Mod_CS_Enable;
+				ADS1299_SendCommand(ADS1299_CMD_START);				
+				ADS1299_SendCommand(ADS1299_CMD_RDATAC);			
+				
 			}else
+			{
 			/* ads1299 停止采集 */
-			 ADS1299_SendCommand(ADS1299_CMD_STOP);
-			 ADS1299_SendCommand(ADS1299_CMD_SDATAC);
-			break;
+				Mod_DRDY_INT_Disable //	关闭nDReady中断		
+				Mod_CS_Disable;
+				ADS1299_SendCommand(ADS1299_CMD_STOP);		
+				ADS1299_SendCommand(ADS1299_CMD_SDATAC);
+				
+				SYS_Event |= EEG_STOP_EVT; //!< 更新事件：ad数据暂停采集	
+			}
+		break;
 			
 		case CURSAMPLERATE:
 			App_GetAttr(CURSAMPLERATE,pValue); //获取属性值
@@ -64,24 +73,24 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			switch(*pValue)
 			{
 				case 250:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF6);		//250HZ采样
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
 				break;
 				
 				case 500:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF5);		//500HZ采样
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//500HZ采样
 				break;
 				
 				case 1000:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF4);		//1000HZ采样
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1000HZ采样
 				break;				
 				
 				case 2000:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF3);		//2000HZ采样
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//2000HZ采样
 				break;
 				
 				default:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF4);		//1000HZ采样
-				break;					
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1000HZ采样
+				break;			
 			}				
 					
 		break;
@@ -116,7 +125,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			
 			for(uint8_t i=0;i<8;i++)
 			{
-				ADS1299_Channel_Config(0,i,ChVal);
+				ADS1299_Channel_Config(0,ADS1299_REG_CH1SET+i,ChVal);
 				WaitUs(2);
 			}
 		break;

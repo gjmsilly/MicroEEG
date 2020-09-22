@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "stm32f4xx_hal.h"
+#include "stm32f4xx_ll_gpio.h"
 #include "main.h"
 #include "w5500_service.h"
 #include "w5500.h"
@@ -72,7 +73,7 @@ void W5500_Init(void)
 /*******************************************************************************
 * 函数名  : W5500_RST
 *
-* 描述    : W5500_RST引脚初始化配置(PA3)
+* 描述    : W5500_RST引脚初始化配置
 *
 * 输入    : 无
 *

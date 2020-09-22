@@ -221,25 +221,29 @@ void EXTI9_5_IRQHandler(void)
   {
     LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_7);
     /* USER CODE BEGIN LL_EXTI_LINE_7 */
-		
+
+		/* 样本时间戳获取 */
 		if(SampleNum == 0)
 		{ 
 			TIM5->CNT=0; //!< 每样本初始时间增量为0
 			CurTimeStamp = TIM5->CNT;  //!< 获取当前时间
 		}else
-		 CurTimeStamp = TIM5->CNT;  //!< 获取当前时间
+		 CurTimeStamp = TIM5->CNT;
 		
-		SYS_Event |= EEG_DATA_START_EVT; //!< 更新事件：ad采集开始
+		/* 样本采集及封包 */
+		SYS_Event |= EEG_DATA_START_EVT; //!< 更新事件：一包ad数据开始采集		
 		
 		UDP_Process(SampleNum,SYS_Event);
 		SampleNum++;
 		
 		if(SampleNum == SAMPLENUM )
 		{
-			SYS_Event |= EEG_DATA_READY_EVT; //!< 更新事件：一包ad数据采集完成 -> 跳转UDP协议服务
-			
-			SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - ad采集开始
 			SampleNum=0;
+			
+			SYS_Event |= EEG_DATA_CPL_EVT; //!< 更新事件：一包ad数据采集完成 -> 跳转UDP协议服务
+			
+			SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - 一包ad数据开始采集
+
 		}			
     /* USER CODE END LL_EXTI_LINE_7 */
   }

@@ -378,11 +378,13 @@ uint8_t UDP_Process(uint8_t SampleNum ,uint8_t Procesflag)
 	}
 	 
 		/* AD数据采集完毕，对UDP帧头封包 */
-	 if(Procesflag&EEG_DATA_READY_EVT)
+	 if(Procesflag&EEG_DATA_CPL_EVT)
 	 {
-		 if(UDPNum == 0)	//!< 考虑暂停采集该值的情况，待改进
+		 	//!< 发生过EEG暂停采集事件或第一次UDP帧头封包
+		 if(((Procesflag&EEG_STOP_EVT)!=0)	||	(UDPNum==0))
 		 {
-				UDP_FrameHeaderGet(); // 执行一次 
+				UDP_FrameHeaderGet(); //!< 获取UDP帧头数据
+				UDPNum=0; //!< 重新计数	
 		 }
 
 		/* 数据源 */

@@ -288,13 +288,13 @@ static void Sys_Control()
 	else if(SYS_Event& TCP_SEND_EVT )
 		SYS_Event &= ~TCP_SEND_EVT; //!< 清除前序事件 - TCP回复完成事件
 
-	// AD采集完成事件
-	if( SYS_Event&EEG_DATA_READY_EVT )
+	// 一包AD数据采集完成事件
+	if( SYS_Event&EEG_DATA_CPL_EVT )
 	{
 		if( UDP_Process(0xFF,SYS_Event)== SUCCESS)
 			{
 				SYS_Event |=  UDP_PROCESSCLP_EVT; //!< 更新事件：UDP协议服务处理完毕
-				SYS_Event &= ~ EEG_DATA_READY_EVT; //!< 清除前序事件 - AD采集完成
+				SYS_Event &= ~ EEG_DATA_CPL_EVT; //!< 清除前序事件 - 一包AD数据采集完成
 			}
 	}
 
@@ -302,7 +302,10 @@ static void Sys_Control()
 	if( SYS_Event&UDP_PROCESSCLP_EVT )
 	{
 		if(UDP_Service(1) ==SUCCESS) //!< UDP缓冲区数据全部发送
-		SYS_Event &= ~ UDP_PROCESSCLP_EVT; //!< 清除前序事件 - UDP协议服务处理完毕		
+		SYS_Event &= ~ UDP_PROCESSCLP_EVT; //!< 清除前序事件 - UDP协议服务处理完毕	
+		
+		if(SYS_Event&EEG_STOP_EVT)	//!< 如果本UDP包发送之前发生过AD采集暂停事件
+		SYS_Event &= ~ EEG_STOP_EVT; //!< 清除前序事件 - AD数据暂停采集	
 	}
 
 }
@@ -325,7 +328,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-	Mod_DRDY_INT_Disable
 
   /* USER CODE END Init */
 
@@ -362,29 +364,27 @@ int main(void)
 	shell.read = ShellGetchar;
 	shell.write = ShellPutchar;
 	shellInit(&shell);
+
+	//W5500初始化
+	W5500_Init(); //W5500初始化，配置Socket	
 	
-	 /* 以下按照层级顺序由底层向高层依次初始化 */
-	 		
-	//ADS1299 初始化	
+	//ADS1299 初始化
+	//	使能SPI	
+	LL_SPI_Enable(SPI1);	
 	//	配置DMA
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX
-	//	使能SPI	
-	LL_SPI_Enable(SPI1);	
+	
 	//	初始化ADS1299
 	ADS1299_Init(0);
 	//////////////////////////////////////////////////////////////////////////////
-	//	for test
-		
-	ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF4);		//1kHZ采样
+	//	for test		
+	ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
+
 	ADS1299_WriteREG(0,ADS1299_REG_CONFIG2,0xC0);   //internal test signal off
-	ADS1299_SendCommand(ADS1299_CMD_SDATAC); // Stop Read Data Continuously mode	
-//////////////////////////////////////////////////////////////////////////////
-	//	使能nDReady中断
-	Mod_DRDY_INT_Enable // MOD1_nDRDY PD7	
 	
-	//W5500初始化
-	W5500_Init(); //W5500初始化，配置Socket
+	ADS1299_WriteREG(0,ADS1299_REG_CONFIG3,0xEC);	
+	//////////////////////////////////////////////////////////////////////////////
 	
 	//样本时间戳服务初始化
 	SampleTimestamp_Service_Init();
