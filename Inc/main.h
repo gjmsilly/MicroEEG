@@ -141,7 +141,6 @@ void Error_Handler(void);
 #define Mod5_nPWDN_GPIO_Port GPIOD
 #define Mod5_nDRDY_Pin LL_GPIO_PIN_6
 #define Mod5_nDRDY_GPIO_Port GPIOC
-#define Mod5_nDRDY_EXTI_IRQn EXTI9_5_IRQn
 #define TRGPWR_EN_Pin LL_GPIO_PIN_7
 #define TRGPWR_EN_GPIO_Port GPIOC
 #define CAN_S_Pin LL_GPIO_PIN_8
@@ -162,7 +161,6 @@ void Error_Handler(void);
 #define Modc_nDRDY_GPIO_Port GPIOD
 #define Mod1_nDRDY_Pin LL_GPIO_PIN_7
 #define Mod1_nDRDY_GPIO_Port GPIOD
-#define Mod1_nDRDY_EXTI_IRQn EXTI9_5_IRQn
 #define W5500_nCS_Pin LL_GPIO_PIN_6
 #define W5500_nCS_GPIO_Port GPIOB
 #define Mod_nCS_Pin LL_GPIO_PIN_7
@@ -175,6 +173,7 @@ void Error_Handler(void);
 #define Mod_nPWDN_GPIO_Port GPIOE
 #define Mods_nDRDY_Pin LL_GPIO_PIN_1
 #define Mods_nDRDY_GPIO_Port GPIOE
+#define Mods_nDRDY_EXTI_IRQn EXTI1_IRQn
 /* USER CODE BEGIN Private defines */
 
 #define ERR_LED1_OFF  LL_GPIO_SetOutputPin  (GPIOE, ERR_LED1_Pin);

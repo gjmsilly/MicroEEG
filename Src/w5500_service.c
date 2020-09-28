@@ -67,7 +67,7 @@ void W5500_Init(void)
 	W5500_Socket_Init(0);					//Socket 0配置 - TCP 
 	W5500_Socket_Init(1);     		//Socket 1配置 - UDP 
 	
-	pUDP_Tx_Buff = UDP_Tx_Buff+15; //!< UDP发送缓冲数据域指针
+	pUDP_Tx_Buff = UDP_Tx_Buff; 	//!< UDP发送缓冲指针
 }
 
 /*******************************************************************************
@@ -126,7 +126,7 @@ static void W5500_Config(void)
 
 	//设置重试时间，默认2000(200ms) 
 	//每一单位数值为100微秒,初始化时值设为4000,即400ms
-	setRTR(4000);
+	setRTR(2000);
 
 	//设置重试次数，默认为8次 
 	//如果重发的次数超过设定值,则产生超时中断(相关的端口中断寄存器中的Sn_IR 超时位(TIMEOUT)置“1”)
@@ -443,11 +443,16 @@ uint8_t UDP_Service(uint8_t sn)
 		/* Socket n 已完成初始化 */
 		case SOCK_UDP:
 			
-				sendto(sn, UDP_Tx_Buff,    				  \
-							 sizeof(UDP_Tx_Buff), 				\
-							 (Psn_param+sn)->UDP_DIPR,  	\
-							 (Psn_param+sn)->UDP_DPORT); 
-							 
+			if(getSn_IR(sn) & Sn_IR_RECV)
+			{
+				setSn_IR(sn, Sn_IR_RECV);                                                                                                                        // Sn_IR的RECV位置1
+			}
+								
+			sendto(sn, UDP_Tx_Buff,    				  \
+						 sizeof(UDP_Tx_Buff), 				\
+						 (Psn_param+sn)->UDP_DIPR,  	\
+						 (Psn_param+sn)->UDP_DPORT); 
+	 
 				 return SUCCESS;
 		break;
 		

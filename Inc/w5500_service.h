@@ -51,7 +51,7 @@ typedef struct
 // 通讯收发缓冲区参数
 #define TCP_Rx_Buff_Size		16
 #define TCP_Tx_Buff_Size		16
-#define UDP_Tx_Buff_Size		353
+#define UDP_Tx_Buff_Size		1193		//!< 23+样本数 x（数据域头部9+通道数x3）字节
 
 /***********************************************************************
  * EXTERNAL VARIABLES
@@ -59,6 +59,7 @@ typedef struct
 extern uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];			//TCP接收数据缓冲区 
 extern uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];			//TCP发送数据缓冲区
 extern uint8_t UDP_Tx_Buff[UDP_Tx_Buff_Size];			//UDP发送数据缓冲区
+extern uint8_t *pUDP_Tx_Buff;		
 extern NETWORKParam_t net_param;
 extern SOCKETnParam_t  sn_param[2];
 

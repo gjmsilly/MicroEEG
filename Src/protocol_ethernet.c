@@ -358,11 +358,13 @@ uint8_t UDP_Process(uint8_t SampleNum ,uint8_t Procesflag)
 	 {
 		 if(SampleNum!= 0xFF )
 		 {
+			 
+			ADS1299_ReadResult(pUDP_Tx_Buff+HEAD_SIZE+DATA_SIZE*SampleNum+8);	//!< 样本每通道量化值 //!< 第1字节舍去 (被覆盖)
+			 
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum] = UDP_SAMPLE_FH;		//!< 样本起始分隔符 
-			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+1]=SampleNum;			//!< 样本序号 - 显示从0开始的序数
-			
-			ADS1299_ReadResult((UDP_Tx_Buff+HEAD_SIZE+DATA_SIZE*SampleNum+6));	//!< 样本每通道量化值 //!< 前三字节舍去 (被覆盖)	
-			
+			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+1] = SampleNum;			//!< 样本序号(低八位) - 显示从0开始的序数
+			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+2] = 0x00;					//!< 样本序号(高八位)
+			 	 	 													
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+3]=*pCurTimeStamp;	//!< 样本时间戳 - 增量型（每样本相对第一样本时间增量）精度10us，注意小端对齐
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+4]=*(pCurTimeStamp+1);
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+5]=*(pCurTimeStamp+2);
@@ -370,15 +372,13 @@ uint8_t UDP_Process(uint8_t SampleNum ,uint8_t Procesflag)
 			
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+7]=0xAA;	//!< 样本事件标记 - 默认0xAAAA
 			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+8]=0xAA;
-			 
-
 		}
 		 else
 			 return ERROR; 
 	}
 	 
 		/* AD数据采集完毕，对UDP帧头封包 */
-	 if(Procesflag&EEG_DATA_CPL_EVT)
+	 else if(Procesflag&EEG_DATA_CPL_EVT)
 	 {
 		 	//!< 发生过EEG暂停采集事件或第一次UDP帧头封包
 		 if(((Procesflag&EEG_STOP_EVT)!=0)	||	(UDPNum==0))

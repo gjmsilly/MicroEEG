@@ -27,9 +27,6 @@
 #include "shell.h"
 #include "ads1299.h"
 #include "w5500_service.h"
-#include "w5500.h"
-#include "wizchip_conf.h"
-#include "socket.h"
 #include "AttritubeTable.h"
 #include "protocol_ethernet.h"
 #include "SimpleInsQueue.h"
@@ -142,18 +139,20 @@ signed char ShellGetchar(char* ch)
  */
 void ADC_StartAcq(void)
 {
-	Mod_DRDY_INT_Enable;
-	ADS1299_SendCommand(ADS1299_CMD_RDATAC);
+	Mod_DRDY_INT_Enable //	使能nDReady中断
+	Mod_CS_Enable;
+	ADS1299_SendCommand(ADS1299_CMD_START);
+	ADS1299_SendCommand(ADS1299_CMD_RDATAC);	
 	printf("Start Acquision!\r\n");
 }
 SHELL_EXPORT_CMD(ADC_StartAcq, ADC_StartAcq, nDRDY Interrupt Enable);
 	
 void ADC_StopAcq(void)
 {
-	//ADS1299_SendCommand(ADS1299_CMD_SDATAC);
-	
-	Mod_DRDY_INT_Disable;
-	
+	Mod_DRDY_INT_Disable //	关闭nDReady中断		
+	Mod_CS_Disable;
+	ADS1299_SendCommand(ADS1299_CMD_STOP);
+	ADS1299_SendCommand(ADS1299_CMD_SDATAC);
 	printf("Stop Acquision!\r\n");
 }
 SHELL_EXPORT_CMD(ADC_StopAcq, ADC_StopAcq, nDRDY Interrupt Disable);
@@ -364,7 +363,7 @@ int main(void)
 	shell.read = ShellGetchar;
 	shell.write = ShellPutchar;
 	shellInit(&shell);
-
+	
 	//W5500初始化
 	W5500_Init(); //W5500初始化，配置Socket	
 	
@@ -379,12 +378,14 @@ int main(void)
 	ADS1299_Init(0);
 	//////////////////////////////////////////////////////////////////////////////
 	//	for test		
-	ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
 
+	ADS1299_WriteREG(0,ADS1299_REG_CONFIG3,0xE0);	
+	HAL_Delay(50);
+	ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
 	ADS1299_WriteREG(0,ADS1299_REG_CONFIG2,0xC0);   //internal test signal off
 	
-	ADS1299_WriteREG(0,ADS1299_REG_CONFIG3,0xEC);	
 	//////////////////////////////////////////////////////////////////////////////
+	
 	
 	//样本时间戳服务初始化
 	SampleTimestamp_Service_Init();
@@ -410,7 +411,7 @@ int main(void)
 		// 运行系统状态控制器
 		Sys_Control();    
 
-		/* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
@@ -653,9 +654,9 @@ static void MX_QUADSPI_Init(void)
   /* QUADSPI parameter configuration*/
   hqspi.Instance = QUADSPI;
   hqspi.Init.ClockPrescaler = 3;
-  hqspi.Init.FifoThreshold = 8;
+  hqspi.Init.FifoThreshold = 9;
   hqspi.Init.SampleShifting = QSPI_SAMPLE_SHIFTING_NONE;
-  hqspi.Init.FlashSize = 15;
+  hqspi.Init.FlashSize = 16;
   hqspi.Init.ChipSelectHighTime = QSPI_CS_HIGH_TIME_4_CYCLE;
   hqspi.Init.ClockMode = QSPI_CLOCK_MODE_0;
   hqspi.Init.FlashID = QSPI_FLASH_ID_1;
@@ -704,13 +705,12 @@ static void MX_RTC_Init(void)
   */
   if(LL_RTC_BAK_GetRegister(RTC, LL_RTC_BKP_DR0) != 0x32F2){
 
-  RTC_TimeStruct.Hours = 17;
-  RTC_TimeStruct.Minutes = 0;
+  RTC_TimeStruct.Hours = 20;
+  RTC_TimeStruct.Minutes = 20;
   RTC_TimeStruct.Seconds = 0;
   LL_RTC_TIME_Init(RTC, LL_RTC_FORMAT_BCD, &RTC_TimeStruct);
-  RTC_DateStruct.WeekDay = LL_RTC_WEEKDAY_SATURDAY;
+  RTC_DateStruct.WeekDay = LL_RTC_WEEKDAY_SUNDAY;
   RTC_DateStruct.Month = LL_RTC_MONTH_SEPTEMBER;
-	RTC_DateStruct.Day = 19;
   RTC_DateStruct.Year = 20;
   LL_RTC_DATE_Init(RTC, LL_RTC_FORMAT_BCD, &RTC_DateStruct);
     LL_RTC_BAK_SetRegister(RTC,LL_RTC_BKP_DR0,0x32F2);
@@ -859,7 +859,7 @@ static void MX_SPI2_Init(void)
   SPI_InitStruct.ClockPolarity = LL_SPI_POLARITY_LOW;
   SPI_InitStruct.ClockPhase = LL_SPI_PHASE_2EDGE;
   SPI_InitStruct.NSS = LL_SPI_NSS_SOFT;
-  SPI_InitStruct.BaudRate = LL_SPI_BAUDRATEPRESCALER_DIV4;
+  SPI_InitStruct.BaudRate = LL_SPI_BAUDRATEPRESCALER_DIV2;
   SPI_InitStruct.BitOrder = LL_SPI_MSB_FIRST;
   SPI_InitStruct.CRCCalculation = LL_SPI_CRCCALCULATION_DISABLE;
   SPI_InitStruct.CRCPoly = 10;
@@ -1141,7 +1141,7 @@ static void MX_GPIO_Init(void)
   EXTI_InitStruct.Line_0_31 = LL_EXTI_LINE_1;
   EXTI_InitStruct.LineCommand = ENABLE;
   EXTI_InitStruct.Mode = LL_EXTI_MODE_IT;
-  EXTI_InitStruct.Trigger = LL_EXTI_TRIGGER_RISING;
+  EXTI_InitStruct.Trigger = LL_EXTI_TRIGGER_FALLING;
   LL_EXTI_Init(&EXTI_InitStruct);
 
   /**/
@@ -1175,8 +1175,8 @@ static void MX_GPIO_Init(void)
   LL_GPIO_SetPinMode(Mods_nDRDY_GPIO_Port, Mods_nDRDY_Pin, LL_GPIO_MODE_INPUT);
 
   /* EXTI interrupt init*/
-  NVIC_SetPriority(EXTI9_5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(EXTI9_5_IRQn);
+  NVIC_SetPriority(EXTI1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(EXTI1_IRQn);
 
 }
 

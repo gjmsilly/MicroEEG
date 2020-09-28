@@ -565,8 +565,8 @@ typedef struct
 #define Mod_PDWN_L     LL_GPIO_ResetOutputPin( Mod_nPWDN_GPIO_Port,  Mod_nPWDN_Pin);
 #define Mod_PDWN_H     LL_GPIO_SetOutputPin( Mod_nPWDN_GPIO_Port,  Mod_nPWDN_Pin);
 
-#define Mod_DRDY_INT_Enable    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_7); // Mod1_nDRDY PD7
-#define Mod_DRDY_INT_Disable   LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_7);
+#define Mod_DRDY_INT_Enable    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_1); // Mods_nDRDY PE1
+#define Mod_DRDY_INT_Disable   LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_1);
 
 
 void WaitUs(int iWaitUs);

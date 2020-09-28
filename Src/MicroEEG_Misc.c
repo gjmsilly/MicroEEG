@@ -50,17 +50,17 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			if((*pValue&0x0000FF) == SAMPLLE_START )
 			{
 			 /* ads1299 开始采集 */
-				Mod_DRDY_INT_Enable //	使能nDReady中断
-				Mod_CS_Enable;
-				ADS1299_SendCommand(ADS1299_CMD_START);				
+				Mod_DRDY_INT_Enable //使能nDReady中断
+				LL_GPIO_SetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin);
 				ADS1299_SendCommand(ADS1299_CMD_RDATAC);			
+				Mod_CS_Enable;	
 				
 			}else
 			{
 			/* ads1299 停止采集 */
-				Mod_DRDY_INT_Disable //	关闭nDReady中断		
+				Mod_DRDY_INT_Disable //关闭nDReady中断		
 				Mod_CS_Disable;
-				ADS1299_SendCommand(ADS1299_CMD_STOP);		
+				LL_GPIO_ResetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin);
 				ADS1299_SendCommand(ADS1299_CMD_SDATAC);
 				
 				SYS_Event |= EEG_STOP_EVT; //!< 更新事件：ad数据暂停采集	
@@ -73,23 +73,23 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			switch(*pValue)
 			{
 				case 250:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
+						ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
 				break;
 				
 				case 500:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//500HZ采样
+						ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//500HZ采样
 				break;
 				
 				case 1000:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1000HZ采样
+						ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1kHZ采样
 				break;				
 				
 				case 2000:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//2000HZ采样
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//2kHZ采样
 				break;
 				
 				default:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1000HZ采样
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1kHZ采样
 				break;			
 			}				
 					

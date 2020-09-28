@@ -21,11 +21,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_it.h"
-#include "protocol_ethernet.h"
-#include "AttritubeTable.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "protocol_ethernet.h"
+#include "AttritubeTable.h"
+#include "ads1299.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -202,27 +202,22 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles EXTI line[9:5] interrupts.
+  * @brief This function handles EXTI line 1 interrupt.
   */
-void EXTI9_5_IRQHandler(void)
+void EXTI1_IRQHandler(void)
 {
-  /* USER CODE BEGIN EXTI9_5_IRQn 0 */
+  /* USER CODE BEGIN EXTI1_IRQn 0 */
 
+  /* USER CODE END EXTI1_IRQn 0 */
+  if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1) != RESET)
+  {
+    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_1);
+    /* USER CODE BEGIN LL_EXTI_LINE_1 */
 	
-  /* USER CODE END EXTI9_5_IRQn 0 */
-  if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_6) != RESET)
-  {
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_6);
-    /* USER CODE BEGIN LL_EXTI_LINE_6 */
-
-    /* USER CODE END LL_EXTI_LINE_6 */
+    /* USER CODE END LL_EXTI_LINE_1 */
   }
-  if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_7) != RESET)
-  {
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_7);
-    /* USER CODE BEGIN LL_EXTI_LINE_7 */
-
-		/* 样本时间戳获取 */
+  /* USER CODE BEGIN EXTI1_IRQn 1 */
+		 		/* 样本时间戳获取 */
 		if(SampleNum == 0)
 		{ 
 			TIM5->CNT=0; //!< 每样本初始时间增量为0
@@ -232,7 +227,7 @@ void EXTI9_5_IRQHandler(void)
 		
 		/* 样本采集及封包 */
 		SYS_Event |= EEG_DATA_START_EVT; //!< 更新事件：一包ad数据开始采集		
-		
+
 		UDP_Process(SampleNum,SYS_Event);
 		SampleNum++;
 		
@@ -244,12 +239,8 @@ void EXTI9_5_IRQHandler(void)
 			
 			SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - 一包ad数据开始采集
 
-		}			
-    /* USER CODE END LL_EXTI_LINE_7 */
-  }
-  /* USER CODE BEGIN EXTI9_5_IRQn 1 */
-	
-  /* USER CODE END EXTI9_5_IRQn 1 */
+		}	
+  /* USER CODE END EXTI1_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

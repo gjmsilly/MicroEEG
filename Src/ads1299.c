@@ -27,18 +27,25 @@ uint8_t DummyByte;
 /****************************************************************/
 void ADS1299_Init(uint8_t dev)
 {
+	Mod_DRDY_INT_Disable;
+	
 	// 上电复位
 	ADS1299_PowerOn(dev);
 	ADS1299_Reset(dev);	
 	
 	// 上电检测
-	Mod_DRDY_INT_Disable;
-	LL_GPIO_SetOutputPin(GPIOB, Mod_START_Pin);
-	while(LL_GPIO_IsInputPinSet(Mod1_nDRDY_GPIO_Port,Mod1_nDRDY_Pin));
-	LL_GPIO_ResetOutputPin(GPIOB, Mod_START_Pin);
+
+	LL_GPIO_SetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin);
 	
-	// 停止连续采集
+	while(LL_GPIO_IsInputPinSet(Mod1_nDRDY_GPIO_Port,Mod1_nDRDY_Pin));
+	
+	LL_GPIO_ResetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin); 
+	
+//	ADS1299_Reset(0);
+//	ADS1299_SendCommand(ADS1299_CMD_RESET);
+//	WaitUs(10);
 	ADS1299_SendCommand(ADS1299_CMD_SDATAC);	
+
 }
 
 /****************************************************************/
@@ -76,7 +83,7 @@ void WaitUs(int iWaitUs)
 	  int iCounterTargetValue;
 	  int iCounterTargetInterval;
 	   
-	  iCounterTargetInterval = iWaitUs * (HAL_RCC_GetHCLKFreq()/1000000);
+	  iCounterTargetInterval = iWaitUs * (HAL_RCC_GetHCLKFreq()/1000000)-32;
 	  if(iPreTickVal < iCounterTargetInterval)
 	  {
 			iCounterTargetValue =  iPreTickVal + SysTick->LOAD - iCounterTargetInterval;
@@ -86,7 +93,7 @@ void WaitUs(int iWaitUs)
 			iCounterTargetValue =  iPreTickVal - iCounterTargetInterval;
 		}
 		
-		while(SysTick -> VAL > iCounterTargetValue);
+		while(SysTick -> VAL >= iCounterTargetValue);
 	
 }
 
@@ -114,7 +121,7 @@ void WaitUs(int iWaitUs)
 void ADS1299_Reset(uint8_t dev)
 {
 	Mod_RESET_L;
-	WaitUs(10);			// 至少拉低2tclk
+	WaitUs(6);			// 至少拉低2tclk
 	Mod_RESET_H;
 	Mod_CS_Disable;
 	WaitUs(20);     // 至少等待18tclk后发送指令
@@ -146,7 +153,7 @@ void ADS1299_PowerOn(uint8_t dev)
 	Mod_RESET_H
 	
 	// wait for at least tPOR = 128ms 
-	HAL_Delay(130);	//延时130ms
+	HAL_Delay(200);	//延时130ms
 
 }
 
@@ -179,7 +186,7 @@ void ADS1299_WriteREG (uint8_t dev, uint8_t address, uint8_t value)
 	__disable_irq();
 	
 	Mod_CS_Enable;
-	WaitUs(5);	
+	WaitUs(4);	
 	
 	while(!LL_SPI_IsActiveFlag_TXE(SPI1));
 	SPI1->DR = address;
@@ -281,14 +288,19 @@ uint8_t ADS1299_ReadREG (uint8_t dev, uint8_t address)
 void ADS1299_SendCommand(uint8_t command)
 {
 	__disable_irq();
+	
 	Mod_CS_Enable
 	WaitUs(4);
 	while(!LL_SPI_IsActiveFlag_TXE(SPI1));
 	SPI1->DR = command;
 	while(!LL_SPI_IsActiveFlag_RXNE(SPI1));
 	command = SPI1->DR;
+	
+	while(LL_SPI_IsActiveFlag_BSY(SPI1));
+	
 	WaitUs(4);													// Delay time, final SCLK falling edge to CS high
 	Mod_CS_Disable
+
   __enable_irq();
 	WaitUs(4);													// Pulse duration, CS high
 }
@@ -344,11 +356,11 @@ inline uint8_t ADS1299_ReadByte(void)
 void ADS1299_ReadResult(uint8_t *result)
 {
 	uint8_t i;
-  Mod_CS_Enable;
-	WaitUs(4); // 6ns Delay time - CS low to first SCLK 
+//  Mod_CS_Enable;
+//	WaitUs(4); 
 	
 	//DMA
-	ADS1299_ReadResult_DMA((uint32_t)result, 27); //DMA Read Bug Temporal fixed 5-13
+	ADS1299_ReadResult_DMA((uint32_t)result, 118); //DMA Read Bug 需多读1字节
 	
 	while(!LL_DMA_IsActiveFlag_TC0(DMA2)); // Wait until all data trasferred from SPI1_RX
 	
@@ -360,8 +372,8 @@ void ADS1299_ReadResult(uint8_t *result)
 	
 	//printf("R%d %d %d ",ResultBuffer[3],ResultBuffer[4],ResultBuffer[5]);
 	
-	//WaitUs(4);
-	//Mod_CS_Disable;
+//	Mod_CS_Disable;
+//	WaitUs(4);
 }
 
 
