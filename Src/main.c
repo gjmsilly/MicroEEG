@@ -60,12 +60,13 @@ QSPI_HandleTypeDef hqspi;
 DMA_HandleTypeDef hdma_quadspi;
 
 /* USER CODE BEGIN PV */
-uint8_t SYS_Event;							//!< 系统状态事件
-static InsQUEUE InsQueue;				//!< TCP指令队列
+uint16_t SYS_Event;							//!< 系统状态事件
+static InsQUEUE InsQueue;				//!< TCP指令队列 -  存放变化的属性编号
+uint32_t TriggerTimeStamp;			//!< 标签事件发生时点
 
 SHELL_TypeDef shell;						//!< shell句柄
 uint8_t resultval[28];  				//!< ADS1299结果缓存区（shell调试用）
-uint8_t ReadResult;
+uint8_t ReadResult;             //!< shell调试用
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -246,7 +247,7 @@ static void AttrChangeCB(uint8_t AttrNum)
 static void Sys_Control()
 {
 	uint8_t AttrChangeNum;
-	uint8_t TCPstate;
+	uint8_t TCPstate,UDPstate;
 	
 
 	// TCP 通讯服务事件
@@ -263,9 +264,27 @@ static void Sys_Control()
 		SYS_Event &= ~TCP_PROCESSCLP_EVT; //!< 清除前序事件 - TCP帧协议服务
 	}
 
-
-	// TCP帧协议服务事件 
-	if( SYS_Event& TCP_RECV_EVT )
+	// UDP 通讯服务事件
+//	if( SYS_Event & TRIGGER_EVT )
+//	{
+//			if(	UDP_Service(1,SYS_Event)  == UDP_RECV )
+//		{
+//			if( UDP_TriggerProcess( TriggerTimeStamp,SYS_Event ) == SUCCESS)			
+//				SYS_Event &= ~TRIGGER_EVT; //!< 清除前序事件 - 标签事件
+//		}
+//	}
+//	else     
+	UDPstate = UDP_Service(1,SYS_Event);
+		if(	UDPstate  == UDP_SEND ) 
+	{
+		SYS_Event &= ~ UDP_PROCESSCLP_EVT; //!< 清除前序事件 - UDP协议服务处理完毕	
+		
+		if( SYS_Event&EEG_STOP_EVT )	//!< 如果本UDP包发送之前发生过AD采集暂停事件
+			SYS_Event &= ~EEG_STOP_EVT; //!< 清除前序事件 - AD数据暂停采集		
+	}
+	
+	// TCP 帧协议服务事件 
+	if( SYS_Event & TCP_RECV_EVT )
 	{
 		if( TCP_ProcessFSM() == _FSM_CPL_)	//!< 更新事件：TCP帧协议服务处理完毕 -> 跳转TCP端口回复
 		{			
@@ -276,7 +295,7 @@ static void Sys_Control()
 	}
 	
 	// 属性变化事件
-	if(( SYS_Event& TCP_SEND_EVT )&& ( SYS_Event& ATTR_CHANGE_EVT ))
+	if(( SYS_Event & TCP_SEND_EVT )&& ( SYS_Event & ATTR_CHANGE_EVT ))
 	{
 		AttrChangeNum=DeQueue(&InsQueue);	//!< 出队 - 变化的属性值
 		AttrChangeProcess(AttrChangeNum); //!< 属性变化处理函数
@@ -288,23 +307,13 @@ static void Sys_Control()
 		SYS_Event &= ~TCP_SEND_EVT; //!< 清除前序事件 - TCP回复完成事件
 
 	// 一包AD数据采集完成事件
-	if( SYS_Event&EEG_DATA_CPL_EVT )
+	if( SYS_Event & EEG_DATA_CPL_EVT )
 	{
-		if( UDP_Process(0xFF,SYS_Event)== SUCCESS)
+		if( UDP_DataProcess(0xFF,SYS_Event)== UDP_HEADER_CPL )
 			{
-				SYS_Event |=  UDP_PROCESSCLP_EVT; //!< 更新事件：UDP协议服务处理完毕
+				SYS_Event |=  UDP_PROCESSCLP_EVT; //!< 更新事件：UDP帧协议服务处理完毕
 				SYS_Event &= ~ EEG_DATA_CPL_EVT; //!< 清除前序事件 - 一包AD数据采集完成
 			}
-	}
-
-	// UDP协议服务事件	
-	if( SYS_Event&UDP_PROCESSCLP_EVT )
-	{
-		if(UDP_Service(1) ==SUCCESS) //!< UDP缓冲区数据全部发送
-		SYS_Event &= ~ UDP_PROCESSCLP_EVT; //!< 清除前序事件 - UDP协议服务处理完毕	
-		
-		if(SYS_Event&EEG_STOP_EVT)	//!< 如果本UDP包发送之前发生过AD采集暂停事件
-		SYS_Event &= ~ EEG_STOP_EVT; //!< 清除前序事件 - AD数据暂停采集	
 	}
 
 }
@@ -653,7 +662,7 @@ static void MX_QUADSPI_Init(void)
   /* USER CODE END QUADSPI_Init 1 */
   /* QUADSPI parameter configuration*/
   hqspi.Instance = QUADSPI;
-  hqspi.Init.ClockPrescaler = 3;
+  hqspi.Init.ClockPrescaler = 15;
   hqspi.Init.FifoThreshold = 9;
   hqspi.Init.SampleShifting = QSPI_SAMPLE_SHIFTING_NONE;
   hqspi.Init.FlashSize = 16;
@@ -705,13 +714,13 @@ static void MX_RTC_Init(void)
   */
   if(LL_RTC_BAK_GetRegister(RTC, LL_RTC_BKP_DR0) != 0x32F2){
 
-  RTC_TimeStruct.Hours = 20;
+  RTC_TimeStruct.Hours = 17;
   RTC_TimeStruct.Minutes = 20;
   RTC_TimeStruct.Seconds = 0;
   LL_RTC_TIME_Init(RTC, LL_RTC_FORMAT_BCD, &RTC_TimeStruct);
-  RTC_DateStruct.WeekDay = LL_RTC_WEEKDAY_SUNDAY;
-  RTC_DateStruct.Month = LL_RTC_MONTH_SEPTEMBER;
-  RTC_DateStruct.Year = 20;
+  RTC_DateStruct.WeekDay = LL_RTC_WEEKDAY_SATURDAY;
+  RTC_DateStruct.Month = LL_RTC_MONTH_OCTOBER;
+  RTC_DateStruct.Year = 10;
   LL_RTC_DATE_Init(RTC, LL_RTC_FORMAT_BCD, &RTC_DateStruct);
     LL_RTC_BAK_SetRegister(RTC,LL_RTC_BKP_DR0,0x32F2);
   }
@@ -1175,7 +1184,9 @@ static void MX_GPIO_Init(void)
   LL_GPIO_SetPinMode(Mods_nDRDY_GPIO_Port, Mods_nDRDY_Pin, LL_GPIO_MODE_INPUT);
 
   /* EXTI interrupt init*/
-  NVIC_SetPriority(EXTI1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_SetPriority(EXTI0_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(EXTI0_IRQn);
+  NVIC_SetPriority(EXTI1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),1, 0));
   NVIC_EnableIRQ(EXTI1_IRQn);
 
 }

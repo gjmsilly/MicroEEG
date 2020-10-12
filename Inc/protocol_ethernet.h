@@ -18,14 +18,31 @@
 #define	ChxAttr_Read				0x02	//!< 读一个通道属性
 #define	ChxAttr_Write				0x20	//!< 写一个通道属性
 
-/* 状态机运行状态 */
+/* TCP帧协议服务状态机运行状态 */
 #define _FSM_CPL_						0x00	//!< 状态机运行完成
 #define _FSM_ON_GOING_			0x01	//!< 状态机正在运行
 #define _FSM_ERR_						0x02	//!< 状态机错误
 
+/* UDP帧协议服务运行状态 */
+#define UDP_DATA_CPL				0x00	//!< UDP数据域单个样本封包完成
+#define UDP_HEADER_CPL			0x01	//!< UDP帧头封包完成
+
+
 /* 数据通道参数（UDP端口） */
 #define HEAD_SIZE						23		//!< UDP帧头长度 - 按字节
-#define DATA_SIZE						117		//!< UDP帧数据域每样本长度 - 按字节
+
+#ifdef Dev_Ch32 
+#define DATA_SIZE						117		//!< UDP帧数据域每样本长度 - 按字节（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数4)
+#endif
+#ifdef Dev_Ch24 
+#define DATA_SIZE						90		//!< UDP帧数据域每样本长度 - 按字节	（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数3)	
+#endif
+#ifdef Dev_Ch16 
+#define DATA_SIZE						63		//!< UDP帧数据域每样本长度 - 按字节	（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数2)
+#endif
+#ifdef Dev_Ch8 
+#define DATA_SIZE						36		//!< UDP帧数据域每样本长度 - 按字节	（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数1)
+#endif
 
 /*******************************************************************
  * TYPEDEFS
@@ -78,7 +95,9 @@ typedef struct
  */
 void TCP_ProcessFSMInit(void);
 uint8_t TCP_ProcessFSM(void);
-uint8_t UDP_Process(uint8_t SampleNum ,uint8_t Procesflag);
+
+uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag);
+uint8_t UDP_TriggerProcess(uint32_t TriggerTimeStamp,uint16_t Procesflag);
 
 uint8_t protocol_RegisterAttrCBs(AttrCBs_t *pAttrcallbacks);
 

@@ -304,7 +304,7 @@ extern "C" {
  * Each bit of @ref SIR be still until @ref Sn_IR is cleared by the host.\n
  * If @ref Sn_IR is not equal to x00 the n-th bit of @ref SIR is and INTn PIN is asserted until @ref SIR is x00 */
 #define SIR                (_W5500_IO_BASE_ + (0x0017 << 8) + (WIZCHIP_CREG_BLOCK << 3))
-/***************方便调用****************************/
+/***************sockert n 中断位****************************/
 	#define S7_INT		0x80
 	#define S6_INT		0x40
 	#define S5_INT		0x20
@@ -687,7 +687,7 @@ extern "C" {
 #define Sn_IMR(N)          (_W5500_IO_BASE_ + (0x002C << 8) + (WIZCHIP_SREG_BLOCK(N) << 3))
 	#define IMR_SENDOK	0x10
 	#define IMR_TIMEOUT	0x08
-	#define IMR_RECV	0x04
+	#define IMR_RECV	0xE4
 	#define IMR_DISCON	0x02
 	#define IMR_CON		0x01
 /**
@@ -1728,7 +1728,7 @@ void     WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len);
  * @sa getSn_IMR()
  */
 #define setSn_IMR(sn, imr) \
-		WIZCHIP_WRITE(Sn_IMR(sn), (imr & 0x1F))
+		WIZCHIP_WRITE(Sn_IMR(sn), (imr & 0xFF))
 
 /**
  * @ingroup Socket_register_access_function

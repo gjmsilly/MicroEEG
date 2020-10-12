@@ -56,10 +56,22 @@ extern "C" {
 
 /* 属性值定义 */
 #define CPU_UUID_ADDR				0x1FFF7A10	//!< STM32F446 UUID首地址
-#define CHANNEL_NUM					32					//!< 通道数量  （x8/x16/x24/x32）
 #define SAMPLENUM						10					//!< 以太网每包含ad样本数
 #define SAMPLLE_START				1						//!< 开始采集
 #define SAMPLLE_STOP				0 					//!< 停止采集
+
+#ifdef Dev_Ch32 
+#define CHANNEL_NUM					32					//!< 通道数量  （x8/x16/x24/x32）
+#endif
+#ifdef Dev_Ch24 
+#define CHANNEL_NUM					24					//!< 通道数量  （x8/x16/x24/x32）
+#endif
+#ifdef Dev_Ch16 
+#define CHANNEL_NUM					16					//!< 通道数量  （x8/x16/x24/x32）
+#endif
+#ifdef Dev_Ch8 
+#define CHANNEL_NUM					8						//!< 通道数量  （x8/x16/x24/x32）
+#endif
 
 /*******************************************************************
  * TYPEDEFS

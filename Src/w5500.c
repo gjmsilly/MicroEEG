@@ -115,7 +115,10 @@ void WIZCHIP_WRITE(uint32_t AddrSel, uint8_t value )
 {
 	 uint16_t RegAddr;
 	 uint8_t 	ControlWord;
-   
+   uint8_t	val;
+	
+	 val=value;
+	
 	 RegAddr 	= ((AddrSel & 0x00FFFF00)>>8); 							// W5500地址段:寄存器偏移地址
 	 AddrSel |= (_W5500_SPI_WRITE_ | _W5500_SPI_VDM_OP_);	// W5500控制段:写访问、可变数据长度模式
 	 ControlWord = ((AddrSel & 0x000000FF) >> 0);					// W5500控制段:寄存器区域 
@@ -125,7 +128,7 @@ void WIZCHIP_WRITE(uint32_t AddrSel, uint8_t value )
 	 // | NULL | RegAddr | ControlWord |	NULL 	|	value |
 	 QSPI_Send_Control(RegAddr,ControlWord,0,QSPI_DATA_1_LINE);
 	 // 写入1字节数据
-	 QSPI_Transmit(&value,1);
+	 QSPI_Transmit(&val,1);
 	
 }
       

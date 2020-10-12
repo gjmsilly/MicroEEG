@@ -58,7 +58,7 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-extern uint8_t SYS_Event;									//!< 系统状态事件 - @ref System events
+extern uint16_t SYS_Event;									//!< 系统状态事件 - @ref System events
 
 /* USER CODE END EC */
 
@@ -74,7 +74,7 @@ extern uint8_t SYS_Event;									//!< 系统状态事件 - @ref System events
 #define EEG_DATA_CPL_EVT				( 1 << 5 )	//!< 一包AD数据采集完成
 #define UDP_PROCESSCLP_EVT			( 1 << 6 )	//!< UDP帧协议处理完毕
 #define EEG_STOP_EVT						( 1 << 7 )	//!< AD数据暂停采集
-
+#define TRIGGER_EVT							(	1	<< 8 )	//!< 标签事件
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
@@ -155,6 +155,7 @@ void Error_Handler(void);
 #define W5500_MISO_GPIO_Port GPIOC
 #define W5500_nINT_Pin LL_GPIO_PIN_0
 #define W5500_nINT_GPIO_Port GPIOD
+#define W5500_nINT_EXTI_IRQn EXTI0_IRQn
 #define W5500_SCLK_Pin LL_GPIO_PIN_3
 #define W5500_SCLK_GPIO_Port GPIOD
 #define Modc_nDRDY_Pin LL_GPIO_PIN_4

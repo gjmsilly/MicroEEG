@@ -27,6 +27,7 @@
  */  
 uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];		//!< TCP接收数据缓冲区 
 uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];		//!< TCP发送数据缓冲区
+uint8_t UDP_Rx_Buff[UDP_Rx_Buff_Size];		//!< UDP接收数据缓冲区
 uint8_t UDP_Tx_Buff[UDP_Tx_Buff_Size];		//!< UDP发送数据缓冲区
 uint8_t *pUDP_Tx_Buff;										//!< UDP发送数据帧指针
 
@@ -132,9 +133,8 @@ static void W5500_Config(void)
 	//如果重发的次数超过设定值,则产生超时中断(相关的端口中断寄存器中的Sn_IR 超时位(TIMEOUT)置“1”)
 	setRCR(8);
 
-	//屏蔽所有中断
+	//中断屏蔽设置
 	setIMR(0);//屏蔽IP冲突中断，UDP目的地址不能抵达中断，PPPoE，Magic Packet中断	
-
 }
 
 /*******************************************************************************
@@ -242,7 +242,6 @@ static uint8_t Detect_Gateway(void)
 	//检查网关及获取网关的物理地址
 	setSn_DIPR(0,ip_adde);//向目的IP地址寄存器写入构造的目的IP地址
 	setSn_MR(0,Sn_MR_TCP);//设置Socket 0为TCP模式
-	setSIMR(1);//启用Socket 0中断(对@ref SIMR bit1置1即使能Socket 0中断)
 	setSn_CR(0,Sn_CR_OPEN);//打开Socket 0
 	HAL_Delay(5);//延时5ms 	
 	
@@ -295,36 +294,37 @@ static void W5500_Socket_Init(uint8_t sn)
 {
 	
 	/* Socket 寄存器区设置 */
-	
-	////设置发送缓冲区和接收缓冲区的大小，默认2K(默认值即无需配置)
-	//	for(uint8_t i=0;i<8;i++)
-	//	{
-	//		setSn_RXBUF_SIZE(i, 0x02);//Socket Rx memory size=2k
-	//		setSn_TXBUF_SIZE(i, 0x02);//Socket Tx mempry size=2k
-	//	}
-	
-	// 屏蔽所有的Socket中断，采用轮询的方式 @ref DO_TCP_Server
-	setSIMR(1);
-	
+
 	//设置指定Socket
 	switch(sn)
 	{
 		case 0:
 			/* Socket 0 */	
 			//设置分片长度
-			setSn_MSSR(0, 0x5b4);//最大分片字节数=1460(0x5b4)	
+			setSn_MSSR(0, 0x5b4);//最大分片字节数=1460(0x5b4)
+	
+			// 屏蔽所有的Socket中断，采用轮询的方式 
+			setSn_IMR(0,0xE0);	
+		
 			//设置工作模式 TCP server，打开Socket 0并绑定端口
 			while(socket(0,Sn_MR_TCP,Psn_param->Sn_Port,0) != 0);
 			//设置心跳包自动发送间隔，单位时间为5s	
-			setSn_KPALVTR(0,2);    	
-			break;
+			//setSn_KPALVTR(0,2);    	
+
+		break;
 		
 		case 1:
 			/* Socket 1 */			
 			//设置分片长度
-			setSn_MSSR(1, 0x5b4);//最大分片字节数=1460(0x5b4)			
+			setSn_MSSR(1, 0x5b4);//最大分片字节数=1460(0x5b4)		
+		
+			//socket中断设置
+			setSIMR(S1_INT);//启用socket 1中断
+			setSn_IMR(1,IMR_RECV);//UDP端口接收中断
+		
 		  //设置工作模式 UDP，打开Socket 1并绑定端口
-			while(socket(1,Sn_MR_UDP,(Psn_param+1)->Sn_Port,0) != 1);			
+			while(socket(1,Sn_MR_UDP,(Psn_param+1)->Sn_Port,0) != 1);	
+			
 		break;
 		
 		case 2:
@@ -350,7 +350,7 @@ static void W5500_Socket_Init(uint8_t sn)
 * 描述    : TCP服务器服务: 采取轮询的方式获取Socket n状态，完成TCP请求
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
-*						@Procesflag：TCP数据处理完成标志位
+*						@Procesflag：TCP数据处理完成标志位(TCP帧协议服务处理完成)
 *
 * 返回值  : @Sn_OPEN - 端口已打开
 *						@Sn_LISTEN - 端口正在监听
@@ -360,7 +360,7 @@ static void W5500_Socket_Init(uint8_t sn)
 *
 * 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
-uint8_t TCPServer_Service(uint8_t sn , uint8_t Procesflag)
+uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 {
 	uint16_t recvsize=0,sentsize = 0; // 用于回环测试
 	uint8_t TCPserv_status; //!< TCP服务状态
@@ -370,7 +370,7 @@ uint8_t TCPServer_Service(uint8_t sn , uint8_t Procesflag)
 		/* Socket n 关闭 */
 		case SOCK_CLOSED:
 			socket(sn,Sn_MR_TCP,(Psn_param+sn)->Sn_Port,0); //打开Socket绑定TCP默认端口
-			setSn_KPALVTR(sn,2);    //设置心跳包自动发送间隔，单位时间为5s
+			//setSn_KPALVTR(sn,2);    //设置心跳包自动发送间隔，单位时间为5s
 			
 			TCPserv_status = Sn_OPEN;
 		break;
@@ -425,13 +425,18 @@ uint8_t TCPServer_Service(uint8_t sn , uint8_t Procesflag)
 * 描述    : UDP服务: 采取轮询的方式获取Socket n状态，完成UDP发送
 *
 * 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*						@Procesflag ：UDP帧协议服务处理完成标志位
 *
-* 返回值  : @SUCCESS - UDP发送完毕
+* 返回值  : @TCP_RECV - UDP接收一帧
+*						@UDP_SEND	-	UDP发送完毕
 *
 * 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
-uint8_t UDP_Service(uint8_t sn)
+uint8_t UDP_Service(uint8_t sn, uint16_t Procesflag)
 {
+	uint16_t recvsize=0;
+	uint8_t UDPserv_status,tmp; //!< UDP服务状态
+	
 	switch(getSn_SR(sn))
 	{
 		
@@ -442,20 +447,42 @@ uint8_t UDP_Service(uint8_t sn)
 		
 		/* Socket n 已完成初始化 */
 		case SOCK_UDP:
-			
-			if(getSn_IR(sn) & Sn_IR_RECV)
+				
+		if( Procesflag&TRIGGER_EVT )
+		{				
+			if((recvsize = getSn_RX_RSR(sn)) > 0)
 			{
-				setSn_IR(sn, Sn_IR_RECV);                                                                                                                        // Sn_IR的RECV位置1
+				/* 读取UDP端口数据 */
+				recvfrom(	sn,UDP_Rx_Buff,             \
+									recvsize,										\
+									(Psn_param+sn)->UDP_DIPR,  	\
+									&(Psn_param+sn)->UDP_DPORT); 				
+						
+				/* 清除中断标志位 */
+				tmp=getSIR();
+				setSIR(tmp);			
+				tmp = getSn_IR(1);			
+				setSn_IR(1, tmp);
+
+				UDPserv_status = UDP_RECV;					
+			}	
+			
 			}
-								
+		
+		/* 若无UDP帧协议服务，需手动添加 */
+		
+		else if( Procesflag & UDP_PROCESSCLP_EVT ) // UDP帧协议服务处理完成，UDP端口准备发数
+		{			
 			sendto(sn, UDP_Tx_Buff,    				  \
 						 sizeof(UDP_Tx_Buff), 				\
 						 (Psn_param+sn)->UDP_DIPR,  	\
-						 (Psn_param+sn)->UDP_DPORT); 
-	 
-				 return SUCCESS;
+						 (Psn_param+sn)->UDP_DPORT);  //一次发送UDP发送缓冲区所有数据
+			
+			UDPserv_status = UDP_SEND;			 
+		}
+
 		break;
-		
 	}
-		
+	
+	 return ( UDPserv_status );		
 }

@@ -36,7 +36,6 @@ void ADS1299_Init(uint8_t dev)
 	// 上电检测
 
 	LL_GPIO_SetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin);
-	
 	while(LL_GPIO_IsInputPinSet(Mod1_nDRDY_GPIO_Port,Mod1_nDRDY_Pin));
 	
 	LL_GPIO_ResetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin); 
@@ -360,7 +359,18 @@ void ADS1299_ReadResult(uint8_t *result)
 //	WaitUs(4); 
 	
 	//DMA
+	#ifdef Dev_Ch32 
 	ADS1299_ReadResult_DMA((uint32_t)result, 118); //DMA Read Bug 需多读1字节
+	#endif
+	#ifdef Dev_Ch24 
+	ADS1299_ReadResult_DMA((uint32_t)result, 91); //DMA Read Bug 需多读1字节
+	#endif
+	#ifdef Dev_Ch16 
+	ADS1299_ReadResult_DMA((uint32_t)result, 64); //DMA Read Bug 需多读1字节
+	#endif
+	#ifdef Dev_Ch8 
+	ADS1299_ReadResult_DMA((uint32_t)result, 37); //DMA Read Bug 需多读1字节
+	#endif
 	
 	while(!LL_DMA_IsActiveFlag_TC0(DMA2)); // Wait until all data trasferred from SPI1_RX
 	

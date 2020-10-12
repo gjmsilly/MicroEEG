@@ -18,13 +18,11 @@
 /******************************************************************************
  * GLOBAL VARIABLES
  */
-uint32_t CurTimeStamp = 0;	//!< 当前时间
-uint8_t* pCurTimeStamp;			//!< 当前时间指针		
-static uint32_t attrvalue=0;	//!< 属性值
-uint32_t *pValue =&attrvalue;	//!< 属性值指针
+uint32_t CurTimeStamp[10];			//!< 当前时间
+uint32_t* pCurTimeStamp;				//!< 当前时间指针		
+static uint32_t attrvalue=0;		//!< 属性值
+uint32_t *pValue =&attrvalue;		//!< 属性值指针
 
-uint16_t CurEventTag = 0;
-char* pcCurEventTag = (char*)&CurEventTag;
 
 /*  ======================== 属性值变化处理服务 ============================
  */
@@ -50,6 +48,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			if((*pValue&0x0000FF) == SAMPLLE_START )
 			{
 			 /* ads1299 开始采集 */
+				TIM5->CNT=0; //!< 每次采样时增量计时器归零				
 				Mod_DRDY_INT_Enable //使能nDReady中断
 				LL_GPIO_SetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin);
 				ADS1299_SendCommand(ADS1299_CMD_RDATAC);			
@@ -145,7 +144,7 @@ static void STSG_TIM5_Init(void);
 //样本时间戳服务		
 void SampleTimestamp_Service_Init(void)
 {
-	pCurTimeStamp = (uint8_t*)&CurTimeStamp;	//!< 时间戳初始化
+	pCurTimeStamp = CurTimeStamp;	//!< 时间戳初始化
 	
 	STSG_TIM5_Init();	//!< 计时器初始化
 }
