@@ -250,7 +250,7 @@ static void Sys_Control()
 	uint8_t TCPstate,UDPstate;
 	
 
-	// TCP 通讯服务事件
+	// TCP控制通道事件
 	TCPstate = TCPServer_Service(0,SYS_Event);
 	
 	if ( TCPstate == TCP_RECV )
@@ -264,27 +264,7 @@ static void Sys_Control()
 		SYS_Event &= ~TCP_PROCESSCLP_EVT; //!< 清除前序事件 - TCP帧协议服务
 	}
 
-	// UDP 通讯服务事件
-//	if( SYS_Event & TRIGGER_EVT )
-//	{
-//			if(	UDP_Service(1,SYS_Event)  == UDP_RECV )
-//		{
-//			if( UDP_TriggerProcess( TriggerTimeStamp,SYS_Event ) == SUCCESS)			
-//				SYS_Event &= ~TRIGGER_EVT; //!< 清除前序事件 - 标签事件
-//		}
-//	}
-//	else     
-	UDPstate = UDP_Service(1,SYS_Event);
-		if(	UDPstate  == UDP_SEND ) 
-	{
-		SYS_Event &= ~ UDP_PROCESSCLP_EVT; //!< 清除前序事件 - UDP协议服务处理完毕	
-		
-		if( SYS_Event&EEG_STOP_EVT )	//!< 如果本UDP包发送之前发生过AD采集暂停事件
-			SYS_Event &= ~EEG_STOP_EVT; //!< 清除前序事件 - AD数据暂停采集		
-	}
-	
-	// TCP 帧协议服务事件 
-	if( SYS_Event & TCP_RECV_EVT )
+	if( SYS_Event & TCP_RECV_EVT ) 	 
 	{
 		if( TCP_ProcessFSM() == _FSM_CPL_)	//!< 更新事件：TCP帧协议服务处理完毕 -> 跳转TCP端口回复
 		{			
@@ -306,15 +286,59 @@ static void Sys_Control()
 	else if(SYS_Event& TCP_SEND_EVT )
 		SYS_Event &= ~TCP_SEND_EVT; //!< 清除前序事件 - TCP回复完成事件
 
-	// 一包AD数据采集完成事件
-	if( SYS_Event & EEG_DATA_CPL_EVT )
+	
+
+	// UDP标签通道事件 
+	if( SYS_Event & TRIGGER_EVT )
+	{
+		if(UDP_Service(2,SYS_Event) == UDP_RECV)		//!< UDP端口接收，清除接收中断标志位
+		{
+			SYS_Event |= UDP_RECV_EVT;	//!< 更新事件：UDP端口接收到一帧 -> 跳转UDP事件帧协议服务
+			SYS_Event &= ~TRIGGER_EVT; //!< 清除前序事件 - 标签事件
+		}
+	}
+	
+	if( SYS_Event & UDP_RECV_EVT )
+	{
+		 if(UDP_TriggerProcess()==SUCCESS) //!< UDP事件帧协议服务处理完毕 -> 跳转UDP端口发送
+		 {
+			 SYS_Event |= UDP_TRGPROCESSCLP_EVT;	//!< 更新事件：UDP事件帧协议处理完毕
+			 SYS_Event &= ~UDP_RECV_EVT; //!< 清除前序事件 - UDP端口接收到一帧
+		 }			 
+	}
+		
+	if( SYS_Event & UDP_TRGPROCESSCLP_EVT )
+	{
+			if(UDP_Service(2,SYS_Event) == UDP_SEND)
+		{
+			SYS_Event &= ~UDP_TRGPROCESSCLP_EVT; //!< 清除前序事件 - UDP事件帧协议处理完毕
+		}
+	}
+	
+	// UDP数据通道事件	
+	if( SYS_Event & EEG_DATA_CPL_EVT )// 一包AD数据采集完成
 	{
 		if( UDP_DataProcess(0xFF,SYS_Event)== UDP_HEADER_CPL )
 			{
-				SYS_Event |=  UDP_PROCESSCLP_EVT; //!< 更新事件：UDP帧协议服务处理完毕
+				SYS_Event |=  UDP_DTPROCESSCLP_EVT; //!< 更新事件：UDP数据帧协议服务处理完毕
 				SYS_Event &= ~ EEG_DATA_CPL_EVT; //!< 清除前序事件 - 一包AD数据采集完成
 			}
 	}
+	
+	if( SYS_Event & UDP_DTPROCESSCLP_EVT )// 一包AD数据打包完成
+	{    
+			if(	UDP_Service(1,SYS_Event)  == UDP_SEND ) 
+		{
+			SYS_Event &= ~ UDP_DTPROCESSCLP_EVT; //!< 清除前序事件 - UDP数据帧协议服务处理完毕	
+			
+			if( SYS_Event&EEG_STOP_EVT )	//!< 如果本UDP包发送之前发生过AD采集暂停事件
+				SYS_Event &= ~EEG_STOP_EVT; //!< 清除前序事件 - AD数据暂停采集		
+		}
+	}
+	
+	
+
+
 
 }
 

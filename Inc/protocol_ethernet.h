@@ -32,16 +32,16 @@
 #define HEAD_SIZE						23		//!< UDP帧头长度 - 按字节
 
 #ifdef Dev_Ch32 
-#define DATA_SIZE						117		//!< UDP帧数据域每样本长度 - 按字节（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数4)
+#define DATA_SIZE						115		//!< UDP帧数据域每样本长度 - 按字节（数据域头部7 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数4)
 #endif
 #ifdef Dev_Ch24 
-#define DATA_SIZE						90		//!< UDP帧数据域每样本长度 - 按字节	（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数3)	
+#define DATA_SIZE						88		//!< UDP帧数据域每样本长度 - 按字节	（数据域头部7 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数3)	
 #endif
 #ifdef Dev_Ch16 
-#define DATA_SIZE						63		//!< UDP帧数据域每样本长度 - 按字节	（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数2)
+#define DATA_SIZE						61		//!< UDP帧数据域每样本长度 - 按字节	（数据域头部7 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数2)
 #endif
 #ifdef Dev_Ch8 
-#define DATA_SIZE						36		//!< UDP帧数据域每样本长度 - 按字节	（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数1)
+#define DATA_SIZE						34		//!< UDP帧数据域每样本长度 - 按字节	（数据域头部7 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数1)
 #endif
 
 /*******************************************************************
@@ -97,7 +97,7 @@ void TCP_ProcessFSMInit(void);
 uint8_t TCP_ProcessFSM(void);
 
 uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag);
-uint8_t UDP_TriggerProcess(uint32_t TriggerTimeStamp,uint16_t Procesflag);
+uint8_t UDP_TriggerProcess();
 
 uint8_t protocol_RegisterAttrCBs(AttrCBs_t *pAttrcallbacks);
 

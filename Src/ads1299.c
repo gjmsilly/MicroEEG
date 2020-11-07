@@ -360,16 +360,16 @@ void ADS1299_ReadResult(uint8_t *result)
 	
 	//DMA
 	#ifdef Dev_Ch32 
-	ADS1299_ReadResult_DMA((uint32_t)result, 118); //DMA Read Bug 需多读1字节
+	ADS1299_ReadResult_DMA((uint32_t)result, 109); //DMA Read Bug 需多读1字节
 	#endif
 	#ifdef Dev_Ch24 
-	ADS1299_ReadResult_DMA((uint32_t)result, 91); //DMA Read Bug 需多读1字节
+	ADS1299_ReadResult_DMA((uint32_t)result, 82); //DMA Read Bug 需多读1字节
 	#endif
 	#ifdef Dev_Ch16 
-	ADS1299_ReadResult_DMA((uint32_t)result, 64); //DMA Read Bug 需多读1字节
+	ADS1299_ReadResult_DMA((uint32_t)result, 55); //DMA Read Bug 需多读1字节
 	#endif
 	#ifdef Dev_Ch8 
-	ADS1299_ReadResult_DMA((uint32_t)result, 37); //DMA Read Bug 需多读1字节
+	ADS1299_ReadResult_DMA((uint32_t)result, 28); //DMA Read Bug 需多读1字节
 	#endif
 	
 	while(!LL_DMA_IsActiveFlag_TC0(DMA2)); // Wait until all data trasferred from SPI1_RX

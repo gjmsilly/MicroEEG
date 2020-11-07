@@ -68,13 +68,17 @@ extern uint16_t SYS_Event;									//!< 系统状态事件 - @ref System events
 // System events
 #define ATTR_CHANGE_EVT					( 1 << 0 )	//!< 属性值变化
 #define TCP_RECV_EVT						( 1 << 1 ) 	//!< TCP端口接收到一帧
-#define TCP_SEND_EVT            ( 1 << 2 )	//!< TCP端口回复完成
-#define TCP_PROCESSCLP_EVT			( 1 << 3 ) 	//!< TCP帧协议处理完毕
-#define EEG_DATA_START_EVT			( 1 << 4 )	//!< 一包AD数据开始采集
-#define EEG_DATA_CPL_EVT				( 1 << 5 )	//!< 一包AD数据采集完成
-#define UDP_PROCESSCLP_EVT			( 1 << 6 )	//!< UDP帧协议处理完毕
-#define EEG_STOP_EVT						( 1 << 7 )	//!< AD数据暂停采集
-#define TRIGGER_EVT							(	1	<< 8 )	//!< 标签事件
+#define TCP_PROCESSCLP_EVT			( 1 << 2 ) 	//!< TCP帧协议处理完毕
+#define TCP_SEND_EVT            ( 1 << 3 )	//!< TCP端口回复完成
+#define UDP_RECV_EVT						( 1 << 4 )	//!< UDP端口接收到一帧
+#define UDP_DTPROCESSCLP_EVT		( 1 << 5 )	//!< UDP数据帧协议处理完毕
+#define UDP_TRGPROCESSCLP_EVT		( 1 << 6 )	//!< UDP事件帧协议处理完毕
+//#define UDP_SEND_EVT						( 1 << 7 )	//!< UDP端口发送完成
+#define EEG_DATA_START_EVT			( 1 << 8 )	//!< 一包AD数据开始采集
+#define EEG_DATA_CPL_EVT				( 1 << 9 )	//!< 一包AD数据采集完成
+#define EEG_STOP_EVT						( 1 << 10 )	//!< AD数据暂停采集
+#define TRIGGER_EVT							(	1	<< 11 )	//!< 标签事件
+
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/

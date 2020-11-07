@@ -727,9 +727,129 @@ uint16_t DMA_recv(uint8_t sn, uint8_t * buf, uint32_t len)
 * 返回值  : @Success: 发送数据长度
 *						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
 *
-* 说明    : 默认DMA方式	 
+* 说明    : 无
 *******************************************************************************/
 int32_t sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t port)
+{
+   uint8_t tmp = 0;
+   uint16_t freesize = 0;
+   uint32_t taddr;
+
+   CHECK_SOCKNUM();
+   switch(getSn_MR(sn) & 0x0F)
+   {
+      case Sn_MR_UDP:
+      case Sn_MR_MACRAW:
+//         break;
+//   #if ( _WIZCHIP_ < 5200 )
+      case Sn_MR_IPRAW:
+         break;
+//   #endif
+      default:
+         return SOCKERR_SOCKMODE;
+   }
+   CHECK_SOCKDATA();
+   //M20140501 : For avoiding fatal error on memory align mismatched
+   //if(*((uint32_t*)addr) == 0) return SOCKERR_IPINVALID;
+   //{
+      //uint32_t taddr;
+      taddr = ((uint32_t)addr[0]) & 0x000000FF;
+      taddr = (taddr << 8) + ((uint32_t)addr[1] & 0x000000FF);
+      taddr = (taddr << 8) + ((uint32_t)addr[2] & 0x000000FF);
+      taddr = (taddr << 8) + ((uint32_t)addr[3] & 0x000000FF);
+   //}
+   //
+   //if(*((uint32_t*)addr) == 0) return SOCKERR_IPINVALID;
+   if((taddr == 0) && ((getSn_MR(sn)&Sn_MR_MACRAW) != Sn_MR_MACRAW)) return SOCKERR_IPINVALID;
+   if((port  == 0) && ((getSn_MR(sn)&Sn_MR_MACRAW) != Sn_MR_MACRAW)) return SOCKERR_PORTZERO;
+   tmp = getSn_SR(sn);
+//#if ( _WIZCHIP_ < 5200 )
+   if((tmp != SOCK_MACRAW) && (tmp != SOCK_UDP) && (tmp != SOCK_IPRAW)) return SOCKERR_SOCKSTATUS;
+//#else
+//   if(tmp != SOCK_MACRAW && tmp != SOCK_UDP) return SOCKERR_SOCKSTATUS;
+//#endif
+      
+   setSn_DIPR(sn,addr);
+   setSn_DPORT(sn,port);      
+   freesize = getSn_TxMAX(sn);
+   if (len > freesize) len = freesize; // check size not to exceed MAX size.
+   while(1)
+   {
+      freesize = getSn_TX_FSR(sn);
+      if(getSn_SR(sn) == SOCK_CLOSED) return SOCKERR_SOCKCLOSED;
+      if( (sock_io_mode & (1<<sn)) && (len > freesize) ) return SOCK_BUSY;
+      if(len <= freesize) break;
+   };
+	wiz_send_data(sn, buf, len);
+	//Write_SOCK_Data_Buffer(sn, buf, len);   //DMA方式
+
+	 
+   #if _WIZCHIP_ < 5500   //M20150401 : for WIZCHIP Errata #4, #5 (ARP errata)
+      getSIPR((uint8_t*)&taddr);
+      if(taddr == 0)
+      {
+         getSUBR((uint8_t*)&taddr);
+         setSUBR((uint8_t*)"\x00\x00\x00\x00");
+      }
+      else taddr = 0;
+   #endif
+
+//A20150601 : For W5300
+#if _WIZCHIP_ == 5300
+   setSn_TX_WRSR(sn, len);
+#endif
+//   
+	setSn_CR(sn,Sn_CR_SEND);
+	/* wait to process the command... */
+	while(getSn_CR(sn));
+   while(1)
+   {
+      tmp = getSn_IR(sn);
+      if(tmp & Sn_IR_SENDOK)
+      {
+         setSn_IR(sn, Sn_IR_SENDOK);
+         break;
+      }
+      //M:20131104
+      //else if(tmp & Sn_IR_TIMEOUT) return SOCKERR_TIMEOUT;
+      else if(tmp & Sn_IR_TIMEOUT)
+      {
+         setSn_IR(sn, Sn_IR_TIMEOUT);
+         //M20150409 : Fixed the lost of sign bits by type casting.
+         //len = (uint16_t)SOCKERR_TIMEOUT;
+         //break;
+         #if _WIZCHIP_ < 5500   //M20150401 : for WIZCHIP Errata #4, #5 (ARP errata)
+            if(taddr) setSUBR((uint8_t*)&taddr);
+         #endif
+         return SOCKERR_TIMEOUT;
+      }
+      ////////////
+   }
+   #if _WIZCHIP_ < 5500   //M20150401 : for WIZCHIP Errata #4, #5 (ARP errata)
+      if(taddr) setSUBR((uint8_t*)&taddr);
+   #endif
+   //M20150409 : Explicit Type Casting
+   //return len;
+   return (int32_t)len;
+}
+/*******************************************************************************
+* 函数名  : DMA_sendto
+*
+* 描述    : 将UDP/MACRAW数据报文传给目的主机
+*
+* 输入    : @sn: Socket寄存器编号，e.g. Socket 1 即 sn=1
+*					  @buf: 发送数据指针
+*						@len: 发送数据长度 
+*						@addr: 目的主机IP地址
+*						@port: 目的主机端口号
+
+*
+* 返回值  : @Success: 发送数据长度
+*						@Fail:  - @ref SOCKERR_SOCKNUM  etc.
+*
+* 说明    : DMA方式	 
+*******************************************************************************/
+int32_t DMA_sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t port)
 {
    uint8_t tmp = 0;
    uint16_t freesize = 0;
@@ -832,7 +952,6 @@ int32_t sendto(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t
    //return len;
    return (int32_t)len;
 }
-
 /*******************************************************************************
 * 函数名  : recvfrom
 *
@@ -900,6 +1019,7 @@ int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16
 	   case Sn_MR_UDP :
 	      if(sock_remained_size[sn] == 0)
 	      {
+					//Read_SOCK_Data_Buffer(sn, head, 8);
    			wiz_recv_data(sn, head, 8);
    			setSn_CR(sn,Sn_CR_RECV);
    			while(getSn_CR(sn));
@@ -950,6 +1070,7 @@ int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16
 			// Need to packet length check (default 1472)
 			//
    		wiz_recv_data(sn, buf, pack_len); // data copy.
+			 //Read_SOCK_Data_Buffer(sn, buf, pack_len); 
 			break;
 	   case Sn_MR_MACRAW :
 	      if(sock_remained_size[sn] == 0)

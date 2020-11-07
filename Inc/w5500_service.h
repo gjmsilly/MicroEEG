@@ -51,33 +51,35 @@ typedef struct
 #define UDP_SEND						0x06	//!< UDP端口发送完毕
 
 // 通讯收发缓冲区参数
-#define TCP_Rx_Buff_Size		16
-#define TCP_Tx_Buff_Size		16
-#define	UDP_Rx_Buff_Size		16
+#define TCP_Rx_Buff_Size			16
+#define TCP_Tx_Buff_Size			16
+#define	UDP_TrgRx_Buff_Size		16
+#define	UDP_TrgTx_Buff_Size		16
 
 #ifdef Dev_Ch32 
-#define UDP_Tx_Buff_Size		1193		//!< 数据帧头部23 + 样本数10 x（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数4)字节
+#define UDPD_Tx_Buff_Size		1173		//!< 数据帧头部23 + 样本数10 x（数据域头部7 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数4)字节
 #endif
 #ifdef Dev_Ch24 
-#define UDP_Tx_Buff_Size		653			//!< 数据帧头部23 + 样本数10 x（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数3)字节
+#define UDPD_Tx_Buff_Size		903			//!< 数据帧头部23 + 样本数10 x（数据域头部7 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数3)字节
 #endif
 #ifdef Dev_Ch16 
-#define UDP_Tx_Buff_Size		923			//!< 数据帧头部23 + 样本数10 x（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数2)字节
+#define UDPD_Tx_Buff_Size		633			//!< 数据帧头部23 + 样本数10 x（数据域头部7 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数2)字节
 #endif
 #ifdef Dev_Ch8 
-#define UDP_Tx_Buff_Size		383			//!< 数据帧头部23 + 样本数10 x（数据域头部9 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数1)字节
+#define UDPD_Tx_Buff_Size		363			//!< 数据帧头部23 + 样本数10 x（数据域头部7 + (本组通道状态3 + 八通道8 x 每通道量化字节数3）x 通道组数1)字节
 #endif
 
 /***********************************************************************
  * EXTERNAL VARIABLES
  */
-extern uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];			//TCP接收数据缓冲区 
-extern uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];			//TCP发送数据缓冲区
-extern uint8_t UDP_Rx_Buff[UDP_Rx_Buff_Size];			//UDP接收数据缓冲区
-extern uint8_t UDP_Tx_Buff[UDP_Tx_Buff_Size];			//UDP发送数据缓冲区
-extern uint8_t *pUDP_Tx_Buff;		
+extern uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];				//TCP接收缓冲区 
+extern uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];				//TCP发送缓冲区
+extern uint8_t UDP_DTx_Buff[UDPD_Tx_Buff_Size];			//UDP数据发送缓冲区
+extern uint8_t UDP_TrgRx_Buff[UDP_TrgRx_Buff_Size];	//UDP事件发送缓冲区
+extern uint8_t UDP_TrgTx_Buff[UDP_TrgTx_Buff_Size];	//UDP事件接收缓冲区
+extern uint8_t *pUDP_DTx_Buff;		
 extern NETWORKParam_t net_param,*Pnet_param;
-extern SOCKETnParam_t  sn_param[2],*Psn_param;
+extern SOCKETnParam_t  sn_param[3],*Psn_param;
 
 /***********************************************************************
  * FUNCTIONS

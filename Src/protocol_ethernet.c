@@ -343,7 +343,7 @@ extern uint32_t TriggerTimeStamp; //!< 标签事件发生时点
  *  ======================== UDP帧协议服务 ============================
  */ 
 /*!
- *  @fn	UDP帧协议服务处理函数(EEG数据封包)
+ *  @fn	UDP数据帧协议服务处理函数(EEG数据封包)
  *
  *	@param	@Procesflag - AD数据采集状态标志位
  *					@SampleNum - 目前待封包的AD样本序数	- 无需封包则0xFF
@@ -361,36 +361,21 @@ uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag)
 		 if(SampleNum!= 0xFF )
 		 {
 			 
-			ADS1299_ReadResult(pUDP_Tx_Buff+HEAD_SIZE+DATA_SIZE*SampleNum+8);	//!< 样本每通道量化值 //!< 第1字节舍去 (被覆盖)
+			ADS1299_ReadResult(pUDP_DTx_Buff+HEAD_SIZE+DATA_SIZE*SampleNum+6);	//!< 样本每通道量化值 //!< 第1字节舍去 (被覆盖)
 			 
-			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum] = UDP_SAMPLE_FH;		//!< 样本起始分隔符 
-			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+1] = SampleNum;			//!< 样本序号(低八位) - 显示从0开始的序数
-			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+2] = 0x00;					//!< 样本序号(高八位)
+			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum] = UDP_SAMPLE_FH;		//!< 样本起始分隔符 
+			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+1] = SampleNum;			//!< 样本序号(低八位) - 显示从0开始的序数
+			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+2] = 0x00;					//!< 样本序号(高八位)
 			 	 	 													
-			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+3]=*(uint8_t *)(pCurTimeStamp+SampleNum);	//!< 样本时间戳 - 增量型（每样本相对第一样本时间增量）精度10us，注意小端对齐
-			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+4]=*((uint8_t *)(pCurTimeStamp+SampleNum)+1);
-			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+5]=*((uint8_t *)(pCurTimeStamp+SampleNum)+2);
-			UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+6]=*((uint8_t *)(pCurTimeStamp+SampleNum)+3);
+			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+3]=*(uint8_t *)(pCurTimeStamp+SampleNum);	//!< 样本时间戳 - 增量型（每样本相对第一样本时间增量）精度10us，注意小端对齐
+			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+4]=*((uint8_t *)(pCurTimeStamp+SampleNum)+1);
+			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+5]=*((uint8_t *)(pCurTimeStamp+SampleNum)+2);
+			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+6]=*((uint8_t *)(pCurTimeStamp+SampleNum)+3);
 			
-			 /* AD数据采集中，本包样本中含标签事件 */				
-			 if( Procesflag &TRIGGER_EVT )
-			 {
-					/* 回溯事件时点 */
-				 while(*(pCurTimeStamp+SampleNum)> TriggerTimeStamp)
-				 {
-					 SampleNum--;
-				 }
-
-				 UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+7]=UDP_Rx_Buff[0];	//!< 样本事件标记 - 默认0xAAAA
-				 UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+8]=UDP_Rx_Buff[1];
-			 }
-			 else
-			 {
-					UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+7]=0x00;	//!< 默认无标签事件
-					UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+8]=0x00;
-			 }
-			 
-			 return UDP_DATA_CPL; 
+//			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+7]=0x00;	//!< 默认无标签事件
+//			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+8]=0x00;			 
+			
+			return UDP_DATA_CPL; 
 		}
 		 else
 			 return ERROR; 
@@ -407,33 +392,33 @@ uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag)
 		 }
 
 		/* 数据源 */
-		memcpy(UDP_Tx_Buff,UDPHeader.UDP_DevID,4);		 
+		memcpy(UDP_DTx_Buff,UDPHeader.UDP_DevID,4);		 
 	 
 		/* UDP包累加滚动码 */
-		UDP_Tx_Buff[4]=(uint8_t) UDPNum; //!< UDP包累加滚动码,也即UDP帧头封包执行次数，注意小端对齐
-		UDP_Tx_Buff[5]=(uint8_t)(UDPNum >> 8);
-		UDP_Tx_Buff[6]=(uint8_t)(UDPNum >> 16);
-		UDP_Tx_Buff[7]=(uint8_t)(UDPNum >> 24);
+		UDP_DTx_Buff[4]=(uint8_t) UDPNum; //!< UDP包累加滚动码,也即UDP帧头封包执行次数，注意小端对齐
+		UDP_DTx_Buff[5]=(uint8_t)(UDPNum >> 8);
+		UDP_DTx_Buff[6]=(uint8_t)(UDPNum >> 16);
+		UDP_DTx_Buff[7]=(uint8_t)(UDPNum >> 24);
 		UDPNum++;	
 	 
 		/* 本UDP包总样数 */
-		memcpy((UDP_Tx_Buff+8),UDPHeader.UDP_SampleNum,2);
+		memcpy((UDP_DTx_Buff+8),UDPHeader.UDP_SampleNum,2);
 		
 		/* 本UDP包有效通道总数 */
-		memcpy((UDP_Tx_Buff+10),&UDPHeader.UDP_ChannelNum,1);
+		memcpy((UDP_DTx_Buff+10),&UDPHeader.UDP_ChannelNum,1);
 		
 		/* 首样时间戳 */		 
-		UNIXTimestamp_Service(UDP_Tx_Buff+11);
+		UNIXTimestamp_Service(UDP_DTx_Buff+11);
 		
 		/* 包头保留数 */	
-		memset(UDP_Tx_Buff+19,0xff,4);
+		memset(UDP_DTx_Buff+19,0xff,4);
 	 	
 		return UDP_HEADER_CPL; 
 	 }		 	
 }
 
 /*!
- *  @fn	UDP帧协议帧头数据获取
+ *  @fn	UDP数据帧协议帧头数据获取
  *
  *	@brief	对UDP帧头封包需要获取属性表中的属性值，为了避免打包时
  *					频繁的回调造成系统不可预计的崩溃，只在UDP第一次帧头封
@@ -456,32 +441,26 @@ static void UDP_DataFrameHeaderGet()
 	pattr_CBs->pfnReadAttrCB(	1,0xFF,&UDPHeader.UDP_ChannelNum,len); //!< 属性编号 1	
 	
 }
+///////////////////////////////////////////////////////////////////////
+/*!
+ *  @fn	UDP标签帧协议处理函数（EEG数据打标签）
+ *
+ *	@param	@Procesflag - AD数据采集状态标志位
+ *					@TriggerTimeStamp - 标签事件发生时点
+ *
+ *	@return @SUCCESS 完成标签
+ */
+uint8_t UDP_TriggerProcess()
+{
+	uint32_t *pDataTimeStamp = &TriggerTimeStamp; //!< 获取数据时间戳
+	
+	UDP_TrgTx_Buff[0]=*(uint8_t *)(pDataTimeStamp);	//!< 样本时间戳 - 增量型（每样本相对第一样本时间增量）精度10us，注意小端对齐
+	UDP_TrgTx_Buff[1]=*((uint8_t *)(pDataTimeStamp)+1);
+	UDP_TrgTx_Buff[2]=*((uint8_t *)(pDataTimeStamp)+2);
+	UDP_TrgTx_Buff[3]=*((uint8_t *)(pDataTimeStamp)+3);
+ 
+	UDP_TrgTx_Buff[4]= UDP_TrgRx_Buff[0];
+	UDP_TrgTx_Buff[5]= UDP_TrgRx_Buff[1];
 
-///*!
-// *  @fn	UDP标签事件处理函数（EEG数据打标签）
-// *
-// *	@param	@Procesflag - AD数据采集状态标志位
-// *					@TriggerTimeStamp - 标签事件发生时点
-// *
-// *	@return @SUCCESS 完成打标签
-// */
-//uint8_t UDP_TriggerProcess(uint32_t TriggerTimeStamp,uint16_t Procesflag)
-//{
-//	uint8_t samplenum=0;
-//	uint32_t *pDataTimeStamp = pCurTimeStamp; //!< 获取数据时间戳
-//	
-//	 /* AD数据采集中，本包样本中含标签事件 */			 
-//	 if((Procesflag & TRIGGER_EVT) && (Procesflag & EEG_DATA_START_EVT))
-//	 {
-//		 /* 回溯事件时点 */
-//		 while(*(pDataTimeStamp)< TriggerTimeStamp)
-//		 {
-//			 pDataTimeStamp++;
-//			 samplenum++;
-//		 }
-
-//		 UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*samplenum+7]=UDP_Rx_Buff[0];	//!< 样本事件标记 - 默认0xAAAA
-//		 UDP_Tx_Buff[HEAD_SIZE+DATA_SIZE*samplenum+8]=UDP_Rx_Buff[1];
-//	 }
-//	 return SUCCESS;			 
-//}
+	 return SUCCESS;			 
+}

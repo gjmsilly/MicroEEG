@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "w5500_service.h"
+#include "socket.h"
 #include "w5500.h"
 #include "protocol_ethernet.h"
 #include "AttritubeTable.h"
@@ -208,11 +209,14 @@ void SysTick_Handler(void)
   */
 void EXTI0_IRQHandler(void)
 {
+	
   /* USER CODE BEGIN EXTI0_IRQn 0 */
+	uint16_t recvsize=0;
+	
 	TriggerTimeStamp = TIM5->CNT;//!< 获取当前时间
-	SYS_Event |= TRIGGER_EVT;	//!< 更新事件：标签事件			
-
-  /* USER CODE END EXTI0_IRQn 0 */
+	SYS_Event |= TRIGGER_EVT; //!< 更新事件：标签事件
+	
+	/* USER CODE END EXTI0_IRQn 0 */
   if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_0) != RESET)
   {
     LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_0);
@@ -238,7 +242,6 @@ void EXTI1_IRQHandler(void)
 		if(UDP_DataProcess(SampleNum,SYS_Event)== UDP_DATA_CPL) //!< 对单个样本封包
 		{
 			SampleNum++; //!< 样本序号+1
-			SYS_Event &= ~TRIGGER_EVT; //!< 清除前序事件 - 标签事件
 		}
 		
 		if(SampleNum == SAMPLENUM )

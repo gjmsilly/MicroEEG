@@ -1,17 +1,17 @@
 # MicroEEG_M1_F446 说明
 
 ## 项目简介
-本项目支持的功能及以太网协议说明详见`Info\MicroEEG以太网版通讯协议v1.1.pptx`。
+本项目支持的功能及以太网协议说明详见`Info\MicroEEG以太网版通讯协议v1.3.pptx`。
 
 ## 系统框架
 
-![](http://192.168.130.6/gjm_silly/microeeg_m1_f446/raw/master/imgs/sys_frame.jpg)
+![](http://192.168.130.6/gjm_silly/microeeg_m1_f446/raw/master/imgs/sys_frame.PNG)
 
 ## 使用说明
 
-![](http://192.168.130.6/gjm_silly/microeeg_m1_f446/raw/master/imgs/net.jpg)
+![](http://192.168.130.6/gjm_silly/microeeg_m1_f446/raw/master/imgs/net.PNG)
 
-![](http://192.168.130.6/gjm_silly/microeeg_m1_f446/raw/master/imgs/attr.jpg)
+![](http://192.168.130.6/gjm_silly/microeeg_m1_f446/raw/master/imgs/attr.PNG)
 
 ## 更新日志
 - 2020/08/04
@@ -23,5 +23,8 @@
 - 2020/09/22
   - 正式版本v1.4，支持增益/采样率/采集开关设置。
 
-- 2020/09/22
-  - v1.6，增设UDP端口打标签/预编译符切换通道组数。
+- 2020/10/12
+  - 正式版本v1.6，增设UDP端口打标签/预编译符切换通道组数。
+
+- 2020/10/12
+  - 正式版本v1.7，修正预编译错误；修正协议说明错误，增设附录相关说明；增设UDP通道示例数据解析。
