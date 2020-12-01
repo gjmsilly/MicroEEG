@@ -340,3 +340,25 @@ uint8_t App_GetAttr(uint8_t InsAttrNum, uint32_t *pValue)
 	}
   return ( ret );	
 }
+
+/*!
+ *  @fn			写属性函数 （供上层应用修改属性值）
+ *
+ *	@param	InsAttrNum - 待写入属性编号
+ *					Value - 待写入数据
+ *
+ *	@return SUCCESS 写属性值成功
+ *					ATTR_NOT_FOUND 属性不存在
+ */
+uint8_t App_WriteAttr(uint8_t InsAttrNum, uint8_t Value)
+{
+	uint8_t ret = SUCCESS;
+	
+	switch(InsAttrNum)
+	{
+		case SAMPLING:
+			sampling=Value;
+			break;	
+	}
+  return ( ret );	
+}

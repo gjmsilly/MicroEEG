@@ -34,15 +34,13 @@ void ADS1299_Init(uint8_t dev)
 	ADS1299_Reset(dev);	
 	
 	// 上电检测
-
 	LL_GPIO_SetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin);
-	while(LL_GPIO_IsInputPinSet(Mod1_nDRDY_GPIO_Port,Mod1_nDRDY_Pin));
-	
+	while(LL_GPIO_IsInputPinSet(Mods_nDRDY_GPIO_Port,Mods_nDRDY_Pin));
 	LL_GPIO_ResetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin); 
 	
-//	ADS1299_Reset(0);
-//	ADS1299_SendCommand(ADS1299_CMD_RESET);
-//	WaitUs(10);
+	ADS1299_Reset(0);
+	ADS1299_SendCommand(ADS1299_CMD_RESET);
+	WaitUs(10);
 	ADS1299_SendCommand(ADS1299_CMD_SDATAC);	
 
 }
@@ -123,7 +121,7 @@ void ADS1299_Reset(uint8_t dev)
 	WaitUs(6);			// 至少拉低2tclk
 	Mod_RESET_H;
 	Mod_CS_Disable;
-	WaitUs(20);     // 至少等待18tclk后发送指令
+	WaitUs(200);     // 至少等待18tclk后发送指令
 	
 	// wait for 18 tclk then start using device
 }
@@ -152,7 +150,7 @@ void ADS1299_PowerOn(uint8_t dev)
 	Mod_RESET_H
 	
 	// wait for at least tPOR = 128ms 
-	HAL_Delay(200);	//延时130ms
+	HAL_Delay(200);
 
 }
 

@@ -356,7 +356,7 @@ uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag)
 {
 	
 		/* AD数据采集中，对数据域进行封包 */
-	 if( Procesflag & EEG_DATA_START_EVT )
+	 if( Procesflag & EEG_DATA_ACQ_EVT )
 	 {
 		 if(SampleNum!= 0xFF )
 		 {
@@ -367,7 +367,7 @@ uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag)
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+1] = SampleNum;			//!< 样本序号(低八位) - 显示从0开始的序数
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+2] = 0x00;					//!< 样本序号(高八位)
 			 	 	 													
-			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+3]=*(uint8_t *)(pCurTimeStamp+SampleNum);	//!< 样本时间戳 - 增量型（每样本相对第一样本时间增量）精度10us，注意小端对齐
+			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+3]=*((uint8_t *)(pCurTimeStamp+SampleNum));	//!< 样本时间戳 - 增量型（每样本相对开始采样时点的时间增量）精度10us，注意小端对齐
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+4]=*((uint8_t *)(pCurTimeStamp+SampleNum)+1);
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+5]=*((uint8_t *)(pCurTimeStamp+SampleNum)+2);
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+6]=*((uint8_t *)(pCurTimeStamp+SampleNum)+3);
@@ -382,7 +382,7 @@ uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag)
 	}
 	 
 		/* AD数据采集完毕，对UDP帧头封包 */
-	 else if( Procesflag & EEG_DATA_CPL_EVT )
+	 if( Procesflag & EEG_DATA_CPL_EVT )
 	 {
 		 	//!< 发生过EEG暂停采集事件或第一次UDP帧头封包
 		 if(((Procesflag&EEG_STOP_EVT)!=0)	||	(UDPNum==0))
@@ -454,7 +454,7 @@ uint8_t UDP_TriggerProcess()
 {
 	uint32_t *pDataTimeStamp = &TriggerTimeStamp; //!< 获取数据时间戳
 	
-	UDP_TrgTx_Buff[0]=*(uint8_t *)(pDataTimeStamp);	//!< 样本时间戳 - 增量型（每样本相对第一样本时间增量）精度10us，注意小端对齐
+	UDP_TrgTx_Buff[0]=*(uint8_t *)(pDataTimeStamp);	//!< 样本时间戳 - 增量型（每样本相对开始采样时点的时间增量）精度10us，注意小端对齐
 	UDP_TrgTx_Buff[1]=*((uint8_t *)(pDataTimeStamp)+1);
 	UDP_TrgTx_Buff[2]=*((uint8_t *)(pDataTimeStamp)+2);
 	UDP_TrgTx_Buff[3]=*((uint8_t *)(pDataTimeStamp)+3);

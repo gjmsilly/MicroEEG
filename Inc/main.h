@@ -40,7 +40,6 @@ extern "C" {
 #include "stm32f4xx_ll_cortex.h"
 #include "stm32f4xx_ll_utils.h"
 #include "stm32f4xx_ll_pwr.h"
-#include "stm32f4xx_ll_rtc.h"
 #include "stm32f4xx_ll_spi.h"
 #include "stm32f4xx_ll_tim.h"
 #include "stm32f4xx_ll_usart.h"
@@ -75,9 +74,10 @@ extern uint16_t SYS_Event;									//!< 系统状态事件 - @ref System events
 #define UDP_TRGPROCESSCLP_EVT		( 1 << 6 )	//!< UDP事件帧协议处理完毕
 //#define UDP_SEND_EVT						( 1 << 7 )	//!< UDP端口发送完成
 #define EEG_DATA_START_EVT			( 1 << 8 )	//!< 一包AD数据开始采集
-#define EEG_DATA_CPL_EVT				( 1 << 9 )	//!< 一包AD数据采集完成
-#define EEG_STOP_EVT						( 1 << 10 )	//!< AD数据暂停采集
-#define TRIGGER_EVT							(	1	<< 11 )	//!< 标签事件
+#define EEG_DATA_ACQ_EVT				( 1 << 9 )	//!< 一包AD数据采集中
+#define EEG_DATA_CPL_EVT				( 1 << 10 )	//!< 一包AD数据采集完成
+#define EEG_STOP_EVT						( 1 << 11 )	//!< AD数据暂停采集
+#define TRIGGER_EVT							(	1	<< 12 )	//!< 标签事件
 
 /* USER CODE END EM */
 

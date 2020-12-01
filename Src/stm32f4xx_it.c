@@ -64,7 +64,7 @@ uint8_t SampleNum =0 ;				//!< 采样样本数
 /* External variables --------------------------------------------------------*/
 
 /* USER CODE BEGIN EV */
-extern uint32_t CurTimeStamp[10];		//!< 当前时间
+extern uint32_t CurTimeStamp[10];			//!< 当前时间
 extern uint32_t TriggerTimeStamp; //!< 标签事件发生时点
 /* USER CODE END EV */
 
@@ -209,21 +209,21 @@ void SysTick_Handler(void)
   */
 void EXTI0_IRQHandler(void)
 {
-	
   /* USER CODE BEGIN EXTI0_IRQn 0 */
 	uint16_t recvsize=0;
 	
 	TriggerTimeStamp = TIM5->CNT;//!< 获取当前时间
 	SYS_Event |= TRIGGER_EVT; //!< 更新事件：标签事件
 	
-	/* USER CODE END EXTI0_IRQn 0 */
+  /* USER CODE END EXTI0_IRQn 0 */
   if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_0) != RESET)
   {
     LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_0);
     /* USER CODE BEGIN LL_EXTI_LINE_0 */
     /* USER CODE END LL_EXTI_LINE_0 */
   }
-	
+  /* USER CODE BEGIN EXTI0_IRQn 1 */
+
   /* USER CODE END EXTI0_IRQn 1 */
 }
 
@@ -234,34 +234,39 @@ void EXTI1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI1_IRQn 0 */
 	/* 样本时间戳获取 */
-		CurTimeStamp[SampleNum] = TIM5->CNT;  //!< 获取当前时间
- 		
-		/* 样本采集及封包 */
-		SYS_Event |= EEG_DATA_START_EVT; //!< 更新事件：一包ad数据开始采集		
+	if( SYS_Event&EEG_DATA_START_EVT ) //!< 每次开始采样时对样本序号清零
+	{
+		SampleNum=0;
+	}	
+	
+	CurTimeStamp[SampleNum] = TIM5->CNT;  //!< 获取当前时间	
+	
+	/* 样本采集及封包 */	
+	SYS_Event |= EEG_DATA_ACQ_EVT; //!< 更新事件：一包AD数据采集中
+	SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - 一包ad数据开始采集	
 
-		if(UDP_DataProcess(SampleNum,SYS_Event)== UDP_DATA_CPL) //!< 对单个样本封包
-		{
-			SampleNum++; //!< 样本序号+1
-		}
+	if(UDP_DataProcess(SampleNum,SYS_Event)== UDP_DATA_CPL) //!< 对单个样本封包
+	{
+		SampleNum++; //!< 样本序号+1
+	}
+	
+	if(SampleNum == SAMPLENUM )
+	{
+		SampleNum=0; //!< 样本序号归零
 		
-		if(SampleNum == SAMPLENUM )
-		{
-			SampleNum=0; //!< 样本序号归零
-			
-			SYS_Event |= EEG_DATA_CPL_EVT; //!< 更新事件：一包ad数据采集完成 -> 跳转UDP帧协议服务			
-			SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - 一包ad数据开始采集
-		}
-		
+		SYS_Event |= EEG_DATA_CPL_EVT; //!< 更新事件：一包ad数据采集完成 -> 跳转UDP帧协议服务			
+		SYS_Event &= ~EEG_DATA_ACQ_EVT; //!< 清除前序事件 - 一包AD数据采集中	
+	}		
   /* USER CODE END EXTI1_IRQn 0 */
   if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1) != RESET)
   {
     LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_1);
     /* USER CODE BEGIN LL_EXTI_LINE_1 */
-	
+
     /* USER CODE END LL_EXTI_LINE_1 */
   }
   /* USER CODE BEGIN EXTI1_IRQn 1 */
-	
+
   /* USER CODE END EXTI1_IRQn 1 */
 }
 

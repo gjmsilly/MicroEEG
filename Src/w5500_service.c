@@ -443,7 +443,7 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 		case SOCK_CLOSE_WAIT:
 			close(sn);
 			
-			TCPserv_status = Sn_CLOSE;
+			TCPserv_status = Sn_CLOSED; 
 		break;
 	}
 	

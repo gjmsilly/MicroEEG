@@ -59,6 +59,8 @@ CAN_HandleTypeDef hcan1;
 QSPI_HandleTypeDef hqspi;
 DMA_HandleTypeDef hdma_quadspi;
 
+RTC_HandleTypeDef hrtc;
+
 /* USER CODE BEGIN PV */
 uint16_t SYS_Event;							//!< 系统状态事件
 static InsQUEUE InsQueue;				//!< TCP指令队列 -  存放变化的属性编号
@@ -263,7 +265,12 @@ static void Sys_Control()
 		
 		SYS_Event &= ~TCP_PROCESSCLP_EVT; //!< 清除前序事件 - TCP帧协议服务
 	}
-
+	else if (TCPstate == Sn_CLOSED )//!< 保护措施: TCP端口断开，则停止采样
+	{
+		App_WriteAttr(SAMPLING, 0); //!< 修改开始采样属性值
+		AttrChangeProcess(SAMPLING); //!< 执行停止采样操作	
+	}
+	
 	if( SYS_Event & TCP_RECV_EVT ) 	 
 	{
 		if( TCP_ProcessFSM() == _FSM_CPL_)	//!< 更新事件：TCP帧协议服务处理完毕 -> 跳转TCP端口回复
@@ -471,8 +478,6 @@ void SystemClock_Config(void)
 
   }
   LL_PWR_EnableBkUpAccess();
-  LL_RCC_ForceBackupDomainReset();
-  LL_RCC_ReleaseBackupDomainReset();
   LL_RCC_LSE_Enable();
 
    /* Wait till LSE is ready */
@@ -480,7 +485,12 @@ void SystemClock_Config(void)
   {
 
   }
-  LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSE);
+  if(LL_RCC_GetRTCClockSource() != LL_RCC_RTC_CLKSOURCE_LSE)
+  {
+    LL_RCC_ForceBackupDomainReset();
+    LL_RCC_ReleaseBackupDomainReset();
+    LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSE);
+  }
   LL_RCC_EnableRTC();
   LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSE, LL_RCC_PLLM_DIV_16, 320, LL_RCC_PLLP_DIV_2);
   LL_RCC_PLL_Enable();
@@ -686,7 +696,7 @@ static void MX_QUADSPI_Init(void)
   /* USER CODE END QUADSPI_Init 1 */
   /* QUADSPI parameter configuration*/
   hqspi.Instance = QUADSPI;
-  hqspi.Init.ClockPrescaler = 15;
+  hqspi.Init.ClockPrescaler = 3;
   hqspi.Init.FifoThreshold = 9;
   hqspi.Init.SampleShifting = QSPI_SAMPLE_SHIFTING_NONE;
   hqspi.Init.FlashSize = 16;
@@ -716,40 +726,52 @@ static void MX_RTC_Init(void)
 
   /* USER CODE END RTC_Init 0 */
 
-  LL_RTC_InitTypeDef RTC_InitStruct = {0};
-  LL_RTC_TimeTypeDef RTC_TimeStruct = {0};
-  LL_RTC_DateTypeDef RTC_DateStruct = {0};
-
-  /* Peripheral clock enable */
-  LL_RCC_EnableRTC();
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef sDate = {0};
 
   /* USER CODE BEGIN RTC_Init 1 */
 
   /* USER CODE END RTC_Init 1 */
-  /** Initialize RTC and set the Time and Date
+  /** Initialize RTC Only
   */
-  RTC_InitStruct.HourFormat = LL_RTC_HOURFORMAT_24HOUR;
-  RTC_InitStruct.AsynchPrescaler = 127;
-  RTC_InitStruct.SynchPrescaler = 255;
-  LL_RTC_Init(RTC, &RTC_InitStruct);
-  LL_RTC_SetAsynchPrescaler(RTC, 127);
-  LL_RTC_SetSynchPrescaler(RTC, 255);
-  /** Initialize RTC and set the Time and Date
-  */
-  if(LL_RTC_BAK_GetRegister(RTC, LL_RTC_BKP_DR0) != 0x32F2){
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-  RTC_TimeStruct.Hours = 17;
-  RTC_TimeStruct.Minutes = 20;
-  RTC_TimeStruct.Seconds = 0;
-  LL_RTC_TIME_Init(RTC, LL_RTC_FORMAT_BCD, &RTC_TimeStruct);
-  RTC_DateStruct.WeekDay = LL_RTC_WEEKDAY_SATURDAY;
-  RTC_DateStruct.Month = LL_RTC_MONTH_OCTOBER;
-  RTC_DateStruct.Year = 10;
-  LL_RTC_DATE_Init(RTC, LL_RTC_FORMAT_BCD, &RTC_DateStruct);
-    LL_RTC_BAK_SetRegister(RTC,LL_RTC_BKP_DR0,0x32F2);
+  /* USER CODE BEGIN Check_RTC_BKUP */
+
+  /* USER CODE END Check_RTC_BKUP */
+
+  /** Initialize RTC and set the Time and Date
+  */
+  sTime.Hours = 21;
+  sTime.Minutes = 20;
+  sTime.Seconds = 0;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sDate.WeekDay = RTC_WEEKDAY_SATURDAY;
+  sDate.Month = RTC_MONTH_NOVEMBER;
+  sDate.Date = 28;
+  sDate.Year = 20;
+
+  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
   }
   /* USER CODE BEGIN RTC_Init 2 */
-
+	// !!!!! CubeMX LL生成RTC初始化时间没有RTC_DateStruct.Day
   /* USER CODE END RTC_Init 2 */
 
 }

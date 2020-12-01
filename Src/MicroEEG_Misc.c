@@ -22,7 +22,7 @@ uint32_t CurTimeStamp[10];			//!< 当前时间
 uint32_t* pCurTimeStamp;				//!< 当前时间指针		
 static uint32_t attrvalue=0;		//!< 属性值
 uint32_t *pValue =&attrvalue;		//!< 属性值指针
-
+extern RTC_HandleTypeDef hrtc;
 
 /*  ======================== 属性值变化处理服务 ============================
  */
@@ -47,22 +47,34 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 
 			if((*pValue&0x0000FF) == SAMPLLE_START )
 			{
-			 /* ads1299 开始采集 */
-				TIM5->CNT=0; //!< 每次采样时增量计时器归零				
-				Mod_DRDY_INT_Enable //使能nDReady中断
-				LL_GPIO_SetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin);
-				ADS1299_SendCommand(ADS1299_CMD_RDATAC);			
+				SYS_Event |= EEG_DATA_START_EVT; //!< 更新事件：一包ad数据开始采集		
+				
+				LL_TIM_EnableCounter(TIM5); //!< 打开样本增量时间戳定时器
+			
+				/* ads1299 开始采集 */					
+
+				ADS1299_SendCommand(ADS1299_CMD_START);
+				ADS1299_SendCommand(ADS1299_CMD_RDATAC);	
+				Mod_DRDY_INT_Enable //	使能nDReady中断
 				Mod_CS_Enable;	
 				
 			}else
 			{
-			/* ads1299 停止采集 */
-				Mod_DRDY_INT_Disable //关闭nDReady中断		
-				Mod_CS_Disable;
-				LL_GPIO_ResetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin);
-				ADS1299_SendCommand(ADS1299_CMD_SDATAC);
+				SYS_Event |= EEG_STOP_EVT; //!< 更新事件：ad数据暂停采集
+
+				/* ads1299 停止采集 */
+
+				ADS1299_SendCommand(ADS1299_CMD_STOP);
+				ADS1299_SendCommand(ADS1299_CMD_SDATAC);;				
+				Mod_DRDY_INT_Disable //	关闭nDReady中断		
+				Mod_CS_Disable;				
+					
+				LL_TIM_DisableCounter(TIM5); //!< 关闭定时器
+				TIM5->CNT = 0;	//!< 样本增量时间戳定时器归零
 				
-				SYS_Event |= EEG_STOP_EVT; //!< 更新事件：ad数据暂停采集	
+				//memset(CurTimeStamp,0,40); //! 样本增量时间戳清零
+				//memset(UDP_DTx_Buff,0,UDPD_Tx_Buff_Size); //!< UDP数据通道发送缓冲区清零			
+				
 			}
 		break;
 			
@@ -176,29 +188,31 @@ static void STSG_TIM5_Init(void)
  */
 void UNIXTimestamp_Service(uint8_t *pout)
 {
-	uint32_t RTCtime;	//!< RTC时间
-	uint32_t RTCdate;	//!< RTC日期
+	RTC_DateTypeDef sdatestructureget;	//!< RTC年月日
+	RTC_TimeTypeDef stimestructureget;	//!< RTC时分秒
 	uint32_t _unix_;	//!< UNIX时间戳
-	
+
 	struct tm stm;		
 	
-	RTCtime = LL_RTC_TIME_Get(RTC);	//!< return(Format: 0x00HHMMSS)
-	RTCdate = LL_RTC_DATE_Get(RTC); //!< return (Format: 0xWWDDMMYY)
-	
+	/* Get the RTC current Time */
+	HAL_RTC_GetTime(&hrtc, &stimestructureget, RTC_FORMAT_BIN);
+	/* Get the RTC current Date */
+	HAL_RTC_GetDate(&hrtc, &sdatestructureget, RTC_FORMAT_BIN);	
+
 	/*	用标准库 time.h 转换时间戳
 			该库可以将rtc时间转换为unix时间戳	*/
-	stm.tm_year =(int)((RTCdate)+100)&0x0000FF;	//!< rtc起始时间2000年 库起始时间1990年
-	stm.tm_mon	=(int)((RTCdate >> 8)-1)&0x0000FF; //!< rtc一月为1 库一月为0  
-	stm.tm_mday	=(int)(RTCdate >> 16)&0x0000FF;
-	stm.tm_wday	=(int)(RTCdate >> 24)&0x0000FF;
+
+	stm.tm_year =((sdatestructureget.Year) +100);	//!< rtc起始时间2000年 库起始时间1900年
+	stm.tm_mon	=((sdatestructureget.Month) -1); //!< rtc一月为1 库一月为0  
+	stm.tm_mday	=(sdatestructureget.Date);
   
-	stm.tm_hour	=(int)((RTCtime>> 16)-8)&0x0000FF;	//!< 北京时间-8=UTC   
-	stm.tm_min	=(int)(RTCtime>> 8)&0x0000FF;  
-	stm.tm_sec	=(int)(RTCtime)&0x0000FF; 
-	
+	stm.tm_hour	=((stimestructureget.Hours)-8);	//!< 北京时间-8=UTC   
+	stm.tm_min	=(stimestructureget.Minutes);  
+	stm.tm_sec	=(stimestructureget.Seconds); 
+
 	if((_unix_ = mktime(&stm))!= -1)	//!< 获取UNIX格式时间戳
 	{
 		memcpy(pout,&_unix_,4); //!< 32位
-	}	
+	}
 }
 

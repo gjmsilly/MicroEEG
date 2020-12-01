@@ -44,7 +44,7 @@ typedef struct
 // 端口状态
 #define Sn_OPEN							0x00	//!< 端口已打开
 #define Sn_LISTEN						0x01	//!< 端口正在监听
-#define Sn_CLOSE						0x02	//!< 端口已关闭
+#define Sn_CLOSED						0x02	//!< 端口已关闭
 #define TCP_RECV						0x03	//!< TCP端口接收一帧
 #define TCP_SEND						0x04	//!< TCP端口发送完毕
 #define UDP_RECV						0x05	//!< UDP端口接收一帧
