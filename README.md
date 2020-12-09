@@ -1,4 +1,4 @@
-# MicroEEG_M1_F446 说明
+# MicroEEG_M1_F446 嵌入式开发说明
 
 ## 项目简介
 本项目支持的功能及以太网协议说明详见`Info\MicroEEG以太网版通讯协议v1.4.pptx`。
