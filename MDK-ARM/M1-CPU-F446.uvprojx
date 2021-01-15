@@ -337,7 +337,7 @@
             <v6Rtti>0</v6Rtti>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>USE_FULL_LL_DRIVER,USE_HAL_DRIVER,STM32F446xx,Dev_Ch8</Define>
+              <Define>USE_FULL_LL_DRIVER,USE_HAL_DRIVER,STM32F446xx,Dev_Ch32</Define>
               <Undefine></Undefine>
               <IncludePath>../Inc;             ../Drivers/STM32F4xx_HAL_Driver/Inc;             ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;             ../Drivers/CMSIS/Device/ST/STM32F4xx/Include;             ../Drivers/CMSIS/Include;             ..\letter-shell;             ..\utilities;             ..\utilities\template</IncludePath>
             </VariousControls>
@@ -602,11 +602,6 @@
               <FileName>w5500.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\w5500.c</FilePath>
-            </File>
-            <File>
-              <FileName>wizchip_conf.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\wizchip_conf.c</FilePath>
             </File>
           </Files>
         </Group>

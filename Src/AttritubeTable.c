@@ -37,9 +37,9 @@ Dev_PortStat_t dev_portstat;
 uint16_t samplenum = SAMPLENUM;
 
 //!< 采样参数组 属性
-static uint32_t cursamprate = SPS_500;
+static uint32_t cursamprate = SPS_250;
 static uint32_t samprate_tbl[]={SPS_250,SPS_500,SPS_1K,SPS_2K,SPS_4K};
-static uint32_t curgain = GAIN_X1;
+static uint32_t curgain = GAIN_X24;
 static uint32_t gain_tbl[]={GAIN_X1,GAIN_X2,GAIN_X4,GAIN_X6,GAIN_X8,GAIN_X24};
 	
 /************************************************************************

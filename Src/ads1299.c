@@ -551,7 +551,8 @@ void ADS1299_Parameter_Config(uint8_t ADS1299_ParaGroup, uint8_t sample,uint8_t 
 			ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF6);		//250HZ采样	
 			break;
 		}
-		case 2:		//500Hz
+		case 2:		
+			//500Hz
 		{
 			ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0xF5);		//500HZ采样	
 			break;
@@ -616,7 +617,7 @@ void ADS1299_Parameter_Config(uint8_t ADS1299_ParaGroup, uint8_t sample,uint8_t 
 
 uint8_t ADS1299_Mode_Config(uint8_t Mode)
 {
-	uint8_t i;
+	uint8_t i,j;
 	uint8_t ReadResult;
 	
 	switch (Mode)
@@ -632,15 +633,26 @@ uint8_t ADS1299_Mode_Config(uint8_t Mode)
 			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSN,0x00);
 			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSP,0x00);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSN,0x00);
-			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSP,0x03);
-
+			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSP,0xFF);
+			ADS1299_WriteREG(0,ADS1299_REG_MISC1,0x20);
+			
 			for(i=0;i<8;i++)
 			{
 				// Gain = 24
 				ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
-				WaitUs(2);
-				WaitUs(10);
-				//ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);	
+				HAL_Delay(50);
+				
+				// 回读3次
+					ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
+					if(ReadResult!=0x60)	
+							ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
+					for(j=0;j<3;j++)
+					{
+						ReadResult=ADS1299_ReadByte();
+						if(ReadResult!=0x60)	
+								ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x00);
+					}
+			
 			}
 			
 			
@@ -656,7 +668,7 @@ uint8_t ADS1299_Mode_Config(uint8_t Mode)
 			ADS1299_WriteREG(1,ADS1299_REG_BIASSENSP,0x00);
 
 			
-			for(i=0;i<8;i++)
+			for(i=0;i<32;i++)
 			{
 				// Gain = 24
 				ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x00);

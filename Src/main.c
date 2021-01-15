@@ -418,12 +418,14 @@ int main(void)
 	ADS1299_Init(0);
 	//////////////////////////////////////////////////////////////////////////////
 	//	for test		
-
+	/*
 	ADS1299_WriteREG(0,ADS1299_REG_CONFIG3,0xE0);	
 	HAL_Delay(50);
 	ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ²ÉÑù
 	ADS1299_WriteREG(0,ADS1299_REG_CONFIG2,0xC0);   //internal test signal off
-	
+	*/
+	ADS1299_Mode_Config(1);
+	//ADS1299_Parameter_Config(ADS1299_ParaGroup_ACQ,1,1);
 	//////////////////////////////////////////////////////////////////////////////
 	
 	

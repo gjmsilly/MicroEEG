@@ -2,7 +2,7 @@
  * @file    qspi_conf.c
  * @author  Yeyangyang
  * @brief   qspi板级驱动 - 用于主控芯片与W5500芯片spi通信
- * @version 0.1
+ * @version 1.0.0
  * @date    2019-07-04
  *
  * @copyright (c) 2019 yeyangyang

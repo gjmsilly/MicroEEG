@@ -19,7 +19,7 @@
 #include "main.h"
 #include "w5500_service.h"
 #include "w5500.h"
-#include "wizchip_conf.h"
+//#include "wizchip_conf.h"
 #include "socket.h"
 
 /******************************************************************************
@@ -415,6 +415,8 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 		
 		/* Socket n 处于连接状态 */
 		case SOCK_ESTABLISHED:
+		
+			//getSn_DIPR(sn,(Psn_param+sn)->UDP_DIPR);
 		
 			if(getSn_IR(sn) & Sn_IR_CON)
 			{
