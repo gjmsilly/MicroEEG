@@ -21,8 +21,3 @@
 RTE/
 Templates/
 Examples/
-
-!*.ioc
-!*.axf
-!*.bin
-!*.hex

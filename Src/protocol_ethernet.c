@@ -18,7 +18,7 @@
 #include "simple_fsm.h"
 #include "protocol_ethernet.h"
 #include "w5500_service.h"
-#include "microEEG_misc.h"
+#include "MicroEEG_Misc.h"
 #include "ads1299.h"
 #include "main.h"											 
 
@@ -339,8 +339,7 @@ uint8_t TCP_ProcessFSM(void)
 static void UDP_DataFrameHeaderGet();
 extern uint32_t TriggerTimeStamp; //!< 标签事件发生时点
 
-/*、、、、、、、、、、】
-】
+/*
  *  ======================== UDP帧协议服务 ============================
  */ 
 /*!
@@ -366,7 +365,7 @@ uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag)
 			 
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum] = UDP_SAMPLE_FH;		//!< 样本起始分隔符 
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+1] = SampleNum;			//!< 样本序号(低八位) - 显示从0开始的序数
-			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+2] = 0x00;					//!< 样本序号(高八位)
+			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+2] = 0x00;						//!< 样本序号(高八位)
 			 	 	 													
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+3]=*((uint8_t *)(pCurTimeStamp+SampleNum));	//!< 样本时间戳 - 增量型（每样本相对开始采样时点的时间增量）精度10us，注意小端对齐
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+4]=*((uint8_t *)(pCurTimeStamp+SampleNum)+1);

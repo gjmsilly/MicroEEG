@@ -28,7 +28,7 @@
 #include "w5500.h"
 #include "protocol_ethernet.h"
 #include "AttritubeTable.h"
-#include "microEEG_misc.h"
+#include "MicroEEG_Misc.h"
 
 /* USER CODE END Includes */
 

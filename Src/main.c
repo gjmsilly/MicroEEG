@@ -30,7 +30,7 @@
 #include "AttritubeTable.h"
 #include "protocol_ethernet.h"
 #include "SimpleInsQueue.h"
-#include "microEEG_misc.h"
+#include "MicroEEG_Misc.h"
 
 /* USER CODE END Includes */
 

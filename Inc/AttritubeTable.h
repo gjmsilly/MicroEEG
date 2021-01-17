@@ -200,6 +200,7 @@ typedef enum
 	GAIN_X4 = 4,
 	GAIN_X6 = 6,
 	GAIN_X8 = 8,
+	GAIN_X12 = 12,
 	GAIN_X24 = 24
 }Gain_tbl_t;
 

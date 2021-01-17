@@ -1,5 +1,5 @@
 /**
- * @file    microEEG_misc.c
+ * @file    MicroEEG_Misc.c
  * @author  modified by gjmsilly
  * @brief   MicroEEG 杂项服务
  * @version 1.0
@@ -8,7 +8,7 @@
  *
  */
 
-#include "microEEG_misc.h"
+#include "MicroEEG_Misc.h"
 #include "ads1299.h"
 #include "w5500_service.h"
 #include "AttritubeTable.h"
@@ -48,7 +48,6 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 
 			if((*pValue&0x0000FF) == SAMPLLE_START )
 			{
-				if( SYS_Event&EEG_DATA_START_EVT ) break; //!< 保护措施：若已经开始采样，则不允许重复启动采样
 				
 				SYS_Event |= EEG_DATA_START_EVT; //!< 更新事件：一包ad数据开始采集		
 				

@@ -37,10 +37,10 @@ Dev_PortStat_t dev_portstat;
 uint16_t samplenum = SAMPLENUM;
 
 //!< 采样参数组 属性
-static uint32_t cursamprate = SPS_250;
+static Samprate_tbl_t cursamprate = SPS_250;
 static uint32_t samprate_tbl[]={SPS_250,SPS_500,SPS_1K,SPS_2K,SPS_4K};
-static uint32_t curgain = GAIN_X24;
-static uint32_t gain_tbl[]={GAIN_X1,GAIN_X2,GAIN_X4,GAIN_X6,GAIN_X8,GAIN_X24};
+static Gain_tbl_t curgain = GAIN_X24;
+static uint32_t gain_tbl[]={GAIN_X1,GAIN_X2,GAIN_X4,GAIN_X6,GAIN_X8,GAIN_X12,GAIN_X24};
 	
 /************************************************************************
  *  Attributes  Table
@@ -141,7 +141,7 @@ const Attr_Tbl_t attr_tbl = {
 												(uint32_t*)&gain_tbl
 											},
 		
-		//!< 当前全局增益 x1 (default) 
+		//!< 当前全局增益 x24 (default) 
 		.CurGain				=	{ ATTR_RS,
 												4,
 												(uint32_t*)&curgain
@@ -269,7 +269,7 @@ static uint8_t WriteAttrCB( uint8_t InsAttrNum,uint8_t CHxNum,
 	if(status == SUCCESS)
 	{
 		pAttrValue = (uint8_t*)*(uint32_t*)(pattr_offset[InsAttrNum]+2);//!< 属性值地址传递
-		
+
 		memcpy(pAttrValue,pValue,len); //!< 属性值写入
 		notifyApp=InsAttrNum;
 	}

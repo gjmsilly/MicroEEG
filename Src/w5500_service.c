@@ -19,7 +19,6 @@
 #include "main.h"
 #include "w5500_service.h"
 #include "w5500.h"
-//#include "wizchip_conf.h"
 #include "socket.h"
 
 /******************************************************************************
