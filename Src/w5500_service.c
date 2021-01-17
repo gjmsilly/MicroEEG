@@ -212,12 +212,6 @@ static void W5500_Load_Net_Parameters(void)
 		//加载Socket 1的端口号: 7002 （default 锁死）
 		(Psn_param+1)->Sn_Port = 7002;
 
-		//UDP(广播)模式需配置目的主机IP地址
-		(Psn_param+1)->UDP_DIPR[0] = 192;	
-		(Psn_param+1)->UDP_DIPR[1] = 168;
-		(Psn_param+1)->UDP_DIPR[2] = 1;
-		(Psn_param+1)->UDP_DIPR[3] = 101;
-
 		//UDP(广播)模式需配置目的主机端口号 7002（default 上位机可修改）
 		(Psn_param+1)->UDP_DPORT = 7002;
 	}
@@ -226,12 +220,6 @@ static void W5500_Load_Net_Parameters(void)
 	{		
 		//加载Socket 2的端口号: 7003 （default 锁死）
 		(Psn_param+2)->Sn_Port = 7003;
-
-		//UDP(广播)模式需配置目的主机IP地址
-		(Psn_param+2)->UDP_DIPR[0] = 192;	
-		(Psn_param+2)->UDP_DIPR[1] = 168;
-		(Psn_param+2)->UDP_DIPR[2] = 1;
-		(Psn_param+2)->UDP_DIPR[3] = 101;
 
 		//UDP(广播)模式需配置目的主机端口号 7003（default 上位机可修改）
 		(Psn_param+2)->UDP_DPORT = 7003;
@@ -415,8 +403,8 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 		
 		/* Socket n 处于连接状态 */
 		case SOCK_ESTABLISHED:
-		
-			//getSn_DIPR(sn,(Psn_param+sn)->UDP_DIPR);
+
+			getSn_DIPR(sn,(Psn_param+sn)->UDP_DIPR); //!<获取目的主机IP 以供UDP传输
 		
 			if(getSn_IR(sn) & Sn_IR_CON)
 			{
@@ -483,6 +471,8 @@ uint8_t UDP_Service(uint8_t sn, uint16_t Procesflag)
 			
 			switch(sn)
 				
+			memcpy((Psn_param+sn)->UDP_DIPR,(Psn_param+0)->UDP_DIPR,4); //!< 获取目的主机的IP地址
+			
 			/* Socket 1 - UDP数据通道 */
 				case 1:
 				{

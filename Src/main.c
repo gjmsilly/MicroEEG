@@ -250,8 +250,8 @@ static void Sys_Control()
 {
 	uint8_t AttrChangeNum;
 	uint8_t TCPstate,UDPstate;
-	
 
+	
 	// TCP控制通道事件
 	TCPstate = TCPServer_Service(0,SYS_Event);
 	
@@ -343,10 +343,6 @@ static void Sys_Control()
 		}
 	}
 	
-	
-
-
-
 }
 
 /* USER CODE END 0 */
@@ -391,13 +387,8 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 	
-	//LED初始化
-	PWR_LED1_ON;
-	PWR_LED2_OFF;
-	ACQ_LED1_OFF;
-	ACQ_LED2_OFF;
-	ERR_LED1_OFF;
-	ERR_LED2_OFF;	
+	//LED 初始化	
+	LED_Service_Init();
 	
 	//Shell 初始化
 	shell.read = ShellGetchar;

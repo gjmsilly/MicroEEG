@@ -28,7 +28,8 @@
 #include "w5500.h"
 #include "protocol_ethernet.h"
 #include "AttritubeTable.h"
-#include "ads1299.h"
+#include "microEEG_misc.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -257,6 +258,9 @@ void EXTI1_IRQHandler(void)
 		SYS_Event |= EEG_DATA_CPL_EVT; //!< 更新事件：一包ad数据采集完成 -> 跳转UDP帧协议服务			
 		SYS_Event &= ~EEG_DATA_ACQ_EVT; //!< 清除前序事件 - 一包AD数据采集中	
 	}		
+	
+	LED_Service(SYS_Event); //!< LED
+	
   /* USER CODE END EXTI1_IRQn 0 */
   if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1) != RESET)
   {

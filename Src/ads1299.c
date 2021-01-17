@@ -650,7 +650,7 @@ uint8_t ADS1299_Mode_Config(uint8_t Mode)
 					{
 						ReadResult=ADS1299_ReadByte();
 						if(ReadResult!=0x60)	
-								ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x00);
+								ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
 					}
 			
 			}

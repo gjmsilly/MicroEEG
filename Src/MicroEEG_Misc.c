@@ -36,6 +36,7 @@ extern RTC_HandleTypeDef hrtc;
 uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 {
 	uint8_t ret = SUCCESS;
+	uint8_t val;
 	
 	//!< ads1299 参数配置
 	TADS1299CHnSET ChVal; 
@@ -47,12 +48,13 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 
 			if((*pValue&0x0000FF) == SAMPLLE_START )
 			{
+				if( SYS_Event&EEG_DATA_START_EVT ) break; //!< 保护措施：若已经开始采样，则不允许重复启动采样
+				
 				SYS_Event |= EEG_DATA_START_EVT; //!< 更新事件：一包ad数据开始采集		
 				
 				LL_TIM_EnableCounter(TIM5); //!< 打开样本增量时间戳定时器
 			
 				/* ads1299 开始采集 */					
-
 				ADS1299_SendCommand(ADS1299_CMD_START);
 				ADS1299_SendCommand(ADS1299_CMD_RDATAC);	
 				Mod_DRDY_INT_Enable //	使能nDReady中断
@@ -63,7 +65,6 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 				SYS_Event |= EEG_STOP_EVT; //!< 更新事件：ad数据暂停采集
 
 				/* ads1299 停止采集 */
-
 				ADS1299_SendCommand(ADS1299_CMD_STOP);
 				ADS1299_SendCommand(ADS1299_CMD_SDATAC);;				
 				Mod_DRDY_INT_Disable //	关闭nDReady中断		
@@ -127,13 +128,26 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 					ChVal.control_bit.gain = 3;
 				break;
 				
+				case 8:
+					ChVal.control_bit.gain = 4;
+				break;
+				
+				case 12:
+					ChVal.control_bit.gain = 5;
+				break;
+				
+				case 24:
+					ChVal.control_bit.gain = 6;				
+				break;			
+				
 				default:
-					ChVal.control_bit.gain = 0;
+					ChVal.control_bit.gain = 6; //!< default : gain x24
 				break;					
 			}	
 			ChVal.control_bit.pd = 0;
 			ChVal.control_bit.mux = 0;			
-			
+			ChVal.control_bit.srb2 = 0;
+
 			for(uint8_t i=0;i<8;i++)
 			{
 				ADS1299_Channel_Config(0,ADS1299_REG_CH1SET+i,ChVal);
@@ -216,3 +230,27 @@ void UNIXTimestamp_Service(uint8_t *pout)
 	}
 }
 
+/*  ============================ LED服务 ==============================
+ */ 
+/*! @brief	LED服务	
+ *					本服务提供设备LED状态指示
+ */
+void LED_Service_Init(void)
+{
+	//LED初始化
+	PWR_LED1_ON;	//设备通电状态指示
+	PWR_LED2_OFF;
+	ACQ_LED1_OFF; //设备采样状态指示
+	ACQ_LED2_OFF;
+	ERR_LED1_OFF; //设备运行状态指示
+	ERR_LED2_OFF;
+}
+
+void LED_Service(uint16_t devstate)
+{
+	
+	if(devstate & EEG_DATA_CPL_EVT)
+	{		
+		ACQ_LED1_TOGGLE;
+	}
+}

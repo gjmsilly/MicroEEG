@@ -339,7 +339,8 @@ uint8_t TCP_ProcessFSM(void)
 static void UDP_DataFrameHeaderGet();
 extern uint32_t TriggerTimeStamp; //!< 标签事件发生时点
 
-/*
+/*、、、、、、、、、、】
+】
  *  ======================== UDP帧协议服务 ============================
  */ 
 /*!

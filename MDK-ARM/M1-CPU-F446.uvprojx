@@ -603,6 +603,11 @@
               <FileType>1</FileType>
               <FilePath>..\Src\w5500.c</FilePath>
             </File>
+            <File>
+              <FileName>wizchip_conf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\wizchip_conf.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

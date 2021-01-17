@@ -22,9 +22,6 @@ RTE/
 Templates/
 Examples/
 
-!*.uvprojx
-!*.h
-!*.c
 !*.ioc
 !*.axf
 !*.bin

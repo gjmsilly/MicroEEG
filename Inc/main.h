@@ -181,18 +181,19 @@ void Error_Handler(void);
 #define Mods_nDRDY_EXTI_IRQn EXTI1_IRQn
 /* USER CODE BEGIN Private defines */
 
-#define ERR_LED1_OFF  LL_GPIO_SetOutputPin  (GPIOE, ERR_LED1_Pin);
-#define ERR_LED1_ON   LL_GPIO_ResetOutputPin(GPIOE, ERR_LED1_Pin);
-#define ERR_LED2_OFF  LL_GPIO_SetOutputPin  (GPIOE, ERR_LED2_Pin);
-#define ERR_LED2_ON   LL_GPIO_ResetOutputPin(GPIOE, ERR_LED2_Pin);
-#define ACQ_LED1_OFF  LL_GPIO_SetOutputPin  (GPIOE, ACQ_LED1_Pin);
-#define ACQ_LED1_ON   LL_GPIO_ResetOutputPin(GPIOE, ACQ_LED1_Pin);
-#define ACQ_LED2_OFF  LL_GPIO_SetOutputPin  (GPIOE, ACQ_LED2_Pin);
-#define ACQ_LED2_ON   LL_GPIO_ResetOutputPin(GPIOE, ACQ_LED2_Pin);
-#define PWR_LED1_OFF  LL_GPIO_SetOutputPin  (GPIOE, PWR_LED1_Pin);
-#define PWR_LED1_ON   LL_GPIO_ResetOutputPin(GPIOE, PWR_LED1_Pin);
-#define PWR_LED2_OFF  LL_GPIO_SetOutputPin  (GPIOC, PWR_LED2_Pin);
-#define PWR_LED2_ON   LL_GPIO_ResetOutputPin(GPIOC, PWR_LED2_Pin);
+#define ERR_LED1_OFF  	LL_GPIO_SetOutputPin  (GPIOE, ERR_LED1_Pin);
+#define ERR_LED1_ON   	LL_GPIO_ResetOutputPin(GPIOE, ERR_LED1_Pin);
+#define ERR_LED2_OFF		LL_GPIO_SetOutputPin  (GPIOE, ERR_LED2_Pin);
+#define ERR_LED2_ON   	LL_GPIO_ResetOutputPin(GPIOE, ERR_LED2_Pin);
+#define ACQ_LED1_OFF  	LL_GPIO_SetOutputPin  (GPIOE, ACQ_LED1_Pin);
+#define ACQ_LED1_ON   	LL_GPIO_ResetOutputPin(GPIOE, ACQ_LED1_Pin);
+#define ACQ_LED2_OFF  	LL_GPIO_SetOutputPin  (GPIOE, ACQ_LED2_Pin);
+#define ACQ_LED2_ON   	LL_GPIO_ResetOutputPin(GPIOE, ACQ_LED2_Pin);
+#define ACQ_LED1_TOGGLE	LL_GPIO_TogglePin(GPIOE, ACQ_LED1_Pin);
+#define PWR_LED1_OFF  	LL_GPIO_SetOutputPin  (GPIOE, PWR_LED1_Pin);
+#define PWR_LED1_ON   	LL_GPIO_ResetOutputPin(GPIOE, PWR_LED1_Pin);
+#define PWR_LED2_OFF  	LL_GPIO_SetOutputPin  (GPIOC, PWR_LED2_Pin);
+#define PWR_LED2_ON   	LL_GPIO_ResetOutputPin(GPIOC, PWR_LED2_Pin);
 
 /* USER CODE END Private defines */
 
