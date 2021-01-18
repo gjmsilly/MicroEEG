@@ -71,7 +71,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 					
 				LL_TIM_DisableCounter(TIM5); //!< 关闭定时器
 				TIM5->CNT = 0;	//!< 样本增量时间戳定时器归零
-				
+				ACQ_LED1_OFF;
 				//memset(CurTimeStamp,0,40); //! 样本增量时间戳清零
 				//memset(UDP_DTx_Buff,0,UDPD_Tx_Buff_Size); //!< UDP数据通道发送缓冲区清零			
 				
@@ -84,26 +84,49 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			switch(*pValue)
 			{
 				case 250:
-						ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
+								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
+								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
+								val = ADS1299_ReadByte();
+								val = ADS1299_ReadByte();
+								val = ADS1299_ReadByte();
+				
+								if(val!=0x96)
+											ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
 				break;
 				
 				case 500:
-						ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//500HZ采样
+
+								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//500HZ采样
+								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
+								val = ADS1299_ReadByte();
+								val = ADS1299_ReadByte();
+								val = ADS1299_ReadByte();
+								if(val!=0x95)
+											ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//250HZ采样							
 				break;
 				
 				case 1000:
-						ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1kHZ采样
+
+								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1kHZ采样
+								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
+								val = ADS1299_ReadByte();
+								val = ADS1299_ReadByte();
+								val = ADS1299_ReadByte();
+								if(val!=0x94)
+											ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//250HZ采样		
 				break;				
 				
-				case 2000:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//2kHZ采样
+				case 2000:				
+								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//2kHZ采样
+								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
+								val = ADS1299_ReadByte();
+								val = ADS1299_ReadByte();
+								val = ADS1299_ReadByte();
+								if(val!=0x93)
+											ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//250HZ采样		
 				break;
-				
-				default:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1kHZ采样
-				break;			
-			}				
-					
+							
+			}								
 		break;
 		
 		case CURGAIN:
@@ -139,9 +162,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 					ChVal.control_bit.gain = 6;				
 				break;			
 				
-				default:
-					ChVal.control_bit.gain = 6; //!< default : gain x24
-				break;					
+					
 			}	
 			ChVal.control_bit.pd = 0;
 			ChVal.control_bit.mux = 0;			
@@ -149,8 +170,18 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 
 			for(uint8_t i=0;i<8;i++)
 			{
-				ADS1299_Channel_Config(0,ADS1299_REG_CH1SET+i,ChVal);
-				WaitUs(2);
+						do
+							{
+						ADS1299_Channel_Config(0,ADS1299_REG_CH1SET+i,ChVal);
+						WaitUs(2);
+						
+						/* 最多回读4次 */
+						val = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
+						val = ADS1299_ReadByte();
+						val = ADS1299_ReadByte();
+						val = ADS1299_ReadByte();
+							}
+								while((val!=ChVal.value));
 			}
 		break;
 	}

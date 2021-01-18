@@ -324,10 +324,10 @@ inline uint8_t ADS1299_ReadByte(void)
 	ResultByte = 0;
 	//Mod_CS_Enable;
 	while(!LL_SPI_IsActiveFlag_TXE(SPI1));
-	SPI1->DR = 0xFF;
+	SPI1->DR = 0x00;
 	while(!LL_SPI_IsActiveFlag_RXNE(SPI1));
-	while(LL_SPI_IsActiveFlag_BSY(SPI1));
 	ResultByte = SPI1->DR;
+	while(LL_SPI_IsActiveFlag_BSY(SPI1));
 	//WaitUs(2);
 	//Mod_CS_Disable;
 	return ResultByte;
@@ -426,7 +426,7 @@ void ADS1299_ReadResult_DMA(uint32_t DataHeadAddress, uint8_t DataLength)
 /****************************************************************/
 void ADS1299_Channel_Config(uint8_t dev, uint8_t channel, TADS1299CHnSET Para)
 {
-	ADS1299_WriteREG (0, (ADS1299_REG_CH1SET + channel - 1), Para.value );
+	ADS1299_WriteREG (0, (ADS1299_REG_CH1SET + channel), Para.value );
 }
 
 /****************************************************************/
@@ -642,17 +642,14 @@ uint8_t ADS1299_Mode_Config(uint8_t Mode)
 				ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
 				HAL_Delay(50);
 				
-				// 回读3次
+				// 回读1次
 					ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
+					ReadResult = ADS1299_ReadByte();
+					ReadResult = ADS1299_ReadByte();
+					ReadResult = ADS1299_ReadByte();
 					if(ReadResult!=0x60)	
 							ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
-					for(j=0;j<3;j++)
-					{
-						ReadResult=ADS1299_ReadByte();
-						if(ReadResult!=0x60)	
-								ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
-					}
-			
+		
 			}
 			
 			
