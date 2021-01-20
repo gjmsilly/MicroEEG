@@ -120,6 +120,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
+          <Name>?鴙坋??鴙坋?</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -156,25 +157,25 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>430</LineNumber>
+          <LineNumber>162</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
+          <Address>134220140</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
-          <Filename>..\Src\ads1299.c</Filename>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>..\Src\MicroEEG_Misc.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression></Expression>
+          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\162</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>159</LineNumber>
+          <LineNumber>158</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134220622</Address>
+          <Address>134220122</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -183,14 +184,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\MicroEEG_Misc.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\159</Expression>
+          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\158</Expression>
         </Bp>
         <Bp>
           <Number>2</Number>
           <Type>0</Type>
-          <LineNumber>151</LineNumber>
+          <LineNumber>142</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134220606</Address>
+          <Address>134220108</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -199,14 +200,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\MicroEEG_Misc.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\151</Expression>
+          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\142</Expression>
         </Bp>
         <Bp>
           <Number>3</Number>
           <Type>0</Type>
-          <LineNumber>147</LineNumber>
+          <LineNumber>134</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134220598</Address>
+          <Address>134220092</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -215,14 +216,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\MicroEEG_Misc.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\147</Expression>
+          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\134</Expression>
         </Bp>
         <Bp>
           <Number>4</Number>
           <Type>0</Type>
-          <LineNumber>146</LineNumber>
+          <LineNumber>130</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134220592</Address>
+          <Address>134220084</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -231,14 +232,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\MicroEEG_Misc.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\146</Expression>
+          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\130</Expression>
         </Bp>
         <Bp>
           <Number>5</Number>
           <Type>0</Type>
-          <LineNumber>120</LineNumber>
+          <LineNumber>129</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134220394</Address>
+          <Address>134220078</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -247,10 +248,26 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\MicroEEG_Misc.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\120</Expression>
+          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\129</Expression>
         </Bp>
         <Bp>
           <Number>6</Number>
+          <Type>0</Type>
+          <LineNumber>107</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134220014</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>..\Src\MicroEEG_Misc.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\107</Expression>
+        </Bp>
+        <Bp>
+          <Number>7</Number>
           <Type>0</Type>
           <LineNumber>238</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -266,71 +283,7 @@
           <Expression>\\M1_CPU_F446\startup_stm32f446xx.s\238</Expression>
         </Bp>
         <Bp>
-          <Number>7</Number>
-          <Type>0</Type>
-          <LineNumber>427</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134237306</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>../Src/main.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\M1_CPU_F446\../Src/main.c\427</Expression>
-        </Bp>
-        <Bp>
           <Number>8</Number>
-          <Type>0</Type>
-          <LineNumber>182</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134220670</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\MicroEEG_Misc.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\182</Expression>
-        </Bp>
-        <Bp>
-          <Number>9</Number>
-          <Type>0</Type>
-          <LineNumber>179</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134220654</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\MicroEEG_Misc.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\179</Expression>
-        </Bp>
-        <Bp>
-          <Number>10</Number>
-          <Type>0</Type>
-          <LineNumber>175</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134220636</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\MicroEEG_Misc.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\M1_CPU_F446\../Src/MicroEEG_Misc.c\175</Expression>
-        </Bp>
-        <Bp>
-          <Number>11</Number>
           <Type>0</Type>
           <LineNumber>38</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -346,7 +299,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>12</Number>
+          <Number>9</Number>
           <Type>0</Type>
           <LineNumber>56</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -362,7 +315,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>13</Number>
+          <Number>10</Number>
           <Type>0</Type>
           <LineNumber>69</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -378,7 +331,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>14</Number>
+          <Number>11</Number>
           <Type>0</Type>
           <LineNumber>110</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -394,7 +347,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>15</Number>
+          <Number>12</Number>
           <Type>0</Type>
           <LineNumber>123</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -410,7 +363,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>16</Number>
+          <Number>13</Number>
           <Type>0</Type>
           <LineNumber>125</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -426,7 +379,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>17</Number>
+          <Number>14</Number>
           <Type>0</Type>
           <LineNumber>136</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -442,7 +395,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>18</Number>
+          <Number>15</Number>
           <Type>0</Type>
           <LineNumber>138</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -458,7 +411,23 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>19</Number>
+          <Number>16</Number>
+          <Type>0</Type>
+          <LineNumber>388</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>0</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>0</BreakIfRCount>
+          <Filename>startup_stm32f446xx.s</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression></Expression>
+        </Bp>
+        <Bp>
+          <Number>17</Number>
           <Type>0</Type>
           <LineNumber>393</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -474,7 +443,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>20</Number>
+          <Number>18</Number>
           <Type>0</Type>
           <LineNumber>408</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -490,7 +459,23 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>21</Number>
+          <Number>19</Number>
+          <Type>0</Type>
+          <LineNumber>430</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>0</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>0</BreakIfRCount>
+          <Filename>startup_stm32f446xx.s</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression></Expression>
+        </Bp>
+        <Bp>
+          <Number>20</Number>
           <Type>0</Type>
           <LineNumber>442</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -506,23 +491,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>22</Number>
-          <Type>0</Type>
-          <LineNumber>38</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
-          <Filename>..\Src\ads1299.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
-        </Bp>
-        <Bp>
-          <Number>23</Number>
+          <Number>21</Number>
           <Type>0</Type>
           <LineNumber>620</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -538,7 +507,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>24</Number>
+          <Number>22</Number>
           <Type>0</Type>
           <LineNumber>626</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -550,22 +519,6 @@
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>0</BreakIfRCount>
           <Filename>..\Src\ads1299.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
-        </Bp>
-        <Bp>
-          <Number>25</Number>
-          <Type>0</Type>
-          <LineNumber>388</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
-          <Filename>../Src/main.c</Filename>
           <ExecCommand></ExecCommand>
           <Expression></Expression>
         </Bp>
@@ -648,12 +601,17 @@
           <WinNumber>2</WinNumber>
           <ItemText>val</ItemText>
         </Ww>
+        <Ww>
+          <count>7</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>DRchar</ItemText>
+        </Ww>
       </WatchWindow2>
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>val</ItemText>
+          <ItemText>pUDP_DTx_Buff</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow1>

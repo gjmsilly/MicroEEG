@@ -358,7 +358,7 @@ void ADS1299_ReadResult(uint8_t *result)
 	
 	//DMA
 	#ifdef Dev_Ch32 
-	ADS1299_ReadResult_DMA((uint32_t)result, 109); //DMA Read Bug 需多读1字节
+	ADS1299_ReadResult_DMA((uint32_t)result, 108); //DMA Read Bug 需多读1字节
 	#endif
 	#ifdef Dev_Ch24 
 	ADS1299_ReadResult_DMA((uint32_t)result, 82); //DMA Read Bug 需多读1字节
@@ -644,9 +644,6 @@ uint8_t ADS1299_Mode_Config(uint8_t Mode)
 				
 				// 回读1次
 					ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
-					ReadResult = ADS1299_ReadByte();
-					ReadResult = ADS1299_ReadByte();
-					ReadResult = ADS1299_ReadByte();
 					if(ReadResult!=0x60)	
 							ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
 		

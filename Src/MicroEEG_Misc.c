@@ -86,44 +86,27 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 				case 250:
 								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
 								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
-								val = ADS1299_ReadByte();
-								val = ADS1299_ReadByte();
-								val = ADS1299_ReadByte();
-				
-								if(val!=0x96)
-											ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
+
 				break;
 				
 				case 500:
 
 								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//500HZ采样
 								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
-								val = ADS1299_ReadByte();
-								val = ADS1299_ReadByte();
-								val = ADS1299_ReadByte();
-								if(val!=0x95)
-											ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//250HZ采样							
+						
 				break;
 				
 				case 1000:
 
 								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1kHZ采样
 								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
-								val = ADS1299_ReadByte();
-								val = ADS1299_ReadByte();
-								val = ADS1299_ReadByte();
-								if(val!=0x94)
-											ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//250HZ采样		
+	
 				break;				
 				
 				case 2000:				
 								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//2kHZ采样
 								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
-								val = ADS1299_ReadByte();
-								val = ADS1299_ReadByte();
-								val = ADS1299_ReadByte();
-								if(val!=0x93)
-											ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//250HZ采样		
+		
 				break;
 							
 			}								
@@ -172,14 +155,11 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			{
 						do
 							{
-						ADS1299_Channel_Config(0,ADS1299_REG_CH1SET+i,ChVal);
+						ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,ChVal.value);
 						WaitUs(2);
 						
 						/* 最多回读4次 */
 						val = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
-						val = ADS1299_ReadByte();
-						val = ADS1299_ReadByte();
-						val = ADS1299_ReadByte();
 							}
 								while((val!=ChVal.value));
 			}
