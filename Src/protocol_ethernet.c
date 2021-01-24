@@ -361,7 +361,7 @@ uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag)
 		 if(SampleNum!= 0xFF )
 		 {
 			 
-			ADS1299_ReadResult(pUDP_DTx_Buff+HEAD_SIZE+DATA_SIZE*SampleNum+7);	//!< 样本每通道量化值 //!< 第1字节舍去 (被覆盖)
+			ADS1299_ReadResult(UDP_DTx_Buff+HEAD_SIZE+DATA_SIZE*SampleNum+7);	//!< 样本每通道量化值 //!< 第1字节舍去 (被覆盖)
 			 
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum] = UDP_SAMPLE_FH;		//!< 样本起始分隔符 
 			UDP_DTx_Buff[HEAD_SIZE+DATA_SIZE*SampleNum+1] = SampleNum;			//!< 样本序号(低八位) - 显示从0开始的序数

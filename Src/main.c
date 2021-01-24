@@ -59,8 +59,6 @@ CAN_HandleTypeDef hcan1;
 QSPI_HandleTypeDef hqspi;
 DMA_HandleTypeDef hdma_quadspi;
 
-RTC_HandleTypeDef hrtc;
-
 /* USER CODE BEGIN PV */
 uint16_t SYS_Event;							//!< 系统状态事件
 static InsQUEUE InsQueue;				//!< TCP指令队列 -  存放变化的属性编号
@@ -84,6 +82,7 @@ static void MX_SPI2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_RTC_Init(void);
+static void MX_IWDG_Init(void);
 /* USER CODE BEGIN PFP */
 
 
@@ -267,7 +266,7 @@ static void Sys_Control()
 	}
 	else if (TCPstate == Sn_CLOSED )//!< 保护措施: TCP端口断开，则停止采样
 	{
-		App_WriteAttr(SAMPLING, 0); //!< 修改开始采样属性值
+		App_WriteAttr(SAMPLING, SAMPLLE_STOP); //!< 修改开始采样属性值
 		AttrChangeProcess(SAMPLING); //!< 执行停止采样操作	
 	}
 	
@@ -343,6 +342,9 @@ static void Sys_Control()
 		}
 	}
 	
+	// 异常事件
+	LED_Service(SYS_Event); //!< LED
+	
 }
 
 /* USER CODE END 0 */
@@ -385,7 +387,11 @@ int main(void)
   MX_TIM2_Init();
   MX_USART1_UART_Init();
   MX_RTC_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
+	
+	//备份服务初始化
+	BKP_Service_Init();		
 	
 	//LED 初始化	
 	LED_Service_Init();
@@ -394,31 +400,16 @@ int main(void)
 	shell.read = ShellGetchar;
 	shell.write = ShellPutchar;
 	shellInit(&shell);
-	
-	//W5500初始化
-	W5500_Init(); //W5500初始化，配置Socket	
-	
+		
 	//ADS1299 初始化
 	//	使能SPI	
 	LL_SPI_Enable(SPI1);	
 	//	配置DMA
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX
-	
-	//	初始化ADS1299
+	//	复位ADS1299
 	ADS1299_Init(0);
-	//////////////////////////////////////////////////////////////////////////////
-	//	for test		
-	/*
-	ADS1299_WriteREG(0,ADS1299_REG_CONFIG3,0xE0);	
-	HAL_Delay(50);
-	ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
-	ADS1299_WriteREG(0,ADS1299_REG_CONFIG2,0xC0);   //internal test signal off
-	*/
 	ADS1299_Mode_Config(1);
-	//ADS1299_Parameter_Config(ADS1299_ParaGroup_ACQ,1,1);
-	//////////////////////////////////////////////////////////////////////////////
-	
 	
 	//样本时间戳服务初始化
 	SampleTimestamp_Service_Init();
@@ -432,18 +423,37 @@ int main(void)
 	//主应用程序向属性表服务注册属性值变化回调函数
 	Attr_Tbl_RegisterAppCBs(&AttrChangeCB);
 	
+	if( SYS_Event&POWERDOWN_EVT )
+	{
+		BKP_Service_Recovery();
+		
+		if(SYS_Event&SOCKETDOWN_EVT)
+			W5500_Init();
+	}
+	else 
+	{
+		//W5500初始化
+		W5500_Init(); //W5500初始化，配置Socket	
+
+	}
+
+	/* 开启独立看门狗 */
+	LL_IWDG_Enable(IWDG);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		// 喂狗
+		LL_IWDG_ReloadCounter(IWDG);
+		
 		// shell 服务
     shellTask(&shell);
 		
 		// 运行系统状态控制器
-		Sys_Control();    
-
+		Sys_Control();   
+		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -467,6 +477,13 @@ void SystemClock_Config(void)
 
    /* Wait till HSE is ready */
   while(LL_RCC_HSE_IsReady() != 1)
+  {
+
+  }
+  LL_RCC_LSI_Enable();
+
+   /* Wait till LSI is ready */
+  while(LL_RCC_LSI_IsReady() != 1)
   {
 
   }
@@ -673,6 +690,36 @@ static void MX_I2C2_Init(void)
 }
 
 /**
+  * @brief IWDG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_IWDG_Init(void)
+{
+
+  /* USER CODE BEGIN IWDG_Init 0 */
+
+  /* USER CODE END IWDG_Init 0 */
+
+  /* USER CODE BEGIN IWDG_Init 1 */
+
+  /* USER CODE END IWDG_Init 1 */
+  LL_IWDG_Enable(IWDG);
+  LL_IWDG_EnableWriteAccess(IWDG);
+  LL_IWDG_SetPrescaler(IWDG, LL_IWDG_PRESCALER_64);
+  LL_IWDG_SetReloadCounter(IWDG, 4095); //8s
+  while (LL_IWDG_IsReady(IWDG) != 1)
+  {
+  }
+
+  LL_IWDG_ReloadCounter(IWDG);
+  /* USER CODE BEGIN IWDG_Init 2 */
+
+  /* USER CODE END IWDG_Init 2 */
+
+}
+
+/**
   * @brief QUADSPI Initialization Function
   * @param None
   * @retval None
@@ -719,50 +766,22 @@ static void MX_RTC_Init(void)
 
   /* USER CODE END RTC_Init 0 */
 
-  RTC_TimeTypeDef sTime = {0};
-  RTC_DateTypeDef sDate = {0};
+  LL_RTC_InitTypeDef RTC_InitStruct = {0};
+
+  /* Peripheral clock enable */
+  LL_RCC_EnableRTC();
 
   /* USER CODE BEGIN RTC_Init 1 */
 
   /* USER CODE END RTC_Init 1 */
-  /** Initialize RTC Only
-  */
-  hrtc.Instance = RTC;
-  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
-  hrtc.Init.AsynchPrediv = 127;
-  hrtc.Init.SynchPrediv = 255;
-  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
-  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
-  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
-  if (HAL_RTC_Init(&hrtc) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /* USER CODE BEGIN Check_RTC_BKUP */
-
-  /* USER CODE END Check_RTC_BKUP */
-
   /** Initialize RTC and set the Time and Date
   */
-  sTime.Hours = 21;
-  sTime.Minutes = 20;
-  sTime.Seconds = 0;
-  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
-  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sDate.WeekDay = RTC_WEEKDAY_SATURDAY;
-  sDate.Month = RTC_MONTH_NOVEMBER;
-  sDate.Date = 28;
-  sDate.Year = 20;
-
-  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
-  {
-    Error_Handler();
-  }
+  RTC_InitStruct.HourFormat = LL_RTC_HOURFORMAT_24HOUR;
+  RTC_InitStruct.AsynchPrescaler = 127;
+  RTC_InitStruct.SynchPrescaler = 255;
+  LL_RTC_Init(RTC, &RTC_InitStruct);
+  LL_RTC_SetAsynchPrescaler(RTC, 127);
+  LL_RTC_SetSynchPrescaler(RTC, 255);
   /* USER CODE BEGIN RTC_Init 2 */
 	// !!!!! CubeMX LL生成RTC初始化时间没有RTC_DateStruct.Day
   /* USER CODE END RTC_Init 2 */
@@ -1071,10 +1090,13 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(GPIOD, Mod5_nCS_Pin|Mod5_START_Pin|Mod5_nRESET_Pin|Mod5_nPWDN_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOA, CAN_D_Pin|W5500_nRST_Pin);
+  LL_GPIO_ResetOutputPin(CAN_D_GPIO_Port, CAN_D_Pin);
 
   /**/
   LL_GPIO_ResetOutputPin(GPIOB, Mod_nCS_Pin|Mod_START_Pin|Mod_nRESET_Pin);
+
+  /**/
+  LL_GPIO_SetOutputPin(W5500_nRST_GPIO_Port, W5500_nRST_Pin);
 
   /**/
   GPIO_InitStruct.Pin = ERR_LED2_Pin|ERR_LED1_Pin|ACQ_LED2_Pin|ACQ_LED1_Pin

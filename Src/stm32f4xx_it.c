@@ -244,7 +244,8 @@ void EXTI1_IRQHandler(void)
 	
 	/* 样本采集及封包 */	
 	SYS_Event |= EEG_DATA_ACQ_EVT; //!< 更新事件：一包AD数据采集中
-	SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - 一包ad数据开始采集	
+	SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - 一包ad数据开始采集
+	SYS_Event &= ~POWERDOWN_EVT; //!< 清除前序事件 - 设备发生异常断电
 
 	if(UDP_DataProcess(SampleNum,SYS_Event)== UDP_DATA_CPL) //!< 对单个样本封包
 	{

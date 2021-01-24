@@ -33,6 +33,7 @@ extern "C" {
 #include "stm32f4xx_ll_dma.h"
 #include "stm32f4xx.h"
 #include "stm32f4xx_ll_i2c.h"
+#include "stm32f4xx_ll_iwdg.h"
 #include "stm32f4xx_ll_rcc.h"
 #include "stm32f4xx_ll_bus.h"
 #include "stm32f4xx_ll_system.h"
@@ -40,6 +41,7 @@ extern "C" {
 #include "stm32f4xx_ll_cortex.h"
 #include "stm32f4xx_ll_utils.h"
 #include "stm32f4xx_ll_pwr.h"
+#include "stm32f4xx_ll_rtc.h"
 #include "stm32f4xx_ll_spi.h"
 #include "stm32f4xx_ll_tim.h"
 #include "stm32f4xx_ll_usart.h"
@@ -78,6 +80,8 @@ extern uint16_t SYS_Event;									//!< 系统状态事件 - @ref System events
 #define EEG_DATA_CPL_EVT				( 1 << 10 )	//!< 一包AD数据采集完成
 #define EEG_STOP_EVT						( 1 << 11 )	//!< AD数据暂停采集
 #define TRIGGER_EVT							(	1	<< 12 )	//!< 标签事件
+#define POWERDOWN_EVT						(	1	<< 13 )	//!< 异常断电事件
+#define SOCKETDOWN_EVT					(	1	<< 14 )	//!< w5500连接断开事件
 
 /* USER CODE END EM */
 

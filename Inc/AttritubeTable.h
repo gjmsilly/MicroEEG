@@ -232,5 +232,6 @@ void Attr_Tbl_Init();
 
 uint8_t Attr_Tbl_RegisterAppCBs( void *appCallbacks);
 uint8_t App_GetAttr(uint8_t InsAttrNum, uint32_t *pValue);
-uint8_t App_WriteAttr(uint8_t InsAttrNum, uint8_t Value);
+uint8_t App_WriteAttr(uint8_t InsAttrNum, uint32_t Value);
+
 #endif

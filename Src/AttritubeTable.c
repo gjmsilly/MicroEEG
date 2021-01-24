@@ -350,15 +350,23 @@ uint8_t App_GetAttr(uint8_t InsAttrNum, uint32_t *pValue)
  *	@return SUCCESS 写属性值成功
  *					ATTR_NOT_FOUND 属性不存在
  */
-uint8_t App_WriteAttr(uint8_t InsAttrNum, uint8_t Value)
+uint8_t App_WriteAttr(uint8_t InsAttrNum, uint32_t Value)
 {
 	uint8_t ret = SUCCESS;
 	
 	switch(InsAttrNum)
 	{
-		case SAMPLING:
-			sampling=Value;
+		case SAMPLING:		//!< 应用层修改正在采样属性
+			sampling = (uint8_t)Value;
 			break;	
+		
+		case CURGAIN:			//!< 应用层修改全局增益属性 
+			curgain = (uint32_t)Value;
+			break;
+		
+		case CURSAMPLERATE: //!< 应用层修改全局采样率属性
+			cursamprate = (uint32_t)Value;
+		break;
 	}
   return ( ret );	
 }

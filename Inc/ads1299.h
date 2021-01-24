@@ -33,8 +33,6 @@ DEALINGS IN THE SOFTWARE.
 #include "main.h"
 #include "stm32f4xx_hal.h"
 
-
-
 /****************************************************************/
 /* return types and return codes                                */
 /****************************************************************/
@@ -52,7 +50,8 @@ DEALINGS IN THE SOFTWARE.
 #define TIDC_ERR_REGS       (-9)
 
 
-
+//!<  以下联合体定义不适用 TI complier 需把位顺序倒过来
+//!<	要用到联合体一定请先查看内存分配!!!
 /****************************************************************/
 /* the following register definitions mirror the version given  */
 /* the datasheet dated Jan 2017                                 */
@@ -569,25 +568,21 @@ typedef struct
 #define Mod_DRDY_INT_Disable   LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_1);
 
 
-void WaitUs(int iWaitUs);
+
 void ADS1299_Init(uint8_t dev);
-void ADS1299_Reset(uint8_t dev);
-void ADS1299_PowerOn(uint8_t dev);
+
+void ADS1299_SendCommand(uint8_t command);
 void ADS1299_WriteREG(uint8_t dev, uint8_t address, uint8_t value);
 uint8_t ADS1299_ReadREG(uint8_t dev, uint8_t address);
-void ADS1299_SendCommand(uint8_t command);
 
 void ADS1299_ReadResult(uint8_t *result);
-void ADS1299_Parameter_Config(uint8_t mode,uint8_t sample,uint8_t gain);
-void ADS1299_Channel_Config(uint8_t dev, uint8_t channel, TADS1299CHnSET Para);
-//void ADS1299_Mode_Config(uint8_t mode);
 uint8_t ADS1299_ReadByte(void);
 void ADS1299_ReadResult_DMA(uint32_t DataHeadAddress, uint8_t DataLength);
 
-
+void ADS1299_Channel_Config(uint8_t dev, uint8_t channel, TADS1299CHnSET Para);
+void ADS1299_Parameter_Config(uint8_t mode,uint8_t sample,uint8_t gain);
 uint8_t ADS1299_Mode_Config(uint8_t);
-#endif /* __TADS1299_FN_H */
 
-/****************************************************************/
-/* END OF t1299_fn.h                                             */
-/****************************************************************/
+void ADS1299_Sampling_Control(uint8_t Sampling);
+
+#endif /*_ADS1299_H */

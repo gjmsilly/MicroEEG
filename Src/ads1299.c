@@ -1,14 +1,147 @@
+/**
+ * @file    ads1299.c
+ * @author  gjmsilly
+ * @brief   ads1299 driver for MicroEEG_M1
+ * @version 1.0.0
+ * @date    2021-01-20
+ *
+ * @copyright (c) 2021 gjmsilly
+ *
+ */
+ 
+/*****************************************************************
+ * INCLUDES
+ */
 #include "main.h"
 #include "stm32f4xx_hal.h"
 #include "ads1299.h"
 #include "stm32f4xx_ll_gpio.h"
 
+/*****************************************************************
+ * GLOBAL VARIABLES
+ */
 uint8_t ResultByte = 0;
 uint8_t DummyByte;
 
+/*****************************************************************
+ * LOCAL FUNCTIONS
+ */
+static void ADS1299_Reset(uint8_t dev);
+static void ADS1299_PowerOn(uint8_t dev);
+static void WaitUs(int iWaitUs);
+ 
+/****************************************************************/
+/* ADS1299_Reset                                              	*/
+/** Operation:
+ *      - Reset ADS1299 chip
+ *
+ * Parameters:
+ *      -  dev:ADS1299 chip number
+ *
+ * Return value:
+ *     - None
+ *
+ * Globals modified:
+ *     - None
+ *
+ * Resources used:
+ *     - None
+ */
+/****************************************************************/
+static void ADS1299_Reset(uint8_t dev)
+{
+	Mod_RESET_L;
+	WaitUs(6);			// 至少拉低2tclk
+	Mod_RESET_H;
+	Mod_CS_Disable;
+	WaitUs(200);     // 至少等待18tclk后发送指令
+	
+	// wait for 18 tclk then start using device
+}
 
 /****************************************************************/
-/* ADS1299_Init                                                  */
+/* ADS1299_PowerOn                                             	*/
+/** Operation:
+ *      - Power on ADS1299 chip
+ *
+ * Parameters:
+ *      -  dev:ADS1299 chip number
+ *
+ * Return value:
+ *     - None
+ *
+ * Globals modified:
+ *     - None
+ *
+ * Resources used:
+ *     - None
+ */
+/****************************************************************/
+static void ADS1299_PowerOn(uint8_t dev)
+{
+	Mod_PDWN_H
+	Mod_RESET_H
+	
+	// wait for at least tPOR = 128ms 
+	HAL_Delay(200);
+
+}
+
+/****************************************************************/
+/* Wait()                 Modified                              */
+/** Operation:
+ *      - Opens a DSP timer and configures it for the correct
+ *        wait time on the first call. Otherwise, just reprograms
+ *        the timer period register.
+ *      - Waits the number of tosc periods specified in
+ *        uiWaitCount
+ *
+ * Parameters:
+ *      - TADS1299 *pADS:Data converter object
+ *      - unsigned int uiWaitCount: Number of tosc, which should
+ *        be waited
+ *
+ * Return value:
+ *     - TIDC_NO_ERR in case everything was OK
+ *     - TIDC_ERR_TIMER if the timer could not be opened
+ *
+ * Globals modified:
+ *     - None
+ *
+ * Resources used:
+ *     - One timer
+ *
+ * Note:
+ *     - This routine is a blocking one. That means it waits for
+ *       the timer to complete before it returns
+ */
+/****************************************************************/
+static void WaitUs(int iWaitUs)
+{
+    int iPreTickVal = SysTick -> VAL;  
+	  int iCounterTargetValue;
+	  int iCounterTargetInterval;
+	   
+	  iCounterTargetInterval = iWaitUs * (HAL_RCC_GetHCLKFreq()/1000000)-32;
+	  if(iPreTickVal < iCounterTargetInterval)
+	  {
+			iCounterTargetValue =  iPreTickVal + SysTick->LOAD - iCounterTargetInterval;
+		}
+		else
+		{
+			iCounterTargetValue =  iPreTickVal - iCounterTargetInterval;
+		}
+		
+		while(SysTick -> VAL >= iCounterTargetValue);
+	
+}
+
+/*****************************************************************
+ * FUNCTIONS
+ */
+ 
+/****************************************************************/
+/* ADS1299_Init                                                 */
 /** Operation:
  *      - Initial ads1299 chip
  *
@@ -46,67 +179,15 @@ void ADS1299_Init(uint8_t dev)
 }
 
 /****************************************************************/
-/* Wait()                 Modified                              */
+/* ADS1299_SendCommand()                                        */
 /** Operation:
- *      - Opens a DSP timer and configures it for the correct
- *        wait time on the first call. Otherwise, just reprograms
- *        the timer period register.
- *      - Waits the number of tosc periods specified in
- *        uiWaitCount
+ *      - Send command to the ADS1299 chip
  *
  * Parameters:
- *      - TADS1299 *pADS:Data converter object
- *      - unsigned int uiWaitCount: Number of tosc, which should
- *        be waited
+ *      - dev:ADS1299 chip number
+ *      - command:command to the ADS1299 chip
  *
  * Return value:
- *     - TIDC_NO_ERR in case everything was OK
- *     - TIDC_ERR_TIMER if the timer could not be opened
- *
- * Globals modified:
- *     - None
- *
- * Resources used:
- *     - One timer
- *
- * Note:
- *     - This routine is a blocking one. That means it waits for
- *       the timer to complete before it returns
- */
-/****************************************************************/
-void WaitUs(int iWaitUs)
-{
-    int iPreTickVal = SysTick -> VAL;  
-	  int iCounterTargetValue;
-	  int iCounterTargetInterval;
-	   
-	  iCounterTargetInterval = iWaitUs * (HAL_RCC_GetHCLKFreq()/1000000)-32;
-	  if(iPreTickVal < iCounterTargetInterval)
-	  {
-			iCounterTargetValue =  iPreTickVal + SysTick->LOAD - iCounterTargetInterval;
-		}
-		else
-		{
-			iCounterTargetValue =  iPreTickVal - iCounterTargetInterval;
-		}
-		
-		while(SysTick -> VAL >= iCounterTargetValue);
-	
-}
-
-
-
-
-/****************************************************************/
-/* ADS1299_Reset                                                  */
-/** Operation:
- *      - Reset ADS1299 chip
- *
- * Parameters:
- *      -  dev:ADS1299 chip number
- *
- * Return value:
- *     - None
  *
  * Globals modified:
  *     - None
@@ -115,49 +196,28 @@ void WaitUs(int iWaitUs)
  *     - None
  */
 /****************************************************************/
-void ADS1299_Reset(uint8_t dev)
+void ADS1299_SendCommand(uint8_t command)
 {
-	Mod_RESET_L;
-	WaitUs(6);			// 至少拉低2tclk
-	Mod_RESET_H;
-	Mod_CS_Disable;
-	WaitUs(200);     // 至少等待18tclk后发送指令
+	__disable_irq();
 	
-	// wait for 18 tclk then start using device
+	Mod_CS_Enable
+	WaitUs(4);
+	while(!LL_SPI_IsActiveFlag_TXE(SPI1));
+	SPI1->DR = command;
+	while(!LL_SPI_IsActiveFlag_RXNE(SPI1));
+	command = SPI1->DR;
+	
+	while(LL_SPI_IsActiveFlag_BSY(SPI1));
+	
+	WaitUs(4);													// Delay time, final SCLK falling edge to CS high
+	Mod_CS_Disable
+
+  __enable_irq();
+	WaitUs(4);													// Pulse duration, CS high
 }
 
 /****************************************************************/
-/* ADS1299_Reset                                                  */
-/** Operation:
- *      - Reset ADS1299 chip
- *
- * Parameters:
- *      -  dev:ADS1299 chip number
- *
- * Return value:
- *     - None
- *
- * Globals modified:
- *     - None
- *
- * Resources used:
- *     - None
- */
-/****************************************************************/
-void ADS1299_PowerOn(uint8_t dev)
-{
-	Mod_PDWN_H
-	Mod_RESET_H
-	
-	// wait for at least tPOR = 128ms 
-	HAL_Delay(200);
-
-}
-
-
-
-/****************************************************************/
-/* ADS1299_WriteREG()                                                  */
+/* ADS1299_WriteREG()                                           */
 /** Operation:
  *      - Configuring the ADS1299 register
  *
@@ -198,6 +258,7 @@ void ADS1299_WriteREG (uint8_t dev, uint8_t address, uint8_t value)
 	while(!LL_SPI_IsActiveFlag_TXE(SPI1));
 	SPI1->DR = value;
 	while(!LL_SPI_IsActiveFlag_RXNE(SPI1));
+	address = SPI1->DR;
 	while(LL_SPI_IsActiveFlag_BSY(SPI1));
 	
 	WaitUs(5);													// Delay time, final SCLK falling edge to CS high
@@ -209,7 +270,7 @@ void ADS1299_WriteREG (uint8_t dev, uint8_t address, uint8_t value)
 }
 
 /****************************************************************/
-/* ADS1299_ReadREG()                                                  */
+/* ADS1299_ReadREG()                                           	*/
 /** Operation:
  *      - Configuring the ADS1299 register
  *
@@ -260,46 +321,6 @@ uint8_t ADS1299_ReadREG (uint8_t dev, uint8_t address)
   __enable_irq();
 
   return DRchar;
-}
-
-
-
-/****************************************************************/
-/* ADS1299_SendCommand()                                        */
-/** Operation:
- *      - Send command to the ADS1299 chip
- *
- * Parameters:
- *      - dev:ADS1299 chip number
- *      - command:command to the ADS1299 chip
- *
- * Return value:
- *
- * Globals modified:
- *     - None
- *
- * Resources used:
- *     - None
- */
-/****************************************************************/
-void ADS1299_SendCommand(uint8_t command)
-{
-	__disable_irq();
-	
-	Mod_CS_Enable
-	WaitUs(4);
-	while(!LL_SPI_IsActiveFlag_TXE(SPI1));
-	SPI1->DR = command;
-	while(!LL_SPI_IsActiveFlag_RXNE(SPI1));
-	command = SPI1->DR;
-	
-	while(LL_SPI_IsActiveFlag_BSY(SPI1));
-	
-	WaitUs(4);													// Delay time, final SCLK falling edge to CS high
-	Mod_CS_Disable
-
-  __enable_irq();
-	WaitUs(4);													// Pulse duration, CS high
 }
 
 /****************************************************************/
@@ -358,16 +379,17 @@ void ADS1299_ReadResult(uint8_t *result)
 	
 	//DMA
 	#ifdef Dev_Ch32 
-	ADS1299_ReadResult_DMA((uint32_t)result, 108); //DMA Read Bug 需多读1字节
+	//!< DMA Read Bug: SPI 20MHz 需多读1字节,即109字节
+	ADS1299_ReadResult_DMA((uint32_t)result, 108); 
 	#endif
 	#ifdef Dev_Ch24 
-	ADS1299_ReadResult_DMA((uint32_t)result, 82); //DMA Read Bug 需多读1字节
+	ADS1299_ReadResult_DMA((uint32_t)result, 81);
 	#endif
 	#ifdef Dev_Ch16 
-	ADS1299_ReadResult_DMA((uint32_t)result, 55); //DMA Read Bug 需多读1字节
+	ADS1299_ReadResult_DMA((uint32_t)result, 54);
 	#endif
 	#ifdef Dev_Ch8 
-	ADS1299_ReadResult_DMA((uint32_t)result, 28); //DMA Read Bug 需多读1字节
+	ADS1299_ReadResult_DMA((uint32_t)result, 27);
 	#endif
 	
 	while(!LL_DMA_IsActiveFlag_TC0(DMA2)); // Wait until all data trasferred from SPI1_RX
@@ -426,7 +448,7 @@ void ADS1299_ReadResult_DMA(uint32_t DataHeadAddress, uint8_t DataLength)
 /****************************************************************/
 void ADS1299_Channel_Config(uint8_t dev, uint8_t channel, TADS1299CHnSET Para)
 {
-	ADS1299_WriteREG (0, (ADS1299_REG_CH1SET + channel), Para.value );
+	ADS1299_WriteREG (0, channel, Para.value );
 }
 
 /****************************************************************/
@@ -594,7 +616,7 @@ void ADS1299_Parameter_Config(uint8_t ADS1299_ParaGroup, uint8_t sample,uint8_t 
 		
 }
 /****************************************************************/
-/* ADS1299_Mode_Config()                               */
+/* ADS1299_Mode_Config()                              					 */
 /** Operation:
  *      - Configuring ADS1299 Mode Parameters
  *
@@ -614,10 +636,9 @@ void ADS1299_Parameter_Config(uint8_t ADS1299_ParaGroup, uint8_t sample,uint8_t 
  *     - None
  */
 /****************************************************************/
-
 uint8_t ADS1299_Mode_Config(uint8_t Mode)
 {
-	uint8_t i,j;
+	uint8_t i;
 	uint8_t ReadResult;
 	
 	switch (Mode)
@@ -638,17 +659,18 @@ uint8_t ADS1299_Mode_Config(uint8_t Mode)
 			
 			for(i=0;i<8;i++)
 			{
-				// Gain = 24
-				ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
-				HAL_Delay(50);
-				
-				// 回读1次
+				// Default Gain = 24
+				do
+					{
+					ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
+					WaitUs(2);
+
+					/* 回读1次 */
 					ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
-					if(ReadResult!=0x60)	
-							ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
+					}
+						while(ReadResult!=0x60);
 		
 			}
-			
 			
 			break;
 		}
@@ -664,17 +686,54 @@ uint8_t ADS1299_Mode_Config(uint8_t Mode)
 			
 			for(i=0;i<32;i++)
 			{
-				// Gain = 24
+				// Gain = 1
 				ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x00);
 				WaitUs(2);
 				WaitUs(10);
-				//ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);	
 			}
 			
 			break;
 		}
 
   }
+}
+
+/****************************************************************/
+/* ADS1299_Sampling_Control(uint8_t Sampling)                	*/
+/** Operation:
+ *      - Control the ads1299 module sampling state
+ *
+ * Parameters:
+ *      - Sampling:the sampling state need to set
+ *
+ * Globals modified:
+ *     - None
+ *
+ * Resources used:
+ *     - None
+ */
+/****************************************************************/
+void ADS1299_Sampling_Control(uint8_t Sampling)
+{
+	switch(Sampling)
+	{
+		case 0:
+				/* ads1299 停止采集 */
+				ADS1299_SendCommand(ADS1299_CMD_STOP);
+				ADS1299_SendCommand(ADS1299_CMD_SDATAC);;				
+				Mod_DRDY_INT_Disable //	关闭nDReady中断		
+				Mod_CS_Disable;
+			break;
+
+		case 1:		
+				/* ads1299 开始采集 */		
+				ADS1299_SendCommand(ADS1299_CMD_START);
+				ADS1299_SendCommand(ADS1299_CMD_RDATAC);	
+				Mod_DRDY_INT_Enable // 使能nDReady中断
+				Mod_CS_Enable;	
+			break;
+
+	}
 }
 
 

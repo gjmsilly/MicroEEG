@@ -70,6 +70,9 @@ void W5500_Init(void)
 	W5500_Socket_Init(2);     		//Socket 2配置 - UDP收 
 	
 	pUDP_DTx_Buff = UDP_DTx_Buff; 	//!< UDP发送缓冲指针
+	
+	SYS_Event &= ~SOCKETDOWN_EVT; //!< 清除前序事件 - 设备发生异常断电
+	
 }
 
 /*******************************************************************************
@@ -214,11 +217,10 @@ static void W5500_Load_Net_Parameters(void)
 		//UDP(广播)模式需配置目的主机端口号 7002（default 上位机可修改）
 		(Psn_param+1)->UDP_DPORT = 7002;
 		
-		//UDP(广播)模式需配置目的主机IP地址
-		(Psn_param+1)->UDP_DIPR[0] = 192;	
-		(Psn_param+1)->UDP_DIPR[1] = 168;
-		(Psn_param+1)->UDP_DIPR[2] = 1;
-		(Psn_param+1)->UDP_DIPR[3] = 101;
+		(Psn_param+1)->UDP_DIPR[0]=192;
+		(Psn_param+1)->UDP_DIPR[1]=168;
+		(Psn_param+1)->UDP_DIPR[2]=1;
+		(Psn_param+1)->UDP_DIPR[3]=101;
 	}
 	
 	/* Socket 2 配置 */	
@@ -388,12 +390,13 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 {
 	uint16_t recvsize=0,sentsize = 0; // 用于回环测试
 	uint8_t TCPserv_status; //!< TCP服务状态
+	uint16_t port=7001;
 	
 	switch(getSn_SR(sn)) //检查该socket的状态
 	{
 		/* Socket n 关闭 */
 		case SOCK_CLOSED:
-			socket(sn,Sn_MR_TCP,(Psn_param+sn)->Sn_Port,0); //打开Socket绑定TCP默认端口
+			socket(sn,Sn_MR_TCP,port,0); //打开Socket绑定TCP默认端口
 			//setSn_KPALVTR(sn,2);    //设置心跳包自动发送间隔，单位时间为5s
 			
 			TCPserv_status = Sn_OPEN;
@@ -408,8 +411,6 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 		
 		/* Socket n 处于连接状态 */
 		case SOCK_ESTABLISHED:
-
-			//getSn_DIPR(sn,(Psn_param+sn)->UDP_DIPR); //!<获取目的主机IP 以供UDP传输
 		
 			if(getSn_IR(sn) & Sn_IR_CON)
 			{
@@ -418,6 +419,8 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 
 			if((recvsize = getSn_RX_RSR(sn))>0) //接收目的主机发来的TCP数据			
 			{
+				//getSn_DIPR(sn,(Psn_param+sn)->UDP_DIPR); //!<获取目的主机IP 以供UDP传输
+				
 				DMA_recv(sn,TCP_Rx_Buff,recvsize);  //从接收缓冲区全部读取
 				
 				TCPserv_status = TCP_RECV;
@@ -462,30 +465,33 @@ uint8_t UDP_Service(uint8_t sn, uint16_t Procesflag)
 {
 	uint16_t recvsize=0;
 	uint8_t UDPserv_status,tmp; //!< UDP服务状态
+	uint8_t remoteip[4]={192,168,1,101};
+	uint16_t remoteport=7002;
 	
 	switch(getSn_SR(sn))
 	{
 		
 		/* Socket n 关闭 */
 		case SOCK_CLOSED:
-			socket(sn,Sn_MR_UDP,(Psn_param+sn)->Sn_DPort,0); //打开Socket绑定UDP默认端口
+			socket(sn,Sn_MR_UDP,remoteport,0); //打开Socket绑定UDP默认端口
 		break;
 		
 		/* Socket n 已完成初始化 */
 		case SOCK_UDP:
 			
 			switch(sn)
-				
-			//memcpy((Psn_param+sn)->UDP_DIPR,(Psn_param+0)->UDP_DIPR,4); //!< 获取目的主机的IP地址
 			
 			/* Socket 1 - UDP数据通道 */
 				case 1:
 				{
+					//memcpy(&((Psn_param+sn)->UDP_DIPR[0]),&((Psn_param+0)->UDP_DIPR[0]),4); //!< 获取目的主机的IP地址
 					if( Procesflag & UDP_DTPROCESSCLP_EVT ) // UDP数据帧协议服务处理完成，UDP端口准备发数
 					{			
 						DMA_sendto(sn, UDP_DTx_Buff,    				\
 											sizeof(UDP_DTx_Buff), 				\
-											(Psn_param+sn)->UDP_DIPR,  	\
+											remoteip,
+											remoteport);
+											//(Psn_param+sn)->UDP_DIPR,  	\
 											(Psn_param+sn)->UDP_DPORT);  //一次发送UDP发送缓冲区所有数据
 					 
 						UDPserv_status = UDP_SEND;			 	

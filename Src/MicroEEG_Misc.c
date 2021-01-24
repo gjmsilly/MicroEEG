@@ -9,11 +9,20 @@
  */
 
 #include "MicroEEG_Misc.h"
+
 #include "ads1299.h"
 #include "w5500_service.h"
+#include "socket.h"
 #include "AttritubeTable.h"
-#include "time.h"
 #include "string.h"
+
+
+#ifdef UNIXTimestamp
+#include "time.h"
+#elif xUNIXTimestamp
+#include "stm32f4xx_ll_rtc.h"
+#include "stm32f446xx.h"
+#endif
 
 /******************************************************************************
  * GLOBAL VARIABLES
@@ -22,7 +31,7 @@ uint32_t CurTimeStamp[10];			//!< 当前时间
 uint32_t* pCurTimeStamp;				//!< 当前时间指针		
 static uint32_t attrvalue=0;		//!< 属性值
 uint32_t *pValue =&attrvalue;		//!< 属性值指针
-extern RTC_HandleTypeDef hrtc;
+
 
 /*  ======================== 属性值变化处理服务 ============================
  */
@@ -44,78 +53,91 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 	switch(AttrChangeNum)
 	{
 		case SAMPLING: 
-			App_GetAttr(SAMPLING,pValue); //获取属性值
+			App_GetAttr(SAMPLING,pValue); // 获取属性值
 
-			if((*pValue&0x0000FF) == SAMPLLE_START )
+			if( *(uint8_t*)pValue == SAMPLLE_START )
 			{
 				
+				/* 系统状态更新 */				
 				SYS_Event |= EEG_DATA_START_EVT; //!< 更新事件：一包ad数据开始采集		
 				
+				/* 样本时间戳服务开启 */				
 				LL_TIM_EnableCounter(TIM5); //!< 打开样本增量时间戳定时器
-			
-				/* ads1299 开始采集 */					
-				ADS1299_SendCommand(ADS1299_CMD_START);
-				ADS1299_SendCommand(ADS1299_CMD_RDATAC);	
-				Mod_DRDY_INT_Enable //	使能nDReady中断
-				Mod_CS_Enable;	
 				
-			}else
+				/* ads1299 开始采集 */				
+				ADS1299_Sampling_Control(SAMPLLE_START);
+				
+				/* 备份重要参数 */
+				BKP_Write(SAMPLING_BKP,(uint32_t)SAMPLLE_START);
+				
+			}
+			else
 			{
+				/* 系统状态更新 */
 				SYS_Event |= EEG_STOP_EVT; //!< 更新事件：ad数据暂停采集
-
-				/* ads1299 停止采集 */
-				ADS1299_SendCommand(ADS1299_CMD_STOP);
-				ADS1299_SendCommand(ADS1299_CMD_SDATAC);;				
-				Mod_DRDY_INT_Disable //	关闭nDReady中断		
-				Mod_CS_Disable;				
-					
+				
+				/* ads1299 停止采集 */				
+				ADS1299_Sampling_Control(SAMPLLE_STOP);
+						
+				/* 样本时间戳戳服务停止 */					
 				LL_TIM_DisableCounter(TIM5); //!< 关闭定时器
 				TIM5->CNT = 0;	//!< 样本增量时间戳定时器归零
-				ACQ_LED1_OFF;
-				//memset(CurTimeStamp,0,40); //! 样本增量时间戳清零
-				//memset(UDP_DTx_Buff,0,UDPD_Tx_Buff_Size); //!< UDP数据通道发送缓冲区清零			
-				
+			
+				/* 备份重要参数 */
+				BKP_Write(SAMPLING_BKP,(uint32_t)SAMPLLE_STOP);
+
 			}
 		break;
 			
 		case CURSAMPLERATE:
-			App_GetAttr(CURSAMPLERATE,pValue); //获取属性值
+			
+			/* 安全操作：修改采样率值时确保停止采样 */
+			App_GetAttr(SAMPLING,pValue);	// 获取正在采样属性值	
 		
+			if((*pValue&0x0000FF) == SAMPLLE_START )		
+				ADS1299_Sampling_Control(SAMPLLE_STOP); //!< 若正在采样，则先停止采样
+			
+			App_GetAttr(CURSAMPLERATE,pValue); //获取当前采样率属性值
+			
 			switch(*pValue)
 			{
 				case 250:
-								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
-								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
-
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
 				break;
 				
 				case 500:
-
-								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//500HZ采样
-								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
-						
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//500HZ采样						
 				break;
 				
 				case 1000:
-
-								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1kHZ采样
-								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
-	
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1kHZ采样
 				break;				
 				
-				case 2000:				
-								ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//2kHZ采样
-								val = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);
-		
+				case 2000:
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//2kHZ采样		
 				break;
-							
-			}								
+				
+				default: //!< default samplerate 250  针对上电后没有修改采样率的情况下异常断电设置
+					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样			
+				break;		
+			}
+			
+			/* 备份重要参数 */
+			BKP_Write(CURSAMPLERATE_BKP,*pValue);		
+			
 		break;
 		
 		case CURGAIN:
-			App_GetAttr(CURGAIN,pValue); //获取属性值
 			
-			switch(*(uint8_t*)pValue)
+			/* 安全操作：修改采样率值时确保停止采样 */
+			App_GetAttr(SAMPLING,pValue);	// 获取正在采样属性值	
+		
+			if((*pValue&0x0000FF) == SAMPLLE_START )		
+				ADS1299_Sampling_Control(SAMPLLE_STOP); //!< 若正在采样，则先停止采样
+			
+			App_GetAttr(CURGAIN,pValue); //获取当前增益属性值
+			
+			switch(*pValue)
 			{
 				case 1:
 					ChVal.control_bit.gain = 0;
@@ -135,6 +157,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 				
 				case 8:
 					ChVal.control_bit.gain = 4;
+				//while(1); // 
 				break;
 				
 				case 12:
@@ -143,8 +166,11 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 				
 				case 24:
 					ChVal.control_bit.gain = 6;				
-				break;			
+				break;	
 				
+				default: //!< default gain x24 针对上电后没有修改增益的情况下异常断电设置
+					ChVal.control_bit.gain = 6;				
+				break;						
 					
 			}	
 			ChVal.control_bit.pd = 0;
@@ -153,17 +179,21 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 
 			for(uint8_t i=0;i<8;i++)
 			{
-						do
-							{
-						ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,ChVal.value);
-						WaitUs(2);
-						
-						/* 最多回读4次 */
-						val = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
-							}
-								while((val!=ChVal.value));
+				do
+				{
+					ADS1299_Channel_Config(0,ADS1299_REG_CH1SET+i,ChVal);
+
+					/* 回读1次 */
+					val = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
+				}
+					while((val!=ChVal.value));
 			}
+			
+			/* 备份重要参数 */
+			BKP_Write(CURGAIN_BKP,*pValue);	
+			
 		break;
+	
 	}
 	
 }
@@ -205,6 +235,7 @@ static void STSG_TIM5_Init(void)
 	LL_TIM_EnableCounter(TIM5);
 }
 
+#ifdef UNIXTimestamp 
 /*! @brief	首样时间戳服务 
  *					本服务将RTC时间转换生成标准UNIX格式 32位时间戳 uint64
  *
@@ -239,6 +270,7 @@ void UNIXTimestamp_Service(uint8_t *pout)
 		memcpy(pout,&_unix_,4); //!< 32位
 	}
 }
+#endif
 
 /*  ============================ LED服务 ==============================
  */ 
@@ -252,15 +284,123 @@ void LED_Service_Init(void)
 	PWR_LED2_OFF;
 	ACQ_LED1_OFF; //设备采样状态指示
 	ACQ_LED2_OFF;
-	ERR_LED1_OFF; //设备运行状态指示
-	ERR_LED2_OFF;
+	ERR_LED1_OFF; 
+	ERR_LED2_OFF; //设备运行状态指示
 }
 
 void LED_Service(uint16_t devstate)
 {
 	
-	if(devstate & EEG_DATA_CPL_EVT)
+	if( devstate & EEG_DATA_CPL_EVT ) //!< 设备采样中
 	{		
 		ACQ_LED1_TOGGLE;
+		ERR_LED2_OFF;
 	}
+	else if( devstate & EEG_STOP_EVT ) //!< 设备停止采样
+		ACQ_LED1_OFF;
+	
+	if( devstate & POWERDOWN_EVT ) //!< 设备发生异常断电
+		ERR_LED2_ON;
+}
+
+/*  ============================ 备份服务 ==============================
+ */ 
+/*! @brief	备份服务	
+ *					本服务提供设备重要运行状态的备份服务，
+ *					用以设备异常断电后的上电恢复
+ */
+
+/*! 
+ *	@fn			BKP_Service_Init 
+ *
+ *	@brief	备份服务初始化
+ *					在设备上电后对掉电前设备状态进行检测，
+ *					对异常掉电情况及时恢复掉电前状态,若设备正常开机则复位所有备份。
+ *					!本函数必须在rtc初始化后且其他服务初始化前调用。
+ */
+void BKP_Service_Init()
+{
+	uint32_t val;
+	
+	/* Step 1 - 读取采样状态 */
+	val = BKP_Read(SAMPLING_BKP);
+	
+	if( val == SAMPLLE_START ) //!< 若断电前设备正在采集
+	{
+		SYS_Event = NULL;						//!< 清除所有事件
+		SYS_Event |= POWERDOWN_EVT; //!< 更新事件：异常断电
+		
+		/* Step 2 - 检查W5500状态 */
+		if(getSn_SR(0)!= SOCK_ESTABLISHED) //!< W5500断开
+			SYS_Event |= SOCKETDOWN_EVT; //!< 更新事件：网络断开
+			
+	}
+	else	//!< 若正常开机
+	{
+		BKP_Write(SYS_EVENT_BKP,NULL);
+		BKP_Write(TCP_DIPR_BKP,NULL);
+		BKP_Write(SAMPLING_BKP,NULL);
+		BKP_Write(CURGAIN_BKP,NULL);
+		BKP_Write(CURSAMPLERATE_BKP,NULL);
+	}
+
+}
+
+/*! 
+ *	@fn			BKP_Service_Recovery 
+ *
+ *	@brief	备份恢复，本函数在备份服务检测异常后调用。
+ */
+void BKP_Service_Recovery()
+{
+	uint32_t val;
+		
+	/* Step 1.2 - 恢复采样相关属性 */
+	val = BKP_Read(CURGAIN_BKP);
+	if(val!=0)
+	{
+		App_WriteAttr((uint8_t)CURGAIN,val);					//!< 恢复全局增益属性值
+		AttrChangeProcess(CURGAIN);
+	}
+	
+	val = BKP_Read(CURSAMPLERATE_BKP);
+	if(val!=0)
+	{
+		App_WriteAttr((uint8_t)CURSAMPLERATE,val);		//!< 恢复全局采样率属性值
+		AttrChangeProcess(CURSAMPLERATE);	
+	}
+	
+	val = BKP_Read(SAMPLING_BKP);
+	if(val!=0)
+	{
+		App_WriteAttr((uint8_t)SAMPLING,val);					//!< 恢复正常采样属性值
+		AttrChangeProcess(SAMPLING);
+	}
+}
+
+/*! @fn			BKP_Write 
+ *	
+ *	@param 	bkpParam - 待备份参数
+ *					bkpValue - 待备份参数值
+ *
+ *	@return NULL
+ */
+void BKP_Write(uint32_t bkpParam, uint32_t bkpValue)
+{
+	LL_RTC_BAK_SetRegister(RTC,bkpParam,bkpValue);
+}
+
+/*! @fn			BKP_Read 
+ *	
+ *	@param 	bkpParam - 待读取的备份参数
+ *
+ *	@return 备份参数值
+ */
+uint32_t BKP_Read(uint32_t bkpParam)
+{
+	uint32_t val;
+	
+	val = LL_RTC_BAK_GetRegister(RTC,bkpParam);
+	
+	return(val);
 }
