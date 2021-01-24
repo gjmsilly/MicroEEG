@@ -387,7 +387,7 @@ int main(void)
   MX_TIM2_Init();
   MX_USART1_UART_Init();
   MX_RTC_Init();
-  MX_IWDG_Init();
+
   /* USER CODE BEGIN 2 */
 	
 	//备份服务初始化
@@ -438,7 +438,7 @@ int main(void)
 	}
 
 	/* 开启独立看门狗 */
-	LL_IWDG_Enable(IWDG);
+  MX_IWDG_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
