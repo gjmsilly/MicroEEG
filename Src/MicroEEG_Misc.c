@@ -157,7 +157,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 				
 				case 8:
 					ChVal.control_bit.gain = 4;
-				//while(1); // 
+				while(1); // 
 				break;
 				
 				case 12:
@@ -356,12 +356,12 @@ void BKP_Service_Recovery()
 	uint32_t val;
 		
 	/* Step 1.2 - 恢复采样相关属性 */
-	val = BKP_Read(CURGAIN_BKP);
-	if(val!=0)
-	{
-		App_WriteAttr((uint8_t)CURGAIN,val);					//!< 恢复全局增益属性值
-		AttrChangeProcess(CURGAIN);
-	}
+//	val = BKP_Read(CURGAIN_BKP);
+//	if(val!=0)
+//	{
+//		App_WriteAttr((uint8_t)CURGAIN,val);					//!< 恢复全局增益属性值
+//		AttrChangeProcess(CURGAIN);
+//	}
 	
 	val = BKP_Read(CURSAMPLERATE_BKP);
 	if(val!=0)
