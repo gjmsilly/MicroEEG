@@ -667,6 +667,8 @@ uint8_t ADS1299_Mode_Config(uint8_t Mode)
 
 					/* »Ø¶Á1´Î */
 					ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
+					WaitUs(10);
+
 					}
 						while(ReadResult!=0x60);
 		

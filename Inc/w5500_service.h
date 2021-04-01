@@ -22,12 +22,8 @@ typedef struct
 /* Socket n配置参数 */
 typedef struct
 {
-	uint16_t Sn_Port;				//Socket n端口号/源端口号
-	
-	//本机为TCP客户端模式时配置	
-	uint16_t Sn_DPort;			//Socket n目的端口号 
-	uint8_t  Sn_DIP[4];			//Socket n目的IP地址 
-	
+	uint16_t Sn_Port;				//Socket n源端口号
+		
 	//本机为UDP模式时配置
 	uint16_t UDP_DPORT;			//Socket n目的端口号
 	uint8_t  UDP_DIPR[4];		//Socket n目的IP地址
