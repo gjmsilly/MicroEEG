@@ -217,10 +217,6 @@ static void W5500_Load_Net_Parameters(void)
 		//UDP(广播)模式需配置目的主机端口号 7002（default 上位机可修改）
 		(Psn_param+1)->UDP_DPORT = 7002;
 		
-		(Psn_param+1)->UDP_DIPR[0]=192;
-		(Psn_param+1)->UDP_DIPR[1]=168;
-		(Psn_param+1)->UDP_DIPR[2]=1;
-		(Psn_param+1)->UDP_DIPR[3]=101;
 	}
 	
 	/* Socket 2 配置 */	
@@ -390,13 +386,13 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 {
 	uint16_t recvsize=0,sentsize = 0; // 用于回环测试
 	uint8_t TCPserv_status; //!< TCP服务状态
-	uint16_t port=7001;
+	//uint16_t port=7001;
 	
 	switch(getSn_SR(sn)) //检查该socket的状态
 	{
 		/* Socket n 关闭 */
 		case SOCK_CLOSED:
-			socket(sn,Sn_MR_TCP,port,0); //打开Socket绑定TCP默认端口
+			socket(sn,Sn_MR_TCP,(Psn_param+sn)->Sn_Port,0); //打开Socket绑定TCP默认端口
 			//setSn_KPALVTR(sn,2);    //设置心跳包自动发送间隔，单位时间为5s
 			
 			TCPserv_status = Sn_OPEN;
@@ -419,8 +415,8 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 
 			if((recvsize = getSn_RX_RSR(sn))>0) //接收目的主机发来的TCP数据			
 			{
-				//getSn_DIPR(sn,(Psn_param+sn)->UDP_DIPR); //!<获取目的主机IP 以供UDP传输
 				
+				getSn_DIPR(sn,(Psn_param+sn)->UDP_DIPR); //!<获取目的主机IP 以供UDP传输	
 				DMA_recv(sn,TCP_Rx_Buff,recvsize);  //从接收缓冲区全部读取
 				
 				TCPserv_status = TCP_RECV;
@@ -428,7 +424,8 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 			/* 若无TCP帧服务，需手动添加以处理接收的TCP数据 */
 			
 			if( Procesflag & TCP_PROCESSCLP_EVT ) // 帧服务完成
-			{			
+			{
+							
 				send(sn, TCP_Tx_Buff, TCP_Tx_Buff[1]+3); //TCP回复目的主机
 				memset(TCP_Rx_Buff,0xff,sizeof(TCP_Rx_Buff));//清除TCP接收缓冲区
 				
@@ -465,15 +462,15 @@ uint8_t UDP_Service(uint8_t sn, uint16_t Procesflag)
 {
 	uint16_t recvsize=0;
 	uint8_t UDPserv_status,tmp; //!< UDP服务状态
-	uint8_t remoteip[4]={192,168,1,101};
-	uint16_t remoteport=7002;
+	//uint8_t remoteip[4]={192,168,1,101};
+	//uint16_t remoteport=7002;
 	
 	switch(getSn_SR(sn))
 	{
 		
 		/* Socket n 关闭 */
 		case SOCK_CLOSED:
-			socket(sn,Sn_MR_UDP,remoteport,0); //打开Socket绑定UDP默认端口
+			socket(sn,Sn_MR_UDP,(Psn_param+sn)->Sn_Port,0); //打开Socket绑定UDP默认端口
 		break;
 		
 		/* Socket n 已完成初始化 */
@@ -489,9 +486,9 @@ uint8_t UDP_Service(uint8_t sn, uint16_t Procesflag)
 					{			
 						DMA_sendto(sn, UDP_DTx_Buff,    				\
 											sizeof(UDP_DTx_Buff), 				\
-											remoteip,
-											remoteport);
-											//(Psn_param+sn)->UDP_DIPR,  	\
+											//remoteip,
+											//remoteport);
+											(Psn_param+0)->UDP_DIPR,  			\
 											(Psn_param+sn)->UDP_DPORT);  //一次发送UDP发送缓冲区所有数据
 					 
 						UDPserv_status = UDP_SEND;			 	
