@@ -31,7 +31,11 @@ DEALINGS IN THE SOFTWARE.
 #define __ADS1299_H
 
 #include "main.h"
+#include <stdbool.h>
 #include "stm32f4xx_hal.h"
+#include "stm32f4xx_ll_dma.h"
+#include "stm32f4xx_ll_spi.h"
+#include "stm32f4xx_ll_gpio.h"
 
 /****************************************************************/
 /* return types and return codes                                */
@@ -50,8 +54,8 @@ DEALINGS IN THE SOFTWARE.
 #define TIDC_ERR_REGS       (-9)
 
 
-//!<  ���������嶨�岻���� TI complier ���λ˳�򵹹���
-//!<	Ҫ�õ�������һ�����Ȳ鿴�ڴ����!!!
+//!<  以下联合体定义不适用 TI complier 需把位顺序倒过来
+//!<	要用到联合体一定请先查看内存分配!!!
 /****************************************************************/
 /* the following register definitions mirror the version given  */
 /* the datasheet dated Jan 2017                                 */
@@ -550,39 +554,100 @@ typedef struct
 #define ADS1299_REG_MISC2         (0x0016u)
 #define ADS1299_REG_CONFIG4       (0x0017u)
 
+/*********************************************************************************
+ * ADS1299 运行模式
+ * 1. ADS1299_ParaGroup_ACQ 采样模式
+ * 2. ADS1299_ParaGroup_IMP 阻抗检测模式
+ * 3. ADS1299_ParaGroup_STBY 空闲模式
+ * 4. ADS1299_ParaGroup_TSIG 测试模式
+ *********************************************************************************/
+#define ADS1299_ParaGroup_ACQ			1
+#define ADS1299_ParaGroup_IMP			2
+#define ADS1299_ParaGroup_STBY		3
+#define ADS1299_ParaGroup_TSIG		4
 
-#define ADS1299_ParaGroup_ACQ   1
-#define ADS1299_ParaGroup_IMP   2
-#define ADS1299_ParaGroup_STBY  3
-#define ADS1299_ParaGroup_TSIG  4
+/*********************************************************************************
+ * ADS1299 控制引脚（不包含差分模块，即Mod5）
+ * 1. CS 片选
+ *    - Mod_CS_Enable(chip) 1-4:单模块片选使能 other:所有模块片选使能
+ *    - Mod_CS_Disable 所有模块片选失能
+ * 2. RESET 复位
+ * 3. PWDN 电源
+ * 4. START 开始采集
+ * 5. DRDY 数据就绪
+ *    - Mod_DRDY_INT_Enable(chip) 1:模块1数据就绪中断使能 other:所有模块数据就绪中断使能
+ *    - Mod_DRDY_INT_Disable(chip)
+ *    - Mod_DRDY_INT_SET(chip)
+ *********************************************************************************/
+#define Mod_CS_Enable(chip)																				\
+	do {																														\
+		switch(chip){																									\
+			case 1:																											\
+				LL_GPIO_ResetOutputPin(Mod1_nCS_GPIO_Port, Mod1_nCS_Pin);	\
+				break;																										\
+			case 2:																											\
+				LL_GPIO_ResetOutputPin(Mod2_nCS_GPIO_Port, Mod2_nCS_Pin);	\
+				break;																										\
+			case 3:																											\
+				LL_GPIO_ResetOutputPin(Mod3_nCS_GPIO_Port, Mod3_nCS_Pin);	\
+				break;																										\
+			case 4:																											\
+				LL_GPIO_ResetOutputPin(Mod4_nCS_GPIO_Port, Mod4_nCS_Pin);	\
+				break;																										\
+			default:																										\
+				LL_GPIO_ResetOutputPin(Mod4_nCS_GPIO_Port, Mod1_nCS_Pin|Mod2_nCS_Pin|Mod3_nCS_Pin|Mod4_nCS_Pin); \
+			break;																											\
+		}																															\
+	} while(0)
+#define Mod_CS_Disable LL_GPIO_SetOutputPin(Mod4_nCS_GPIO_Port, Mod1_nCS_Pin|Mod2_nCS_Pin|Mod3_nCS_Pin|Mod4_nCS_Pin);
 
+#define Mod_RESET_L		LL_GPIO_ResetOutputPin(Mod_nRESET_GPIO_Port, Mod_nRESET_Pin)
+#define Mod_RESET_H		LL_GPIO_SetOutputPin(Mod_nRESET_GPIO_Port, Mod_nRESET_Pin)
 
-#define Mod_CS_Enable	 LL_GPIO_ResetOutputPin(Mod_nCS_GPIO_Port, Mod_nCS_Pin);
-#define Mod_CS_Disable LL_GPIO_SetOutputPin(Mod_nCS_GPIO_Port, Mod_nCS_Pin);
-#define Mod_RESET_L    LL_GPIO_ResetOutputPin(Mod_nRESET_GPIO_Port, Mod_nRESET_Pin);
-#define Mod_RESET_H    LL_GPIO_SetOutputPin(Mod_nRESET_GPIO_Port, Mod_nRESET_Pin);
-#define Mod_PDWN_L     LL_GPIO_ResetOutputPin( Mod_nPWDN_GPIO_Port,  Mod_nPWDN_Pin);
-#define Mod_PDWN_H     LL_GPIO_SetOutputPin( Mod_nPWDN_GPIO_Port,  Mod_nPWDN_Pin);
+#define Mod_PDWN_L		LL_GPIO_ResetOutputPin(Mod_nPWDN_GPIO_Port, Mod_nPWDN_Pin)
+#define Mod_PDWN_H		LL_GPIO_SetOutputPin(Mod_nPWDN_GPIO_Port, Mod_nPWDN_Pin)
 
-#define Mod_DRDY_INT_Enable    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_1); // Mods_nDRDY PE1
-#define Mod_DRDY_INT_Disable   LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_1);
+#define Mod_PDWN_L		LL_GPIO_ResetOutputPin(Mod_nPWDN_GPIO_Port, Mod_nPWDN_Pin)
+#define Mod_PDWN_H		LL_GPIO_SetOutputPin(Mod_nPWDN_GPIO_Port, Mod_nPWDN_Pin)
 
-
-
-void ADS1299_Init(uint8_t dev);
+#define Mod_START			LL_GPIO_SetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin)
+#define Mod_STOP			LL_GPIO_ResetOutputPin(Mod_START_GPIO_Port, Mod_START_Pin)
+		
+#define Mod_DRDY_INT_Enable(chip)																	\
+	do{																															\
+		if(chip==1)		LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_7);					\
+		else 					LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_1);					\
+	} while(0)
+#define Mod_DRDY_INT_Disable(chip)																\
+	do{																															\
+		if(chip==1)		LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_7);					\
+		else 					LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_1);					\
+	} while(0)
+	
+/*********************************************************************************
+ * ADS1299 通信接口
+ * 1. SPI
+ * 2. DMA
+ *********************************************************************************/
+#define SPI_Handle				SPI1
+#define DMA_Handle				DMA2
+#define DMA_RX_STREAM			LL_DMA_STREAM_0
+#define DMA_TX_STREAM			LL_DMA_STREAM_3	
+	
+void ADS1299_Init();
 
 void ADS1299_SendCommand(uint8_t command);
 void ADS1299_WriteREG(uint8_t dev, uint8_t address, uint8_t value);
 uint8_t ADS1299_ReadREG(uint8_t dev, uint8_t address);
+void ADS1299_Channel_Config(uint8_t chip, uint8_t channel, TADS1299CHnSET Para);
 
-void ADS1299_ReadResult(uint8_t *result);
-uint8_t ADS1299_ReadByte(void);
-void ADS1299_ReadResult_DMA(uint32_t DataHeadAddress, uint8_t DataLength);
+void ADS1299_ReadResult(uint8_t *pret);
 
-void ADS1299_Channel_Config(uint8_t dev, uint8_t channel, TADS1299CHnSET Para);
-void ADS1299_Parameter_Config(uint8_t mode,uint8_t sample,uint8_t gain);
-uint8_t ADS1299_Mode_Config(uint8_t);
+void ADS1299_Mode_Config(uint8_t Mode);
 
 void ADS1299_Sampling_Control(uint8_t Sampling);
+bool ADS1299_SetSamplerate(uint8_t chip, uint16_t Samplerate);
+bool ADS1299_SetGain(uint8_t chip, uint8_t gain);
+void ADS1299_Channel_Control(uint8_t chip, uint8_t channel, uint8_t PDn);
 
 #endif /*_ADS1299_H */

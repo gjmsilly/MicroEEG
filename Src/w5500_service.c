@@ -522,7 +522,7 @@ uint8_t UDP_Service(uint8_t sn, uint16_t Procesflag)
 					{
 							/* UDP标签帧服务处理完毕，回复标签+本机时间戳信息 */		
 						sendto(sn, UDP_TrgTx_Buff,  \
-										6, 		\
+										16, 		\
 										(Psn_param+sn)->UDP_DIPR,  	\
 										(Psn_param+sn)->UDP_DPORT);  //一次发送UDP发送缓冲区所有数据
 						

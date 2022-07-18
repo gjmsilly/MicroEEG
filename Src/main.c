@@ -65,7 +65,7 @@ static InsQUEUE InsQueue;				//!< TCP指令队列 -  存放变化的属性编号
 uint32_t TriggerTimeStamp;			//!< 标签事件发生时点
 
 SHELL_TypeDef shell;						//!< shell句柄
-uint8_t resultval[28];  				//!< ADS1299结果缓存区（shell调试用）
+extern uint8_t UDP_DTx_Buff[UDPD_Tx_Buff_Size];//!< ADS1299结果缓存区（shell调试用）
 uint8_t ReadResult;             //!< shell调试用
 /* USER CODE END PV */
 
@@ -82,21 +82,11 @@ static void MX_SPI2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_RTC_Init(void);
-static void MX_IWDG_Init(void);
 /* USER CODE BEGIN PFP */
 
 
 static void AttrChangeCB(uint8_t AttrNum); //!< 属性值变化回调函数	
 static void Sys_Control(); //!< 系统状态控制器
-
-//for EXPORT Functions
-void ADC_StartAcq(void);
-void ADC_StopAcq(void);
-void ADC_SendCommand(unsigned char cmd);
-void ADC_WriteReg(unsigned char offset,unsigned char data);
-void ladreg(void);
-void checkbuffer6B(unsigned char offset);
-void Get_TSG_CNT(void);
 
 /* USER CODE END PFP */
 
@@ -141,24 +131,24 @@ signed char ShellGetchar(char* ch)
  */
 void ADC_StartAcq(void)
 {
-	Mod_DRDY_INT_Enable //	使能nDReady中断
-	Mod_CS_Enable;
+	Mod_DRDY_INT_Enable(0);
+	
 	ADS1299_SendCommand(ADS1299_CMD_START);
 	ADS1299_SendCommand(ADS1299_CMD_RDATAC);	
+	
 	printf("Start Acquision!\r\n");
 }
-SHELL_EXPORT_CMD(ADC_StartAcq, ADC_StartAcq, nDRDY Interrupt Enable);
+SHELL_EXPORT_CMD(ADC_StartAcq, ADC_StartAcq,ADC start to sample);
 	
 void ADC_StopAcq(void)
 {
-	Mod_DRDY_INT_Disable //	关闭nDReady中断		
-	Mod_CS_Disable;
+	Mod_DRDY_INT_Disable(0);
+	
 	ADS1299_SendCommand(ADS1299_CMD_STOP);
 	ADS1299_SendCommand(ADS1299_CMD_SDATAC);
 	printf("Stop Acquision!\r\n");
 }
-SHELL_EXPORT_CMD(ADC_StopAcq, ADC_StopAcq, nDRDY Interrupt Disable);
-
+SHELL_EXPORT_CMD(ADC_StopAcq, ADC_StopAcq,ADC stop to sample);
 
 void ADC_SendCommand(unsigned char cmd)
 {
@@ -168,65 +158,85 @@ void ADC_SendCommand(unsigned char cmd)
 }
 SHELL_EXPORT_CMD(ADC_SendCommand, ADC_SendCommand, Send IMD Instruction);
 
-void ADC_WriteReg(unsigned char offset,unsigned char data)
+void ADC_WriteReg(unsigned char chip,unsigned char offset,unsigned char data)
 {
-	ADS1299_WriteREG(0,offset,data);
+	int chip1val;
 	
-	printf("1299's Reg has been written!\r\n");
+	if(chip!=1){
+		// read chip1's reg value first and backup
+		chip1val = ADS1299_ReadREG(1,ADS1299_REG_CH1SET + offset);
+		// change the specific chip's reg value
+		ADS1299_WriteREG(chip,offset,data);
+		// recovery the chip1 value
+		ADS1299_WriteREG(1,ADS1299_REG_CH1SET + offset,chip1val);
+	}
+	else
+	ADS1299_WriteREG(chip,offset,data);
 }
 SHELL_EXPORT_CMD(ADC_WriteReg, ADC_WriteReg, Write ADS1299 Register);
 
-void ladreg(void)
+void ADC_SetMode(unsigned char mode)
+{
+	ADS1299_Mode_Config(mode);
+	printf("ADC Mode %d is set!\r\n",mode);
+}
+SHELL_EXPORT_CMD(ADC_SetMode, ADC_SetMode, Set ADC mode:1-EEG_Acq 2-IMP_Meas 3-TEST);
+
+void ladreg(unsigned char chip)
 {
 	uint8_t i;
+	uint8_t ReadResult;
 	
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_DEVID);	
+	printf("1299's Registers Values:\r\n");
+	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_DEVID);	
 	printf("DEVID=%#x\r\n",ReadResult);
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CONFIG1);	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_CONFIG1);	
 	printf("CONF1=%#x\r\n",ReadResult);
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CONFIG2);	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_CONFIG2);	
 	printf("CONF2=%#x\r\n",ReadResult);
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CONFIG3);	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_CONFIG3);	
 	printf("CONF3=%#x\r\n",ReadResult);
 	
 	for(i=0;i<8;i++)
 	{
-		ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);	
+		ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_CH1SET+i);	
 		printf("CH%d=%#x\r\n",i,ReadResult);	
 	}
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_BIASSENSP);	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_BIASSENSP);	
 	printf("BIASSENSP=%#x\r\n",ReadResult);
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_BIASSENSN);	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_BIASSENSN);	
 	printf("BIASSENSN=%#x\r\n",ReadResult);
 	
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_LOFFSENSP);	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_LOFFSENSP);	
 	printf("LOFFSENSP=%#x\r\n",ReadResult);
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_LOFFSENSN);	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_LOFFSENSN);	
 	printf("LOFFSENSN=%#x\r\n",ReadResult);
 	
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_LOFFFLIP);	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_LOFFFLIP);	
 	printf("LOFFFLIP=%#x\r\n",ReadResult);
 	
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_MISC1);	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_MISC1);	
 	printf("MISC1=%#x\r\n",ReadResult);
 	
-	ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CONFIG4);	
+	ReadResult = ADS1299_ReadREG(chip,ADS1299_REG_CONFIG4);	
 	printf("CONF4=%#x\r\n",ReadResult);
 }
-SHELL_EXPORT_CMD(ladreg, ladreg, Read&List ADS1299 Register);
+SHELL_EXPORT_CMD(ladreg, ladreg, Read&List ADC Registers);
 
-
-void checkbuffer6B(unsigned char offset)
+void checkbuffer(unsigned char offset)
 {	
-	printf("%x %x %x %x %x %x\r\n",resultval[offset],resultval[offset+1],resultval[offset+2],resultval[offset+3],resultval[offset+4],resultval[offset+5]);
+	int i,j;
+	int chipNum = CHANNEL_NUM/8;
+	for(i=0 ; i<chipNum; i++){
+		for(j=0; j<27; j++){
+			printf("%x ",UDP_DTx_Buff[HEAD_SIZE+7+j]);
+		}
+		printf("\r\n");
+	}
+	printf("\r\n");
 }
-SHELL_EXPORT_CMD(checkbuffer6B, checkbuffer6B, Print buffer 6byte);
-
-void Get_TSG_CNT(void)
-{
-	printf("CNT=%d\r\n",TIM5->CNT);
-}
-SHELL_EXPORT_CMD(Get_TSG_CNT, Get_TSG_CNT, Get timestamp generator cnt);
+SHELL_EXPORT_CMD(checkbuffer, checkbuffer, Print buffer of ADC Sample Value);
 ////////////////////////////////////////////////////////////////////////////////
 
 /*!		@fn AttrChangeCB
@@ -387,7 +397,6 @@ int main(void)
   MX_TIM2_Init();
   MX_USART1_UART_Init();
   MX_RTC_Init();
-
   /* USER CODE BEGIN 2 */
 	
 	//备份服务初始化
@@ -438,7 +447,7 @@ int main(void)
 	}
 
 	/* 开启独立看门狗 */
-  MX_IWDG_Init();
+  //MX_IWDG_Init();
 	
   /* USER CODE END 2 */
 
@@ -447,7 +456,7 @@ int main(void)
   while (1)
   {
 		// 喂狗
-		LL_IWDG_ReloadCounter(IWDG);
+		//LL_IWDG_ReloadCounter(IWDG);
 		
 		// shell 服务
     shellTask(&shell);
@@ -478,13 +487,6 @@ void SystemClock_Config(void)
 
    /* Wait till HSE is ready */
   while(LL_RCC_HSE_IsReady() != 1)
-  {
-
-  }
-  LL_RCC_LSI_Enable();
-
-   /* Wait till LSI is ready */
-  while(LL_RCC_LSI_IsReady() != 1)
   {
 
   }
@@ -687,36 +689,6 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
-
-}
-
-/**
-  * @brief IWDG Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_IWDG_Init(void)
-{
-
-  /* USER CODE BEGIN IWDG_Init 0 */
-
-  /* USER CODE END IWDG_Init 0 */
-
-  /* USER CODE BEGIN IWDG_Init 1 */
-
-  /* USER CODE END IWDG_Init 1 */
-  LL_IWDG_Enable(IWDG);
-  LL_IWDG_EnableWriteAccess(IWDG);
-  LL_IWDG_SetPrescaler(IWDG, 8);
-  LL_IWDG_SetReloadCounter(IWDG, 4095); //4s
-  while (LL_IWDG_IsReady(IWDG) != 1)
-  {
-  }
-
-  LL_IWDG_ReloadCounter(IWDG);
-  /* USER CODE BEGIN IWDG_Init 2 */
-
-  /* USER CODE END IWDG_Init 2 */
 
 }
 
@@ -989,7 +961,7 @@ static void MX_TIM2_Init(void)
   PA3   ------> TIM2_CH4
   PA5   ------> TIM2_CH1
   */
-  GPIO_InitStruct.Pin = Label_TGR_Out_Pin|Label_TGR_OutA5_Pin;
+  GPIO_InitStruct.Pin = Label_TGR_In1_Pin|Label_TGR_Out_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
@@ -1085,7 +1057,7 @@ static void MX_GPIO_Init(void)
                           |PWR_LED1_Pin|EXTM_IO0_Pin|Mod_nPWDN_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOC, PWR_LED2_Pin|TRGPWR_EN_Pin|CAN_S_Pin);
+  LL_GPIO_ResetOutputPin(GPIOC, PWR_LED2_Pin|nChargeEN_Pin|TRGPWR_EN_Pin|CAN_S_Pin);
 
   /**/
   LL_GPIO_ResetOutputPin(GPIOD, Mod5_nCS_Pin|Mod5_START_Pin|Mod5_nRESET_Pin|Mod5_nPWDN_Pin);
@@ -1094,10 +1066,13 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(CAN_D_GPIO_Port, CAN_D_Pin);
 
   /**/
-  LL_GPIO_ResetOutputPin(GPIOB, Mod_nCS_Pin|Mod_START_Pin|Mod_nRESET_Pin);
+  LL_GPIO_ResetOutputPin(GPIOB, Mod_START_Pin|Mod_nRESET_Pin);
 
   /**/
   LL_GPIO_SetOutputPin(W5500_nRST_GPIO_Port, W5500_nRST_Pin);
+
+  /**/
+  LL_GPIO_SetOutputPin(GPIOD, Mod1_nCS_Pin|Mod2_nCS_Pin|Mod3_nCS_Pin|Mod4_nCS_Pin);
 
   /**/
   GPIO_InitStruct.Pin = ERR_LED2_Pin|ERR_LED1_Pin|ACQ_LED2_Pin|ACQ_LED1_Pin
@@ -1109,7 +1084,7 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = PWR_LED2_Pin|TRGPWR_EN_Pin|CAN_S_Pin;
+  GPIO_InitStruct.Pin = PWR_LED2_Pin|nChargeEN_Pin|TRGPWR_EN_Pin|CAN_S_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
@@ -1117,22 +1092,10 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = KeyPad_IO7_Pin;
+  GPIO_InitStruct.Pin = PGau_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  LL_GPIO_Init(KeyPad_IO7_GPIO_Port, &GPIO_InitStruct);
-
-  /**/
-  GPIO_InitStruct.Pin = KeyPad_IO6_Pin|KeyPad_IO5_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /**/
-  GPIO_InitStruct.Pin = KeyPad_IO4_Pin|KeyPad_IO3_Pin|KeyPad_IO2_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  LL_GPIO_Init(PGau_GPIO_Port, &GPIO_InitStruct);
 
   /**/
   GPIO_InitStruct.Pin = KeyPad_IO1_Pin|KeyPad_IO0_Pin|EXTM_IO3_Pin|EXTM_IO2_Pin
@@ -1158,7 +1121,15 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = Mod_nCS_Pin|Mod_START_Pin|Mod_nRESET_Pin;
+  GPIO_InitStruct.Pin = Mod1_nCS_Pin|Mod2_nCS_Pin|Mod3_nCS_Pin|Mod4_nCS_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+  LL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = Mod_START_Pin|Mod_nRESET_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
@@ -1166,7 +1137,7 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /**/
-  LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE6);
+  LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTA, LL_SYSCFG_EXTI_LINE6);
 
   /**/
   LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTD, LL_SYSCFG_EXTI_LINE0);
@@ -1216,7 +1187,7 @@ static void MX_GPIO_Init(void)
   LL_EXTI_Init(&EXTI_InitStruct);
 
   /**/
-  LL_GPIO_SetPinPull(Mod5_nDRDY_GPIO_Port, Mod5_nDRDY_Pin, LL_GPIO_PULL_NO);
+  LL_GPIO_SetPinPull(Label_TGR_In2_GPIO_Port, Label_TGR_In2_Pin, LL_GPIO_PULL_NO);
 
   /**/
   LL_GPIO_SetPinPull(W5500_nINT_GPIO_Port, W5500_nINT_Pin, LL_GPIO_PULL_NO);
@@ -1231,7 +1202,7 @@ static void MX_GPIO_Init(void)
   LL_GPIO_SetPinPull(Mods_nDRDY_GPIO_Port, Mods_nDRDY_Pin, LL_GPIO_PULL_NO);
 
   /**/
-  LL_GPIO_SetPinMode(Mod5_nDRDY_GPIO_Port, Mod5_nDRDY_Pin, LL_GPIO_MODE_INPUT);
+  LL_GPIO_SetPinMode(Label_TGR_In2_GPIO_Port, Label_TGR_In2_Pin, LL_GPIO_MODE_INPUT);
 
   /**/
   LL_GPIO_SetPinMode(W5500_nINT_GPIO_Port, W5500_nINT_Pin, LL_GPIO_MODE_INPUT);

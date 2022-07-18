@@ -454,13 +454,13 @@ uint8_t UDP_TriggerProcess()
 {
 	uint32_t *pDataTimeStamp = &TriggerTimeStamp; //!< 获取数据时间戳
 	
-	UDP_TrgTx_Buff[0]=*(uint8_t *)(pDataTimeStamp);	//!< 样本时间戳 - 增量型（每样本相对开始采样时点的时间增量）精度10us，注意小端对齐
-	UDP_TrgTx_Buff[1]=*((uint8_t *)(pDataTimeStamp)+1);
-	UDP_TrgTx_Buff[2]=*((uint8_t *)(pDataTimeStamp)+2);
-	UDP_TrgTx_Buff[3]=*((uint8_t *)(pDataTimeStamp)+3);
+	UDP_TrgTx_Buff[9]=*(uint8_t *)(pDataTimeStamp);	//!< 样本时间戳 - 增量型（每样本相对开始采样时点的时间增量）精度10us，注意小端对齐
+	UDP_TrgTx_Buff[10]=*((uint8_t *)(pDataTimeStamp)+1);
+	UDP_TrgTx_Buff[11]=*((uint8_t *)(pDataTimeStamp)+2);
+	UDP_TrgTx_Buff[12]=*((uint8_t *)(pDataTimeStamp)+3);
  
-	UDP_TrgTx_Buff[4]= UDP_TrgRx_Buff[0];
-	UDP_TrgTx_Buff[5]= UDP_TrgRx_Buff[1];
+	UDP_TrgTx_Buff[13]= UDP_TrgRx_Buff[1];
+	UDP_TrgTx_Buff[14]= UDP_TrgRx_Buff[2];
 
 	 return SUCCESS;			 
 }
