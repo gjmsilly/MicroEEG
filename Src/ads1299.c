@@ -562,6 +562,8 @@ void ADS1299_Channel_Control(uint8_t chip, uint8_t channel, uint8_t PDn)
 	}
 	else
 	{
-		return; // 不操作
+		chVal.control_bit.mux = 0x00;  // input shorted
+		chVal.control_bit.pd = 0x00; // power down
+		ADS1299_Channel_Config(chip,channel,chVal);
 	}
 }

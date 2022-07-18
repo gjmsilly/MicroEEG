@@ -164,16 +164,35 @@ void ADC_WriteReg(unsigned char chip,unsigned char offset,unsigned char data)
 	
 	if(chip!=1){
 		// read chip1's reg value first and backup
-		chip1val = ADS1299_ReadREG(1,ADS1299_REG_CH1SET + offset);
+		chip1val = ADS1299_ReadREG(1,offset);
 		// change the specific chip's reg value
 		ADS1299_WriteREG(chip,offset,data);
 		// recovery the chip1 value
-		ADS1299_WriteREG(1,ADS1299_REG_CH1SET + offset,chip1val);
+		ADS1299_WriteREG(1,offset,chip1val);
 	}
 	else
 	ADS1299_WriteREG(chip,offset,data);
 }
 SHELL_EXPORT_CMD(ADC_WriteReg, ADC_WriteReg, Write ADS1299 Register);
+
+
+void ADC_ChannelConfig(unsigned char chip,unsigned char channel,unsigned char sw)
+{
+	int chip1val;
+	
+	if(chip!=1){
+		// read chip1's reg value first and backup
+		chip1val = ADS1299_ReadREG(1,ADS1299_REG_CH1SET + channel);
+		// change the specific chip's reg value
+		ADS1299_Channel_Control(chip,channel,sw);
+		// recovery the chip1 value
+		ADS1299_WriteREG(1,ADS1299_REG_CH1SET + channel,chip1val);
+	}
+	else
+	ADS1299_Channel_Control(chip,channel,sw);
+}
+SHELL_EXPORT_CMD(ADC_ChannelConfig, ADC_ChannelConfig, Channel Switch:0-close 1-open);
+
 
 void ADC_SetMode(unsigned char mode)
 {
