@@ -1,7 +1,7 @@
 /**
- * @file    AttritubeTable.c
+ * @file    AttrTbl.c
  * @author  gjmsilly
- * @brief   MicroEEG_M1 å±žæ€§è¡¨
+ * @brief   MicroEEG_M1 ÊôÐÔ±í
  * @version 0.1
  * @date    2020-09-01
  *
@@ -18,45 +18,58 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+
 /***********************************************************************
  * LOCAL VARIABLES
  */
-//!< å±žæ€§æ€»è¡¨
-static uint8_t* pattr_offset[ATTR_NUM];		//!< å±žæ€§åç§»åœ°å€
+//!< ÊôÐÔ×Ü±í
+static uint8_t* pattr_offset[ATTR_NUM];		//!< ÊôÐÔÆ«ÒÆµØÖ· 
+static uint8_t* pchxattr_offset[CHANNEL_NUM][10];		//!< Í¨µÀÊôÐÔÆ«ÒÆµØÖ· 
 
-//!< åŸºæœ¬ä¿¡æ¯ç»„ å±žæ€§
+//!< »ù±¾ÐÅÏ¢×é ÊôÐÔ
 const	uint16_t channelnum = CHANNEL_NUM;
 
-//!< å·¥ä½œçŠ¶æ€ä¸ŽæŽ§åˆ¶ç»„ å±žæ€§
+//!< ¹¤×÷×´Ì¬Óë¿ØÖÆ×é ÊôÐÔ
 static bool 	sampling;
-static int8_t	impmeas_mode;
-static int8_t	impmeas_fxn;
+static bool		impmeas_en;
+static uint8_t	impmeas_mode;
 
-//!< é€šä¿¡å‚æ•°ç»„ å±žæ€§
+//!< Í¨ÐÅ²ÎÊý×é ÊôÐÔ
 Dev_PortStat_t dev_portstat; 
 uint16_t samplenum = SAMPLENUM;
 
-//!< é‡‡æ ·å‚æ•°ç»„ å±žæ€§
-static uint32_t cursamprate = SPS_250;
+//!< ²ÉÑù²ÎÊý×é ÊôÐÔ
+static uint32_t cursamprate = SPS_1K;
 static uint32_t samprate_tbl[]={SPS_250,SPS_500,SPS_1K,SPS_2K,SPS_4K};
 static uint32_t curgain = GAIN_X24;
 static uint32_t gain_tbl[]={GAIN_X1,GAIN_X2,GAIN_X4,GAIN_X6,GAIN_X8,GAIN_X12,GAIN_X24};
-	
+
+//!< Í¨µÀÊôÐÔÏà¹Ø
+static bool chx_en[CHANNEL_NUM];
+//static uint32_t chx_gain[CHANNEL_NUM]; //±¾°æ±¾¾ù²»Ö§³Öµ¥¶ÀÐÞ¸Ä£¬±£³ÖºÍÈ«¾ÖÒ»ÖÂ
+//static uint32_t chx_sampletare[CHANNEL_NUM];
+static bool chx_lead_off_en[CHANNEL_NUM];
+static bool chx_lead_off_stat[CHANNEL_NUM];
+static uint32_t chx_lead_off_th[CHANNEL_NUM];
+static bool chx_gnd[CHANNEL_NUM];
+static bool chx_biasout[CHANNEL_NUM];
+static uint32_t chx_imp[CHANNEL_NUM]; 
+
 /************************************************************************
  *  Attributes  Table
  */
 const Attr_Tbl_t attr_tbl = {
 
 	/*
-	 *  ======================== åŸºæœ¬ä¿¡æ¯ç»„ ==============================
+	 *  ======================== »ù±¾ÐÅÏ¢×é ==============================
 	 */
-		//!< ä»ªå™¨UID  
+		//!< ÒÇÆ÷UID  
 		.Dev_UID			= {	ATTR_RO,									/* permissions */
 											4,												/* datasize */
 											(uint32_t*)CPU_UUID_ADDR  /* pAttrValue */
 										},
 		
-		//!< ä»ªå™¨æ€»é€šé“æ•°
+		//!< ÒÇÆ÷×ÜÍ¨µÀÊý
 		.Dev_ChNum		= { ATTR_RO,
 											2,
 											(uint32_t*)&channelnum
@@ -64,90 +77,92 @@ const Attr_Tbl_t attr_tbl = {
 															
 	
 	/*
-	 *  ===================== å·¥ä½œçŠ¶æ€ä¸ŽæŽ§åˆ¶ç»„ ===========================
+	 *  ===================== ¹¤×÷×´Ì¬Óë¿ØÖÆ×é ===========================
 	 */
 		
-		//!< é‡‡æ ·æŽ§åˆ¶ 0-åœæ­¢é‡‡æ · 1-å¼€å§‹é‡‡æ · 
+		//!< ²ÉÑù¿ª¹Ø 0-Í£Ö¹²ÉÑù 1-¿ªÊ¼²ÉÑù 
 		.Sampling			= {	ATTR_RS,							/* permissions */
 											1,										/* datasize */
 											(uint32_t*)&sampling  /* pAttrValue */
 										},
 		
-		//!< é˜»æŠ—æµ‹é‡æ¨¡å¼	0- æ— é˜»æŠ—æµ‹é‡ 
-		.IMPMeas_Mode	= { ATTR_RS,
+		//!< ×è¿¹²âÁ¿¿ª¹Ø 0-²ÉÑùÄ£Ê½ 1-×è¿¹¼ì²âÄ£Ê½
+		.IMPMeas_En		= { ATTR_RS,
 											1,
-											(uint32_t*)&impmeas_mode
+											(uint32_t*)&impmeas_en
 										},
 											
-		//!< é˜»æŠ—æµ‹é‡æ–¹æ¡ˆ	0- æ­£å¼¦æ³¢æµ‹ACç”µé˜» 1- æµ‹DCç”µé˜» 2- äº¤æµæ¿€åŠ±æµ‹é˜»æŠ—
-		.IMPMeas_fxn	= { ATTR_RS,
+		//!< ×è¿¹²âÁ¿·½°¸	0- ÕýÏÒ²¨²âACµç×è 1- ²âDCµç×è 2- ½»Á÷¼¤Àø²â×è¿¹
+		.IMPMeas_Mode	= { ATTR_RS,
 											1,
-										 (uint32_t*)&impmeas_fxn
+										 (uint32_t*)&impmeas_mode
 										},			 
 
 	/*
-	 *  ======================== é€šä¿¡å‚æ•°ç»„ ==============================
+	 *  ======================== Í¨ÐÅ²ÎÊý×é ==============================
 	 */
 			 
-		//!< ä»ªå™¨ç½‘å£MACåœ°å€  0c-29-ab-7c-00-01 (default) 
+		//!< ÒÇÆ÷Íø¿ÚMACµØÖ·  0c-29-ab-7c-00-01 (default) 
 		.Dev_MAC				= { ATTR_RO,
 												6,
 												(uint32_t*)net_param.Phy_Addr
 											},
 		
-		//!< ä»ªå™¨å½“å‰IPåœ°å€ 192.168.1.10 (default) 
+		//!< ÒÇÆ÷µ±Ç°IPµØÖ· 192.168.1.10 (default) 
 		.Dev_IP					=	{ ATTR_NV,
 												4,
 												(uint32_t*)net_param.IP_Addr
 											},
 			
-		//!< ä»ªå™¨ç½‘å£çŠ¶æ€
+		//!< ÒÇÆ÷Íø¿Ú×´Ì¬
 		.Dev_PortStat		= { ATTR_RA,
 												1,
 												(uint32_t*)&dev_portstat
 											},
 		
-		//!< ç›®çš„ä¸»æœºUDPç«¯å£å· - 7002 (default)
+		//!< Ä¿µÄÖ÷»úUDP¶Ë¿ÚºÅ - 7002 (default)
 		.Host_Port			= { ATTR_NV,
 												2,
 												(uint32_t*)&sn_param[1].UDP_DPORT
 											},
 		
-		//!< ä»¥å¤ªç½‘æ¯åŒ…å«adæ ·æœ¬æ•° - 10 (default)
+		//!< ÒÔÌ«ÍøÃ¿°üº¬adÑù±¾Êý - 10 (default)
 		.SampleNum			= { ATTR_RS,
 												1,
 												(uint32_t*)&samplenum
 											},   
 
 	/*
-	 *  ======================== é€šä¿¡å‚æ•°ç»„ ==============================
+	 *  ======================== Í¨ÐÅ²ÎÊý×é ==============================
 	 */
 			 
-		//!< æ”¯æŒçš„é‡‡æ ·çŽ‡æŒ¡ä½		
+		//!< Ö§³ÖµÄ²ÉÑùÂÊµ²Î»		
 		.Samprate_tbl		= { ATTR_RO,
 												sizeof(samprate_tbl),
 												(uint32_t*)&samprate_tbl
 											},
 		
-		//!< å½“å‰å…¨å±€é‡‡æ ·çŽ‡ 1ksps (default) 
+		//!< µ±Ç°È«¾Ö²ÉÑùÂÊ 1ksps (default) 
 		.CurSamprate		=	{ ATTR_RS,
 												4,
 												(uint32_t*)&cursamprate
 											},
 		
-		//!< æ”¯æŒçš„å¢žç›ŠæŒ¡ä½
+		//!< Ö§³ÖµÄÔöÒæµ²Î»
 		.Gain_tbl				= { ATTR_RO,
 												sizeof(gain_tbl),
 												(uint32_t*)&gain_tbl
 											},
 		
-		//!< å½“å‰å…¨å±€å¢žç›Š x24 (default) 
+		//!< µ±Ç°È«¾ÖÔöÒæ x24 (default) 
 		.CurGain				=	{ ATTR_RS,
 												4,
 												(uint32_t*)&curgain
 											},		
 };
 
+/* Í¨µÀÊôÐÔ±í */
+static CHx_Param_t CHx_Param[CHANNEL_NUM];
 
 /************************************************************************
  *  Callbacks
@@ -165,21 +180,21 @@ static uint8_t WriteAttrCB(	uint8_t InsAttrNum,
 
 static AttrCBs_t attr_CBs =
 {
-	.pfnReadAttrCB = ReadAttrCB,					//!< è¯»å±žæ€§å›žè°ƒå‡½æ•°æŒ‡é’ˆ 
-	.pfnWriteAttrCB = WriteAttrCB					//!< å†™å±žæ€§å›žè°ƒå‡½æ•°æŒ‡é’ˆ
+	.pfnReadAttrCB = ReadAttrCB,					//!< ¶ÁÊôÐÔ»Øµ÷º¯ÊýÖ¸Õë 
+	.pfnWriteAttrCB = WriteAttrCB					//!< Ð´ÊôÐÔ»Øµ÷º¯ÊýÖ¸Õë
 };
 
 //////////////////////////////////////////////////////////////////////////
 
-static pfnAttrChangeCB_t pAppCallbacks; //!< åº”ç”¨ç¨‹åºå›žè°ƒå‡½æ•°æŒ‡é’ˆ 
+static pfnAttrChangeCB_t pAppCallbacks; //!< Ó¦ÓÃ³ÌÐò»Øµ÷º¯ÊýÖ¸Õë 
 
 /*!
- *  @fn	åº”ç”¨ç¨‹åºæ³¨å†Œå›žè°ƒå‡½æ•°çš„æŽ¥å£
+ *  @fn	Ó¦ÓÃ³ÌÐò×¢²á»Øµ÷º¯ÊýµÄ½Ó¿Ú
  *
- *	@param åº”ç”¨ç¨‹åºçš„å±žæ€§å€¼å˜åŒ–å›žè°ƒå‡½æ•°
+ *	@param Ó¦ÓÃ³ÌÐòµÄÊôÐÔÖµ±ä»¯»Øµ÷º¯Êý
  *
- *	@return SUCCESS - å›žè°ƒå‡½æ•°æ³¨å†ŒæˆåŠŸ
- *					FAILURE - å›žè°ƒå‡½æ•°æ³¨å†Œå¤±è´¥
+ *	@return SUCCESS - »Øµ÷º¯Êý×¢²á³É¹¦
+ *					FAILURE - »Øµ÷º¯Êý×¢²áÊ§°Ü
  */
 uint8_t Attr_Tbl_RegisterAppCBs(void *appcallbacks)
 {
@@ -195,33 +210,45 @@ uint8_t Attr_Tbl_RegisterAppCBs(void *appcallbacks)
 }
 
 /*!
- *  @fn	    è¯»å±žæ€§å›žè°ƒå‡½æ•°
+ *  @fn	    ¶ÁÊôÐÔ»Øµ÷º¯Êý
  *
- *	@param	InsAttrNum - å¾…è¯»å±žæ€§ç¼–å·
- *					CHxNum - é€šé“ç¼–å·ï¼ˆé€šé“å±žæ€§ä¸“ç”¨ï¼Œé»˜è®¤ä¸ç”¨	0xFFï¼‰
- *					pValue - å±žæ€§å€¼ ï¼ˆto be returnedï¼‰
- *					pLen - å±žæ€§å€¼å¤§å°ï¼ˆto be returnedï¼‰
+ *	@param	InsAttrNum - ´ý¶ÁÊôÐÔ±àºÅ
+ *					CHxNum - Í¨µÀ±àºÅ£¨Í¨µÀÊôÐÔ×¨ÓÃ£¬Ä¬ÈÏ²»ÓÃ	0xFF£©
+ *					pValue - ÊôÐÔÖµ £¨to be returned£©
+ *					pLen - ÊôÐÔÖµ´óÐ¡£¨to be returned£©
  *
- *	@return SUCCESS è¯»å–å±žæ€§å€¼æˆåŠŸ
- *					ATTR_NOT_FOUND å±žæ€§ä¸å­˜åœ¨
+ *	@return SUCCESS ¶ÁÈ¡ÊôÐÔÖµ³É¹¦
+ *					ATTR_NOT_FOUND ÊôÐÔ²»´æÔÚ
  */
 static uint8_t ReadAttrCB(	uint8_t InsAttrNum,uint8_t CHxNum, 
 														uint8_t *pValue, uint8_t *pLen )
 {
 	uint8_t status = SUCCESS;
-	uint8_t *pAttrValue;	//!< å±žæ€§å€¼åœ°å€
+	uint8_t *pAttrValue;	//!< ÊôÐÔÖµµØÖ·
 
-	if( (InsAttrNum > ATTR_NUM ) && ( CHxNum == 0xFF ))
+	if ((InsAttrNum > CHANNEL_NUM ) && ( CHxNum != 0xFF ) )
 	{
-		status = ATTR_NOT_FOUND; //!< å±žæ€§ä¸å­˜åœ¨
+		status = ATTR_NOT_FOUND; //!< Í¨µÀÊôÐÔ²»´æÔÚ	
+	}
+	else if( (InsAttrNum > ATTR_NUM ) && ( CHxNum == 0xFF ))
+	{
+		status = ATTR_NOT_FOUND; //!< ÊôÐÔ²»´æÔÚ
 	}
 	
-	//!< è¯»å±žæ€§å€¼
+	//!< ¶ÁÊôÐÔÖµ
 	if(status == SUCCESS)
 	{
-		pAttrValue = (uint8_t*)*(uint32_t*)(pattr_offset[InsAttrNum]+2);//!< å±žæ€§å€¼åœ°å€ä¼ é€’
-		*pLen = *(pattr_offset[InsAttrNum]+1); //!< å±žæ€§å€¼å¤§å°ä¼ é€’ï¼ˆå€¼ä¼ é€’!åœ°å€ä¸å˜ 9.13ï¼‰
-		memcpy(pValue,pAttrValue,*pLen); //!< å±žæ€§å€¼è¯»å–
+		if( CHxNum == 0xFF ) //Í¨ÓÃÊôÐÔ¶Á²Ù×÷
+		{
+			pAttrValue = (uint8_t*)*(uint32_t*)(pattr_offset[InsAttrNum]+2);//!< ÊôÐÔÖµµØÖ·´«µÝ
+			*pLen = *(pattr_offset[InsAttrNum]+1); //!< ÊôÐÔÖµ´óÐ¡´«µÝ£¨Öµ´«µÝ!µØÖ·²»±ä 9.13£©
+		}else //Í¨µÀÊôÐÔ¶Á²Ù×÷
+		{
+			pAttrValue = (uint8_t*)*(uint32_t*)(pchxattr_offset[CHxNum][InsAttrNum]+2);//!< ÊôÐÔÖµµØÖ·´«µÝ
+			*pLen = *(pchxattr_offset[CHxNum][InsAttrNum]+1); //!< ÊôÐÔÖµ´óÐ¡´«µÝ£¨Öµ´«µÝ!µØÖ·²»±ä 9.13£©
+		}
+		
+		memcpy(pValue,pAttrValue,*pLen); //!< ÊôÐÔÖµ¶ÁÈ¡
 	}
 	
 	return status;
@@ -229,51 +256,67 @@ static uint8_t ReadAttrCB(	uint8_t InsAttrNum,uint8_t CHxNum,
 }
 
 /*!
- *  @fn			å†™å±žæ€§å›žè°ƒå‡½æ•°
+ *  @fn			Ð´ÊôÐÔ»Øµ÷º¯Êý
  *
- *	@param	InsAttrNum - å¾…å†™å…¥å±žæ€§ç¼–å·
- *					CHxNum - é€šé“ç¼–å·ï¼ˆé€šé“å±žæ€§ä¸“ç”¨ï¼Œé»˜è®¤ä¸ç”¨	0xFFï¼‰
- *					pValue - å¾…å†™å…¥æ•°æ®çš„æŒ‡é’ˆ
- *					pLen - å¾…å†™å…¥æ•°æ®å¤§å°
+ *	@param	InsAttrNum - ´ýÐ´ÈëÊôÐÔ±àºÅ
+ *					CHxNum - Í¨µÀ±àºÅ£¨Í¨µÀÊôÐÔ×¨ÓÃ£¬Ä¬ÈÏ²»ÓÃ	0xFF£©
+ *					pValue - ´ýÐ´ÈëÊý¾ÝµÄÖ¸Õë
+ *					pLen - ´ýÐ´ÈëÊý¾Ý´óÐ¡
  *
- *	@return SUCCESS è¯»å–å±žæ€§å€¼æˆåŠŸ
- *					ATTR_NOT_FOUND å±žæ€§ä¸å­˜åœ¨
+ *	@return SUCCESS ¶ÁÈ¡ÊôÐÔÖµ³É¹¦
+ *					ATTR_NOT_FOUND ÊôÐÔ²»´æÔÚ
  */
 static uint8_t WriteAttrCB( uint8_t InsAttrNum,uint8_t CHxNum, 
 														uint8_t *pValue, uint8_t len )
 {
 	uint8_t status;
-	uint8_t notifyApp=0xFF;	//!< æ ‡å¿—ä½ - é€šçŸ¥ä¸Šå±‚åº”ç”¨ç¨‹åºå±žæ€§å€¼å˜åŒ–
-	uint8_t AttrPermission;	//!< å±žæ€§è¯»å†™æƒé™	
-	uint8_t AttrLen;				//!< å±žæ€§å€¼å¤§å°
-	uint8_t *pAttrValue;		//!< å±žæ€§å€¼åœ°å€	
+	uint8_t notifyApp=0xFF;	//!< ±êÖ¾Î» - Í¨ÖªÉÏ²ãÓ¦ÓÃ³ÌÐòÊôÐÔÖµ±ä»¯
+	uint8_t AttrPermission;	//!< ÊôÐÔ¶ÁÐ´È¨ÏÞ	
+	uint8_t AttrLen;				//!< ÊôÐÔÖµ´óÐ¡
+	uint8_t *pAttrValue;		//!< ÊôÐÔÖµµØÖ·	
 	
-	AttrPermission = *(pattr_offset[InsAttrNum]); 
-	AttrLen = *(pattr_offset[InsAttrNum]+1); 
-	
-	if( (InsAttrNum > ATTR_NUM ) && ( CHxNum == 0xFF ))
+	if(CHxNum == 0xFF)
 	{
-		status = ATTR_NOT_FOUND; //!< å±žæ€§ä¸å­˜åœ¨
+		AttrPermission = *(pattr_offset[InsAttrNum]); 
+		AttrLen = *(pattr_offset[InsAttrNum]+1); 
+	}else{
+		AttrPermission = *(pchxattr_offset[CHxNum][InsAttrNum]); 
+		AttrLen = *(pchxattr_offset[CHxNum][InsAttrNum]+1); 
+	}
+
+	
+	if ((InsAttrNum > CHANNEL_NUM ) && ( CHxNum != 0xFF ) )
+	{
+		status = ATTR_NOT_FOUND; //!< Í¨µÀÊôÐÔ²»´æÔÚ	
+	}
+	else if( (InsAttrNum > ATTR_NUM ) && ( CHxNum == 0xFF ) )
+	{
+		status = ATTR_NOT_FOUND; //!< ÊôÐÔ²»´æÔÚ
 	}
 	else if(( AttrPermission == ATTR_RO )||( AttrPermission == ATTR_NV ))
 	{
-		status = ATTR_ERR_RO; //!< å±žæ€§ä¸å…è®¸å†™æ“ä½œ
+		status = ATTR_ERR_RO; //!< ÊôÐÔ²»ÔÊÐíÐ´²Ù×÷
 	}
 	else if( len!= AttrLen)
 	{
-		status = ATTR_ERR_SIZE; //!< å¾…å†™æ•°æ®é•¿åº¦ä¸Žå±žæ€§å€¼é•¿åº¦ä¸ç¬¦
+		status = ATTR_ERR_SIZE; //!< ´ýÐ´Êý¾Ý³¤¶ÈÓëÊôÐÔÖµ³¤¶È²»·û
 	}
 	else status = SUCCESS;
 	
-	//!< å†™å±žæ€§å€¼å¹¶é€šçŸ¥ä¸Šå±‚åº”ç”¨ç¨‹åºï¼ˆAttrChange_Processï¼‰
-	if(status == SUCCESS)
+	//!< Ð´ÊôÐÔÖµ²¢Í¨ÖªÉÏ²ãÓ¦ÓÃ³ÌÐò£¨AttrChange_Process£©
+	if ( status == SUCCESS )
 	{
-		pAttrValue = (uint8_t*)*(uint32_t*)(pattr_offset[InsAttrNum]+2);//!< å±žæ€§å€¼åœ°å€ä¼ é€’
-
-		memcpy(pAttrValue,pValue,len); //!< å±žæ€§å€¼å†™å…¥
+		if( CHxNum == 0xFF ) //Í¨ÓÃÊôÐÔÐ´²Ù×÷
+		{
+			pAttrValue = (uint8_t*)*(uint32_t*)(pattr_offset[InsAttrNum]+2);//!< ÊôÐÔÖµµØÖ·´«µÝ
+		} else //Í¨µÀÊôÐÔÐ´²Ù×÷
+		{
+			pAttrValue = (uint8_t*)*(uint32_t*)(pchxattr_offset[CHxNum][InsAttrNum]+2);//!< ÊôÐÔÖµµØÖ·´«µÝ 
+		}
+		
+		memcpy(pAttrValue,pValue,len); //!< ÊôÐÔÖµÐ´Èë
 		notifyApp=InsAttrNum;
 	}
-	
 	if( (notifyApp!=0xFF) && pAppCallbacks )
 	{
 		(*pAppCallbacks)(notifyApp);
@@ -283,21 +326,109 @@ static uint8_t WriteAttrCB( uint8_t InsAttrNum,uint8_t CHxNum,
 
 }
  /************************************************************************
+ * LOCAL FUNCTIONS
+ */
+static void CHx_Tbl_Init()
+{
+	int i;
+	
+	for( i=0; i<CHANNEL_NUM; i++ ){
+		
+		/* ±¾Í¨µÀÑ¡¼þÔöÒæ - È«¾ÖÔöÒæ */
+		CHx_Param[i].CHx_ConGain.permissions = ATTR_RO;
+		CHx_Param[i].CHx_ConGain.Attrsize = 4;
+		CHx_Param[i].CHx_ConGain.pAttrValue = (uint32_t*)&curgain;
+	
+		/* ±¾Í¨µÀÔÊÐí */
+		CHx_Param[i].CHx_En.permissions = ATTR_RS;
+		CHx_Param[i].CHx_En.Attrsize = 1;
+		CHx_Param[i].CHx_En.pAttrValue = (uint32_t*)&chx_en[i];
+
+		/* ±¾Í¨µÀÔöÒæ */
+		CHx_Param[i].CHx_Gain.permissions = ATTR_RO;
+		CHx_Param[i].CHx_Gain.Attrsize = 4;
+		CHx_Param[i].CHx_Gain.pAttrValue = (uint32_t*)&curgain;		
+		
+		/* ±¾Í¨µÀ²ÉÑùÂÊ */
+		CHx_Param[i].CHx_Samprate.permissions = ATTR_RO;
+		CHx_Param[i].CHx_Samprate.Attrsize = 4;
+		CHx_Param[i].CHx_Samprate.pAttrValue = (uint32_t*)&cursamprate;	
+		
+		/* ±¾Í¨µÀµç¼«ÍÑÂä¼ì²âÔÊÐí */
+		CHx_Param[i].CHx_Lead_off_En.permissions = ATTR_RS;
+		CHx_Param[i].CHx_Lead_off_En.Attrsize = 1;
+		CHx_Param[i].CHx_Lead_off_En.pAttrValue = (uint32_t*)&chx_lead_off_en[i];	
+
+		/* ±¾Í¨µÀµç¼«ÍÑÂä×´Ì¬ */
+		CHx_Param[i].CHx_Lead_off_stat.permissions = ATTR_RA;
+		CHx_Param[i].CHx_Lead_off_stat.Attrsize = 1;
+		CHx_Param[i].CHx_Lead_off_stat.pAttrValue = (uint32_t*)&chx_lead_off_stat[i];		
+		
+		/* ±¾Í¨µÀµç¼«ÍÑÂäãÐÖµ */
+		CHx_Param[i].CHx_Lead_off_TH.permissions = ATTR_RS;
+		CHx_Param[i].CHx_Lead_off_TH.Attrsize = 4;
+		CHx_Param[i].CHx_Lead_off_TH.pAttrValue = (uint32_t*)&chx_lead_off_th[i];	
+		
+		/* ±¾Í¨µÀÊÇ·ñ½ÓµØ */
+		CHx_Param[i].CHx_GND.permissions = ATTR_RS;
+		CHx_Param[i].CHx_GND.Attrsize = 1;
+		CHx_Param[i].CHx_GND.pAttrValue = (uint32_t*)&chx_gnd[i];	
+
+		/* ±¾Í¨µÀÊÇ·ñ¼ÓÈë¹²Ä£ */
+		CHx_Param[i].CHx_BIASOUT.permissions = ATTR_RS;
+		CHx_Param[i].CHx_BIASOUT.Attrsize = 1;
+		CHx_Param[i].CHx_BIASOUT.pAttrValue = (uint32_t*)&chx_biasout[i];
+
+		/* ±¾Í¨µÀ×è¿¹Öµ */
+		CHx_Param[i].CHx_IMP.permissions = ATTR_RA;
+		CHx_Param[i].CHx_IMP.Attrsize = 4;
+		CHx_Param[i].CHx_IMP.pAttrValue = (uint32_t*)&chx_imp[i];
+		
+		/* Í¨µÀÊôÐÔÖµÉèÖÃÄ¬ÈÏÖµ */
+		chx_en[i]=1;
+		//chx_gain[i]=curgain;
+		//chx_sampletare[i]=cursamprate;
+		chx_lead_off_en[i]=0;
+		chx_lead_off_stat[i]=0;
+		chx_lead_off_th[i]=0;
+		chx_gnd[i]=0;
+		chx_biasout[i]=0;
+		chx_imp[i]=1000;	//1M¦¸ by default
+		
+		/* ½¨Á¢µØÖ·Ó³Éä */
+		pchxattr_offset[i][CHX_CONGAIN]= (uint8_t*)&CHx_Param[i].CHx_ConGain.permissions;
+		pchxattr_offset[i][CHX_EN]= (uint8_t*)&CHx_Param[i].CHx_En.permissions;
+		pchxattr_offset[i][CHX_GAIN]= (uint8_t*)&CHx_Param[i].CHx_Gain.permissions;
+		pchxattr_offset[i][CHX_SAMPLERATE]= (uint8_t*)&CHx_Param[i].CHx_Samprate.permissions;
+		pchxattr_offset[i][CHX_LEAD_OFF_EN]= (uint8_t*)&CHx_Param[i].CHx_Lead_off_En.permissions;
+		pchxattr_offset[i][CHX_LEAD_OFF_STAT]= (uint8_t*)&CHx_Param[i].CHx_Lead_off_stat.permissions;
+		pchxattr_offset[i][CHX_LEAD_OFF_TH]= (uint8_t*)&CHx_Param[i].CHx_Lead_off_TH.permissions;
+		pchxattr_offset[i][CHX_GND]= (uint8_t*)&CHx_Param[i].CHx_GND.permissions;
+		pchxattr_offset[i][CHX_BIASOUT]= (uint8_t*)&CHx_Param[i].CHx_BIASOUT.permissions;
+		pchxattr_offset[i][CHX_IMP]= (uint8_t*)&CHx_Param[i].CHx_IMP.permissions;
+	}
+}
+
+
+ /************************************************************************
  * FUNCTIONS
  */
 /*!
- *  @fn	å±žæ€§è¡¨åˆå§‹åŒ–
- *	@brief åˆå§‹åŒ–å±žæ€§è¡¨æŽ¥å£å‡½æ•°ï¼ˆè¯»å†™å›žè°ƒï¼‰
+ *  @fn	ÊôÐÔ±í³õÊ¼»¯
+ *	@brief ³õÊ¼»¯ÊôÐÔ±í½Ó¿Úº¯Êý£¨¶ÁÐ´»Øµ÷£©
  */
 void Attr_Tbl_Init()
 {
-	/* å‘ä»¥å¤ªç½‘å¸§åè®®æœåŠ¡æ³¨å†Œè¯»å†™å›žè°ƒå‡½æ•° */
+	/* ÏòÒÔÌ«ÍøÖ¡Ð­Òé·þÎñ×¢²á¶ÁÐ´»Øµ÷º¯Êý */
 	protocol_RegisterAttrCBs(&attr_CBs);
 	
-	/* å»ºç«‹åœ°å€æ˜ å°„ */		
+	/* ³õÊ¼»¯Í¨µÀÊôÐÔ±í */
+	CHx_Tbl_Init();
 	
-	//!< å±žæ€§åœ°å€åç§»æ˜ å°„å…³ç³»   
-	//!< pattr_offset[n]å³è¯¥å±žæ€§çš„ç‰©ç†é¦–åœ°å€ ä¸Šä½æœºé€šè¿‡ä¸‹æ ‡è¿›è¡Œåç§»è®¿é—®
+	/* ½¨Á¢Í¨ÓÃÊôÐÔµÄµØÖ·Ó³Éä */		
+	
+	//!< ÊôÐÔµØÖ·Æ«ÒÆÓ³Éä¹ØÏµ   
+	//!< pattr_offset[n]¼´¸ÃÊôÐÔµÄÎïÀíÊ×µØÖ· ÉÏÎ»»úÍ¨¹ýÏÂ±ê½øÐÐÆ«ÒÆ·ÃÎÊ
 	pattr_offset[DEV_UID] = (uint8_t*)&attr_tbl.Dev_UID.permissions;
 	pattr_offset[DEV_CHANNEL_NUM] = (uint8_t*)&attr_tbl.Dev_ChNum.permissions;
 	pattr_offset[SAMPLING] = (uint8_t*)&attr_tbl.Sampling.permissions;	
@@ -308,17 +439,18 @@ void Attr_Tbl_Init()
 	pattr_offset[CURSAMPLERATE] = (uint8_t*)&attr_tbl.CurSamprate.permissions;
 	pattr_offset[GAIN_TBL] = (uint8_t*)&attr_tbl.Gain_tbl.permissions;
 	pattr_offset[CURGAIN] = (uint8_t*)&attr_tbl.CurGain.permissions;	
-
+	pattr_offset[IMP_MEAS_EN] = (uint8_t*)&attr_tbl.IMPMeas_En.permissions;
+	
 }
 
 /*!
- *  @fn			è¯»å±žæ€§å‡½æ•° ï¼ˆä¾›ä¸Šå±‚åº”ç”¨èŽ·å–å±žæ€§ï¼‰
+ *  @fn			¶ÁÊôÐÔº¯Êý £¨¹©ÉÏ²ãÓ¦ÓÃ»ñÈ¡ÊôÐÔ£©
  *
- *	@param	InsAttrNum - å¾…å†™å…¥å±žæ€§ç¼–å·
- *					pValue - å¾…å†™å…¥æ•°æ®çš„æŒ‡é’ˆ
+ *	@param	InsAttrNum - ´ýÐ´ÈëÊôÐÔ±àºÅ
+ *					pValue - ´ýÐ´ÈëÊý¾ÝµÄÖ¸Õë
  *
- *	@return SUCCESS è¯»å–å±žæ€§å€¼æˆåŠŸ
- *					ATTR_NOT_FOUND å±žæ€§ä¸å­˜åœ¨
+ *	@return SUCCESS ¶ÁÈ¡ÊôÐÔÖµ³É¹¦
+ *					ATTR_NOT_FOUND ÊôÐÔ²»´æÔÚ
  */
 uint8_t App_GetAttr(uint8_t InsAttrNum, uint32_t *pValue)
 {
@@ -342,13 +474,13 @@ uint8_t App_GetAttr(uint8_t InsAttrNum, uint32_t *pValue)
 }
 
 /*!
- *  @fn			å†™å±žæ€§å‡½æ•° ï¼ˆä¾›ä¸Šå±‚åº”ç”¨ä¿®æ”¹å±žæ€§å€¼ï¼‰
+ *  @fn			Ð´ÊôÐÔº¯Êý £¨¹©ÉÏ²ãÓ¦ÓÃÐÞ¸ÄÊôÐÔÖµ£©
  *
- *	@param	InsAttrNum - å¾…å†™å…¥å±žæ€§ç¼–å·
- *					Value - å¾…å†™å…¥æ•°æ®
+ *	@param	InsAttrNum - ´ýÐ´ÈëÊôÐÔ±àºÅ
+ *					Value - ´ýÐ´ÈëÊý¾Ý
  *
- *	@return SUCCESS å†™å±žæ€§å€¼æˆåŠŸ
- *					ATTR_NOT_FOUND å±žæ€§ä¸å­˜åœ¨
+ *	@return SUCCESS Ð´ÊôÐÔÖµ³É¹¦
+ *					ATTR_NOT_FOUND ÊôÐÔ²»´æÔÚ
  */
 uint8_t App_WriteAttr(uint8_t InsAttrNum, uint32_t Value)
 {
@@ -356,15 +488,15 @@ uint8_t App_WriteAttr(uint8_t InsAttrNum, uint32_t Value)
 	
 	switch(InsAttrNum)
 	{
-		case SAMPLING:		//!< åº”ç”¨å±‚ä¿®æ”¹æ­£åœ¨é‡‡æ ·å±žæ€§
+		case SAMPLING:		//!< Ó¦ÓÃ²ãÐÞ¸ÄÕýÔÚ²ÉÑùÊôÐÔ
 			sampling = (uint8_t)Value;
 			break;	
 		
-		case CURGAIN:			//!< åº”ç”¨å±‚ä¿®æ”¹å…¨å±€å¢žç›Šå±žæ€§ 
+		case CURGAIN:			//!< Ó¦ÓÃ²ãÐÞ¸ÄÈ«¾ÖÔöÒæÊôÐÔ 
 			curgain = (uint32_t)Value;
 			break;
 		
-		case CURSAMPLERATE: //!< åº”ç”¨å±‚ä¿®æ”¹å…¨å±€é‡‡æ ·çŽ‡å±žæ€§
+		case CURSAMPLERATE: //!< Ó¦ÓÃ²ãÐÞ¸ÄÈ«¾Ö²ÉÑùÂÊÊôÐÔ
 			cursamprate = (uint32_t)Value;
 		break;
 	}

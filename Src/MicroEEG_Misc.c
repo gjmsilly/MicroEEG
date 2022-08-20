@@ -102,23 +102,23 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			switch(*pValue)
 			{
 				case 250:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样
+					ADS1299_SetSamplerate(0,250);
 				break;
 				
 				case 500:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x95);		//500HZ采样						
+					ADS1299_SetSamplerate(0,500);
 				break;
 				
 				case 1000:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x94);		//1kHZ采样
+					ADS1299_SetSamplerate(0,1000);
 				break;				
 				
 				case 2000:
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x93);		//2kHZ采样		
+					ADS1299_SetSamplerate(0,2000);	
 				break;
 				
-				default: //!< default samplerate 250  针对上电后没有修改采样率的情况下异常断电设置
-					ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96);		//250HZ采样			
+				default: //!< default samplerate 1K  针对上电后没有修改采样率的情况下异常断电设置
+					ADS1299_SetSamplerate(0,1000);		//1kHZ采样			
 				break;		
 			}
 			
@@ -140,53 +140,36 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			switch(*pValue)
 			{
 				case 1:
-					ChVal.control_bit.gain = 0;
+					ADS1299_SetGain(0,1);
 				break;
 				
 				case 2:
-					ChVal.control_bit.gain = 1;
+					ADS1299_SetGain(0,2);
 				break;
 				
 				case 4:
-					ChVal.control_bit.gain = 2;
+					ADS1299_SetGain(0,4);
 				break;
 				
 				case 6:
-					ChVal.control_bit.gain = 3;
+					ADS1299_SetGain(0,6);
 				break;
 				
 				case 8:
-					ChVal.control_bit.gain = 4;
-				while(1); // 
+					ADS1299_SetGain(0,8);
 				break;
 				
 				case 12:
-					ChVal.control_bit.gain = 5;
+					ADS1299_SetGain(0,12);
 				break;
 				
 				case 24:
-					ChVal.control_bit.gain = 6;				
+					ADS1299_SetGain(0,24);			
 				break;	
 				
 				default: //!< default gain x24 针对上电后没有修改增益的情况下异常断电设置
-					ChVal.control_bit.gain = 6;				
+					ADS1299_SetGain(0,24);				
 				break;						
-					
-			}	
-			ChVal.control_bit.pd = 0;
-			ChVal.control_bit.mux = 0;			
-			ChVal.control_bit.srb2 = 0;
-
-			for(uint8_t i=0;i<8;i++)
-			{
-				do
-				{
-					ADS1299_Channel_Config(0,ADS1299_REG_CH1SET+i,ChVal);
-
-					/* 回读1次 */
-					val = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
-				}
-					while((val!=ChVal.value));
 			}
 			
 			/* 备份重要参数 */
@@ -194,8 +177,18 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			
 		break;
 	
+		case IMP_MEAS_EN:
+			App_GetAttr(IMP_MEAS_EN,pValue); // 获取属性值
+
+			if( *(uint8_t*)pValue == IMP_MEAS_MODE )
+			{
+				SYS_Event |= EEG_IMP_START; //!< 更新事件：阻抗检测开始
+			}else
+				SYS_Event &= ~EEG_IMP_START; //!< 清除前序事件
+			
+		break;	
 	}
-	
+
 }
 
 	

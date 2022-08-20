@@ -42,7 +42,7 @@ extern "C" {
 #define	ATTR_RA							0x02	//!< 读写属性，实时更新
 #define	ATTR_NV							0x03	//!< 非易失属性
 
-/* 属性编号 */
+/* 通用属性编号 */
 #define DEV_UID							0
 #define	DEV_CHANNEL_NUM			1
 #define SAMPLING						2
@@ -53,12 +53,28 @@ extern "C" {
 #define CURSAMPLERATE				7
 #define GAIN_TBL						8
 #define CURGAIN							9
+#define IMP_MEAS_EN					10
+
+/* 通道属性编号 */
+#define CHX_CONGAIN					0
+#define	CHX_EN							1
+#define CHX_GAIN						2
+#define	CHX_SAMPLERATE			3
+#define CHX_LEAD_OFF_EN			4
+#define CHX_LEAD_OFF_STAT		5
+#define CHX_LEAD_OFF_TH			6
+#define CHX_GND							7
+#define CHX_BIASOUT					8
+#define CHX_IMP							9
+
 
 /* 属性值定义 */
 #define CPU_UUID_ADDR				0x1FFF7A10	//!< STM32F446 UUID首地址
 #define SAMPLENUM						10					//!< 以太网每包含ad样本数
 #define SAMPLLE_START				1						//!< 开始采集
 #define SAMPLLE_STOP				0 					//!< 停止采集
+#define	SAMPLE_MODE					0
+#define	IMP_MEAS_MODE				1
 
 #ifdef Dev_Ch32 
 #define CHANNEL_NUM					32					//!< 通道数量  （x8/x16/x24/x32）
@@ -86,7 +102,7 @@ typedef struct
 {
 	uint8_t					permissions;		//!< 属性权限 - 读写允许
   uint8_t					Attrsize;				//!< 属性长度 - 以字节为单位
-	uint32_t* const	pAttrValue;			//!< 属性值地址
+	uint32_t* 			pAttrValue;			//!< 属性值地址
 } Attr_t;
 
 /*!
@@ -96,17 +112,16 @@ typedef struct
 typedef struct
 {
 	/* 逐通道参数组 */
-	Attr_t	CHx_ConGain;			//!< 本通道选件增益							<RO>
-	Attr_t	CHx_en;						//!< 本通道允许									<RS>
-	Attr_t	CHx_Gain;					//!< 本通道增益									<RO>
-	Attr_t	CHx_Samprate;			//!< 本通道采样率								<RO>
-	Attr_t	CHx_ELD_enable;		//!< 本通道电极脱落检测允许			<RS>
-	Attr_t	CHx_ELS;					//!< 本通道电极脱落状态					<RA>
-	Attr_t	CHx_ELT;					//!< 本通道电极脱落阈值					<RO>
-	Attr_t	CHx_CurELT;				//!< 本通道当前电极脱落阈值			<RS>
-	Attr_t	CHx_GND;					//!< 本通道选件增益							<RS>
-	Attr_t	CHx_BIASOUT;			//!< 本通道选件增益							<RS>
-
+	Attr_t	CHx_ConGain;						//!< 本通道选件增益							<RO>
+	Attr_t	CHx_En;									//!< 本通道允许									<RS>
+	Attr_t	CHx_Gain;								//!< 本通道增益									<RO>
+	Attr_t	CHx_Samprate;						//!< 本通道采样率								<RO>
+	Attr_t	CHx_Lead_off_En;				//!< 本通道电极脱落检测允许			<RS>
+	Attr_t	CHx_Lead_off_stat;			//!< 本通道电极脱落状态					<RA>
+	Attr_t	CHx_Lead_off_TH;				//!< 本通道电极脱落阈值					<RS>
+	Attr_t	CHx_GND;								//!< 本通道是否接地							<RS>
+	Attr_t	CHx_BIASOUT;						//!< 本通道是否加入共模					<RS>
+	Attr_t	CHx_IMP;								//!< 本通道阻抗值 KΩ						<RA>
 }CHx_Param_t;
 
 /*!
@@ -125,9 +140,9 @@ typedef struct
 	Attr_t	Dev_ConType;			//!< 仪器选件类型								<RO>
 
 	/* 工作状态与控制组 */
-	Attr_t	Sampling;					//!< 正在采样										<RS>
+	Attr_t	Sampling;					//!< 采样开关										<RS>
+	Attr_t	IMPMeas_En;				//!< 阻抗检测开关								<RS>
 	Attr_t	IMPMeas_Mode;			//!< 阻抗测量模式								<RS>
-	Attr_t	IMPMeas_fxn;			//!< 阻抗测量方案								<RS>
 
 	/* 通信参数组 */
 	Attr_t 	Dev_MAC;					//!< 仪器网口MAC地址						<RO>
@@ -143,9 +158,6 @@ typedef struct
 	Attr_t	Gain_tbl;					//!< 支持的增益挡位							<RO>
 	Attr_t	CurGain;					//!< 当前全局增益								<RS>
 	
-//	/* 逐通道参数组 */
-//	CHx_Param_t	CHx_Param[CHANNEL_NUM];
-
 //	/* 外触发组 */
 //	Attr_t	Trig_en;					//!< 外触发允许									<RS>
 //	Attr_t	Trig_POL;					//!< 外触发极性									<RS>
