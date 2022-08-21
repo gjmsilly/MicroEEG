@@ -1,7 +1,7 @@
 /**
  * @file    protocol_ethernet.c
  * @author  gjmsilly
- * @brief   以太网帧协议服务（TCP帧解析+回复，UDP帧发送）
+ * @brief   以太网帧协议（TCP控制通道/EEG数据通道/EEG事件通道/EEG阻抗通道）
  * @version 1.0
  * @date    2020-09-02
  * @ref			https://www.amobbs.com/forum.php?mod=viewthread&tid=5668532 //傻孩子状态机
@@ -170,7 +170,7 @@ fsm_implementation(delay_1s)
 						
 ///////////////////////////////////////////////////////////////////////
 /*
- *  ======================== TCP帧协议服务 ============================
+ *  ======================== 控制通道协议 ============================
  */ 						
 /*! @brief define the fsm initialiser for fsm TCP_Process
  */
@@ -340,10 +340,10 @@ static void UDP_DataFrameHeaderGet();
 extern uint32_t TriggerTimeStamp; //!< 标签事件发生时点
 
 /*
- *  ======================== UDP帧协议服务 ============================
+ *  ======================== EEG数据通道协议 ============================
  */ 
 /*!
- *  @fn	UDP数据帧协议服务处理函数(EEG数据封包)
+ *  @fn	EEG数据通道协议处理函数(EEG数据封包)
  *
  *	@param	@Procesflag - AD数据采集状态标志位
  *					@SampleNum - 目前待封包的AD样本序数	- 无需封包则0xFF
@@ -352,7 +352,7 @@ extern uint32_t TriggerTimeStamp; //!< 标签事件发生时点
  *					@UDP_HEADER_CPL -	UDP帧头封包完成，也即UDP帧协议服务打包完成
  *					@ERROR - 异常
  */
-uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag)
+uint8_t UDP_DataProcess(uint8_t SampleNum ,uint32_t Procesflag)
 {
 	
 		/* AD数据采集中，对数据域进行封包 */
@@ -418,7 +418,7 @@ uint8_t UDP_DataProcess(uint8_t SampleNum ,uint16_t Procesflag)
 }
 
 /*!
- *  @fn	UDP数据帧协议帧头数据获取
+ *  @fn	EEG数据通道协议帧头数据获取
  *
  *	@brief	对UDP帧头封包需要获取属性表中的属性值，为了避免打包时
  *					频繁的回调造成系统不可预计的崩溃，只在UDP第一次帧头封
@@ -441,9 +441,12 @@ static void UDP_DataFrameHeaderGet()
 	pattr_CBs->pfnReadAttrCB(	1,0xFF,&UDPHeader.UDP_ChannelNum,len); //!< 属性编号 1	
 	
 }
-///////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+/*
+ *  ======================== EEG事件通道协议 ============================
+ */ 
 /*!
- *  @fn	UDP标签帧协议处理函数（EEG数据打标签）
+ *  @fn	EEG事件通道协议处理函数（EEG数据打标签）
  *
  *	@param	@Procesflag - AD数据采集状态标志位
  *					@TriggerTimeStamp - 标签事件发生时点
@@ -464,3 +467,7 @@ uint8_t UDP_TriggerProcess()
 
 	 return SUCCESS;			 
 }
+//////////////////////////////////////////////////////////////////////////
+/*
+ *  ======================== EEG阻抗通道协议 ============================
+ */ 

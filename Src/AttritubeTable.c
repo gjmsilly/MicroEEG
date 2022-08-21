@@ -97,6 +97,12 @@ const Attr_Tbl_t attr_tbl = {
 											1,
 										 (uint32_t*)&impmeas_mode
 										},			 
+										
+		//!< 阻抗测量值（总表） 也可选择从通道属性-本通道阻抗值 读取
+		.IMPMeas_Val	= { ATTR_RA,
+											4*CHANNEL_NUM,
+										 (uint32_t*)&chx_imp
+										},
 
 	/*
 	 *  ======================== 通信参数组 ==============================
@@ -226,11 +232,11 @@ static uint8_t ReadAttrCB(	uint8_t InsAttrNum,uint8_t CHxNum,
 	uint8_t status = SUCCESS;
 	uint8_t *pAttrValue;	//!< 属性值地址
 
-	if ((InsAttrNum > CHANNEL_NUM ) && ( CHxNum != 0xFF ) )
+	if ((InsAttrNum > CHANNEL_NUM ) && ( CHxNum != CHX_NONE ) )
 	{
 		status = ATTR_NOT_FOUND; //!< 通道属性不存在	
 	}
-	else if( (InsAttrNum > ATTR_NUM ) && ( CHxNum == 0xFF ))
+	else if( (InsAttrNum > ATTR_NUM ) && ( CHxNum == CHX_NONE ))
 	{
 		status = ATTR_NOT_FOUND; //!< 属性不存在
 	}
@@ -285,11 +291,11 @@ static uint8_t WriteAttrCB( uint8_t InsAttrNum,uint8_t CHxNum,
 	}
 
 	
-	if ((InsAttrNum > CHANNEL_NUM ) && ( CHxNum != 0xFF ) )
+	if ((InsAttrNum > CHANNEL_NUM ) && ( CHxNum != CHX_NONE ) )
 	{
 		status = ATTR_NOT_FOUND; //!< 通道属性不存在	
 	}
-	else if( (InsAttrNum > ATTR_NUM ) && ( CHxNum == 0xFF ) )
+	else if( (InsAttrNum > ATTR_NUM ) && ( CHxNum == CHX_NONE ) )
 	{
 		status = ATTR_NOT_FOUND; //!< 属性不存在
 	}
@@ -306,7 +312,7 @@ static uint8_t WriteAttrCB( uint8_t InsAttrNum,uint8_t CHxNum,
 	//!< 写属性值并通知上层应用程序（AttrChange_Process）
 	if ( status == SUCCESS )
 	{
-		if( CHxNum == 0xFF ) //通用属性写操作
+		if( CHxNum == CHX_NONE ) //通用属性写操作
 		{
 			pAttrValue = (uint8_t*)*(uint32_t*)(pattr_offset[InsAttrNum]+2);//!< 属性值地址传递
 		} else //通道属性写操作
@@ -440,6 +446,7 @@ void Attr_Tbl_Init()
 	pattr_offset[GAIN_TBL] = (uint8_t*)&attr_tbl.Gain_tbl.permissions;
 	pattr_offset[CURGAIN] = (uint8_t*)&attr_tbl.CurGain.permissions;	
 	pattr_offset[IMP_MEAS_EN] = (uint8_t*)&attr_tbl.IMPMeas_En.permissions;
+	pattr_offset[CHX_IMP_VAL] = (uint8_t*)&attr_tbl.IMPMeas_Val.permissions;
 	
 }
 
@@ -452,24 +459,44 @@ void Attr_Tbl_Init()
  *	@return SUCCESS 读取属性值成功
  *					ATTR_NOT_FOUND 属性不存在
  */
-uint8_t App_GetAttr(uint8_t InsAttrNum, uint32_t *pValue)
+uint8_t App_GetAttr(uint8_t InsAttrNum, uint8_t CHxNum, uint32_t *pValue)
 {
 	uint8_t ret = SUCCESS;
 	
-	switch(InsAttrNum)
+	if(CHxNum == CHX_NONE) //应用层通用属性读操作
 	{
-		case SAMPLING:
-			memcpy(pValue,&sampling,1);
-			break;
-		
-		case CURSAMPLERATE:
-			memcpy(pValue,&cursamprate,4);
-			break;
-		
-		case CURGAIN:
-			memcpy(pValue,&curgain,4);
-			break;		
-	}
+		switch(InsAttrNum)
+		{
+			case SAMPLING:
+				memcpy(pValue,&sampling,1);
+				break;
+			
+			case CURSAMPLERATE:
+				memcpy(pValue,&cursamprate,4);
+				break;
+			
+			case CURGAIN:
+				memcpy(pValue,&curgain,4);
+				break;		
+				
+			case IMP_MEAS_EN:
+				memcpy(pValue,&impmeas_en,1);
+				break;
+				
+			case CHX_IMP_VAL:
+				memcpy(pValue,&chx_imp,4*CHANNEL_NUM);
+				break;
+		}
+	} 
+	//else //通道属性读操作
+	//{
+	//	switch(InsAttrNum)
+	//	{
+	//		
+	//	}
+	//
+	//}
+	
   return ( ret );	
 }
 
@@ -482,23 +509,38 @@ uint8_t App_GetAttr(uint8_t InsAttrNum, uint32_t *pValue)
  *	@return SUCCESS 写属性值成功
  *					ATTR_NOT_FOUND 属性不存在
  */
-uint8_t App_WriteAttr(uint8_t InsAttrNum, uint32_t Value)
+uint8_t App_WriteAttr(uint8_t InsAttrNum, uint8_t CHxNum, uint32_t Value)
 {
 	uint8_t ret = SUCCESS;
-	
-	switch(InsAttrNum)
-	{
-		case SAMPLING:		//!< 应用层修改正在采样属性
-			sampling = (uint8_t)Value;
-			break;	
-		
-		case CURGAIN:			//!< 应用层修改全局增益属性 
-			curgain = (uint32_t)Value;
+	if(CHxNum == CHX_NONE) //应用层通用属性读操作
+	{	
+		switch(InsAttrNum)
+		{
+			case SAMPLING:		//!< 应用层修改正在采样属性
+				sampling = (uint8_t)Value;
+				break;	
+			
+			case CURGAIN:			//!< 应用层修改全局增益属性 
+				curgain = (uint32_t)Value;
+				break;
+			
+			case CURSAMPLERATE: //!< 应用层修改全局采样率属性
+				cursamprate = (uint32_t)Value;
 			break;
-		
-		case CURSAMPLERATE: //!< 应用层修改全局采样率属性
-			cursamprate = (uint32_t)Value;
-		break;
+		}
+	}
+	else
+	{
+		switch(InsAttrNum)
+		{
+			case CHX_EN:		//!< 应用层修改通道开关
+				chx_en[CHxNum] = (uint8_t)Value; 
+			break;
+			
+			case CHX_IMP:
+				chx_imp[CHxNum] = (uint32_t)Value;
+			break;
+		}
 	}
   return ( ret );	
 }

@@ -53,7 +53,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 	switch(AttrChangeNum)
 	{
 		case SAMPLING: 
-			App_GetAttr(SAMPLING,pValue); // 获取属性值
+			App_GetAttr(SAMPLING,CHX_NONE,pValue); // 获取属性值
 
 			if( *(uint8_t*)pValue == SAMPLLE_START )
 			{
@@ -92,12 +92,12 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 		case CURSAMPLERATE:
 			
 			/* 安全操作：修改采样率值时确保停止采样 */
-			App_GetAttr(SAMPLING,pValue);	// 获取正在采样属性值	
+			App_GetAttr(SAMPLING,CHX_NONE,pValue);	// 获取正在采样属性值	
 		
 			if((*pValue&0x0000FF) == SAMPLLE_START )		
 				ADS1299_Sampling_Control(SAMPLLE_STOP); //!< 若正在采样，则先停止采样
 			
-			App_GetAttr(CURSAMPLERATE,pValue); //获取当前采样率属性值
+			App_GetAttr(CURSAMPLERATE,CHX_NONE,pValue); //获取当前采样率属性值
 			
 			switch(*pValue)
 			{
@@ -130,12 +130,12 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 		case CURGAIN:
 			
 			/* 安全操作：修改采样率值时确保停止采样 */
-			App_GetAttr(SAMPLING,pValue);	// 获取正在采样属性值	
+			App_GetAttr(SAMPLING,CHX_NONE,pValue);	// 获取正在采样属性值	
 		
 			if((*pValue&0x0000FF) == SAMPLLE_START )		
 				ADS1299_Sampling_Control(SAMPLLE_STOP); //!< 若正在采样，则先停止采样
 			
-			App_GetAttr(CURGAIN,pValue); //获取当前增益属性值
+			App_GetAttr(CURGAIN,CHX_NONE,pValue); //获取当前增益属性值
 			
 			switch(*pValue)
 			{
@@ -178,14 +178,16 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 		break;
 	
 		case IMP_MEAS_EN:
-			App_GetAttr(IMP_MEAS_EN,pValue); // 获取属性值
+			App_GetAttr(IMP_MEAS_EN,CHX_NONE,pValue); // 获取属性值
 
 			if( *(uint8_t*)pValue == IMP_MEAS_MODE )
 			{
-				SYS_Event |= EEG_IMP_START; //!< 更新事件：阻抗检测开始
-			}else
-				SYS_Event &= ~EEG_IMP_START; //!< 清除前序事件
-			
+				SYS_Event |= EEG_IMP_MODE; //!< 更新事件：阻抗检测模式
+			}
+			else if( *(uint8_t*)pValue == SAMPLE_MODE ) 
+			{
+				SYS_Event &= ~EEG_IMP_MODE; //!< 清除前序事件
+			}
 		break;	
 	}
 
@@ -359,14 +361,14 @@ void BKP_Service_Recovery()
 	val = BKP_Read(CURSAMPLERATE_BKP);
 	if(val!=0)
 	{
-		App_WriteAttr((uint8_t)CURSAMPLERATE,val);		//!< 恢复全局采样率属性值
+		App_WriteAttr((uint8_t)CURSAMPLERATE,CHX_NONE,val);		//!< 恢复全局采样率属性值
 		AttrChangeProcess(CURSAMPLERATE);	
 	}
 	
 	val = BKP_Read(SAMPLING_BKP);
 	if(val!=0)
 	{
-		App_WriteAttr((uint8_t)SAMPLING,val);					//!< 恢复正常采样属性值
+		App_WriteAttr((uint8_t)SAMPLING,CHX_NONE,val);					//!< 恢复正常采样属性值
 		AttrChangeProcess(SAMPLING);
 	}
 }

@@ -20,7 +20,7 @@ extern "C" {
 #include <stdbool.h>
 
 /*******************************************************************
- * CONSTANTS
+ * MACROS
  */
 #define ATTR_NUM						40		//!< 属性表支持的属性数量（除通道属性）
 
@@ -54,6 +54,7 @@ extern "C" {
 #define GAIN_TBL						8
 #define CURGAIN							9
 #define IMP_MEAS_EN					10
+#define CHX_IMP_VAL					11
 
 /* 通道属性编号 */
 #define CHX_CONGAIN					0
@@ -66,7 +67,7 @@ extern "C" {
 #define CHX_GND							7
 #define CHX_BIASOUT					8
 #define CHX_IMP							9
-
+#define CHX_NONE						0xFF
 
 /* 属性值定义 */
 #define CPU_UUID_ADDR				0x1FFF7A10	//!< STM32F446 UUID首地址
@@ -143,7 +144,8 @@ typedef struct
 	Attr_t	Sampling;					//!< 采样开关										<RS>
 	Attr_t	IMPMeas_En;				//!< 阻抗检测开关								<RS>
 	Attr_t	IMPMeas_Mode;			//!< 阻抗测量模式								<RS>
-
+	Attr_t	IMPMeas_Val;			//!< 阻抗测量值（总表）
+	
 	/* 通信参数组 */
 	Attr_t 	Dev_MAC;					//!< 仪器网口MAC地址						<RO>
 	Attr_t 	Dev_IP;						//!< 仪器当前IP地址							<NV>
@@ -243,7 +245,7 @@ typedef void (*pfnAttrChangeCB_t)( uint8_t AttrNum );
 void Attr_Tbl_Init();
 
 uint8_t Attr_Tbl_RegisterAppCBs( void *appCallbacks);
-uint8_t App_GetAttr(uint8_t InsAttrNum, uint32_t *pValue);
-uint8_t App_WriteAttr(uint8_t InsAttrNum, uint32_t Value);
+uint8_t App_GetAttr(uint8_t InsAttrNum, uint8_t CHxNum, uint32_t *pValue);
+uint8_t App_WriteAttr(uint8_t InsAttrNum, uint8_t CHxNum, uint32_t Value);
 
 #endif

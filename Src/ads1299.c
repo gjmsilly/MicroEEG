@@ -322,27 +322,27 @@ void ADS1299_Mode_Config(uint8_t Mode)
   {
 		case ADS1299_ParaGroup_ACQ://EEG_Acq
 		{
-			ADS1299_WriteREG(1,ADS1299_REG_CONFIG1,0x96); //默认 250sps
-			ADS1299_WriteREG(1,ADS1299_REG_CONFIG2,0xC0); //外部输入
-			ADS1299_WriteREG(1,ADS1299_REG_CONFIG3,0xEC); 
+			ADS1299_WriteREG(0,ADS1299_REG_CONFIG1,0x96); //默认 250sps
+			ADS1299_WriteREG(0,ADS1299_REG_CONFIG2,0xC0); //外部输入
+			ADS1299_WriteREG(0,ADS1299_REG_CONFIG3,0xEC); 
 			
 			
-			ADS1299_WriteREG(1,ADS1299_REG_LOFF,0x00);
-			ADS1299_WriteREG(1,ADS1299_REG_LOFFSENSN,0x00);
-			ADS1299_WriteREG(1,ADS1299_REG_LOFFSENSP,0x00);
-			ADS1299_WriteREG(1,ADS1299_REG_BIASSENSN,0x00);
-			ADS1299_WriteREG(1,ADS1299_REG_BIASSENSP,0xFF); //偏置全部接入
-			ADS1299_WriteREG(1,ADS1299_REG_MISC1,0x20); // SRB1关闭
+			ADS1299_WriteREG(0,ADS1299_REG_LOFF,0x00);
+			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSN,0x00);
+			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSP,0x00);
+			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSN,0x00);
+			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSP,0xFF); //偏置全部接入
+			ADS1299_WriteREG(0,ADS1299_REG_MISC1,0x20); // SRB1关闭
 			
 			for(i=0;i<8;i++)
 			{
 				// 默认所有模块增益一致 = 24
 				do
 					{
-					ADS1299_WriteREG(1,ADS1299_REG_CH1SET+i,0x60);
+					ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x60);
 					WaitUs(2);
 
-					ReadResult = ADS1299_ReadREG(1,ADS1299_REG_CH1SET+i);
+					ReadResult = ADS1299_ReadREG(0,ADS1299_REG_CH1SET+i);
 					WaitUs(10);
 					}
 						while(ReadResult!=0x60);
@@ -379,8 +379,7 @@ void ADS1299_Mode_Config(uint8_t Mode)
  *
  *  @param  Sampling - 0:停止采样 1：开始采样
  *
- *  @return EXIT_SUCCESS - 采样率设置成功
- *          EXIT_FAILURE - 采样率设置失败
+ *  @return NULL
  */
 void ADS1299_Sampling_Control(uint8_t Sampling)
 {
@@ -402,6 +401,47 @@ void ADS1299_Sampling_Control(uint8_t Sampling)
         case 1:
             ADS1299_SendCommand(ADS1299_CMD_START);
             ADS1299_SendCommand(ADS1299_CMD_RDATAC);
+				
+						#ifdef Dev_Ch32
+						Mod_DRDY_INT_Enable(0);
+						#else
+						Mod_DRDY_INT_Enable(1);
+						#endif
+				
+            Mod_CS_Enable(0);
+        break;
+
+    }
+}
+
+/*!
+ *  @fn     ADS1299_IMPMeas_Control
+ *
+ *  @brief  ADS1299 阻抗测量开关设置
+ *
+ *  @param  IMPMeas - 0:停止阻抗测量 1：开始一次阻抗测量
+ *
+ *  @return NULL
+ */
+void ADS1299_IMPMeas_Control(uint8_t IMPMeas)
+{
+    switch(IMPMeas)
+    {
+        case 0:
+            ADS1299_SendCommand(ADS1299_CMD_STOP);
+				
+						#ifdef Dev_Ch32
+						Mod_DRDY_INT_Disable(0);
+						#else
+						Mod_DRDY_INT_Disable(1);
+						#endif
+        
+						Mod_CS_Disable;
+        break;
+
+        case 1:
+            ADS1299_SendCommand(ADS1299_CMD_START);
+            ADS1299_SendCommand(ADS1299_CMD_RDATA);
 				
 						#ifdef Dev_Ch32
 						Mod_DRDY_INT_Enable(0);

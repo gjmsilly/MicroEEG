@@ -31,7 +31,7 @@
 #include "protocol_ethernet.h"
 #include "SimpleInsQueue.h"
 #include "MicroEEG_Misc.h"
-
+#include "imp_meas.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,13 +60,16 @@ QSPI_HandleTypeDef hqspi;
 DMA_HandleTypeDef hdma_quadspi;
 
 /* USER CODE BEGIN PV */
-uint16_t SYS_Event;							//!< 系统状态事件
+uint32_t SYS_Event;							//!< 系统状态事件
 static InsQUEUE InsQueue;				//!< TCP指令队列 -  存放变化的属性编号
 uint32_t TriggerTimeStamp;			//!< 标签事件发生时点
 
 SHELL_TypeDef shell;						//!< shell句柄
 extern uint8_t UDP_DTx_Buff[UDPD_Tx_Buff_Size];//!< ADS1299结果缓存区（shell调试用）
 uint8_t ReadResult;             //!< shell调试用
+
+uint8_t chx_process=0;   //!< 正在阻抗检测的通道编号,本版本为多片一起检测，即编号范围0~7
+uint32_t cnt=0; //for debug
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -295,7 +298,7 @@ static void Sys_Control()
 	}
 	else if (TCPstate == Sn_CLOSED )//!< 保护措施: TCP端口断开，则停止采样
 	{
-		App_WriteAttr(SAMPLING, SAMPLLE_STOP); //!< 修改开始采样属性值
+		App_WriteAttr(SAMPLING, CHX_NONE, SAMPLLE_STOP); //!< 修改开始采样属性值
 		AttrChangeProcess(SAMPLING); //!< 执行停止采样操作	
 	}
 	
@@ -321,8 +324,6 @@ static void Sys_Control()
 	else if(SYS_Event& TCP_SEND_EVT )
 		SYS_Event &= ~TCP_SEND_EVT; //!< 清除前序事件 - TCP回复完成事件
 
-	
-
 	// UDP标签通道事件 
 	if( SYS_Event & TRIGGER_EVT )
 	{
@@ -344,7 +345,7 @@ static void Sys_Control()
 		
 	if( SYS_Event & UDP_TRGPROCESSCLP_EVT )
 	{
-			if(UDP_Service(2,SYS_Event) == UDP_SEND)
+			if(UDP_Service(2,SYS_Event) == UDP_SEND )
 		{
 			SYS_Event &= ~UDP_TRGPROCESSCLP_EVT; //!< 清除前序事件 - UDP事件帧协议处理完毕
 		}
@@ -368,6 +369,37 @@ static void Sys_Control()
 			
 			if( SYS_Event&EEG_STOP_EVT )	//!< 如果本UDP包发送之前发生过AD采集暂停事件
 				SYS_Event &= ~EEG_STOP_EVT; //!< 清除前序事件 - AD数据暂停采集		
+		}
+	}
+	
+	// 阻抗检测事件
+	if ( SYS_Event & EEG_IMP_MODE ) 
+	{
+		cnt++;
+		if(cnt==8000){ //TODO 用定时器
+		cnt=0;
+		SYS_Event |= CHX_IMP_START; //!< 更新事件： 开始一通道阻抗值读取
+		
+		/* 发起一通道阻抗采集 */
+		while( imp_control(chx_process) != CHX_IMP_CPL );
+		chx_process++; 
+		
+		if( chx_process == 8 )
+		{
+			chx_process=0;
+			
+			//TODO 控制通道接收缓冲区写入 AC 03 01 CHX_IMP_VAL FF CC
+			TCP_Rx_Buff[0] = 0xAC;
+			TCP_Rx_Buff[1] = 0x03;
+			TCP_Rx_Buff[2] = 0x01;
+			TCP_Rx_Buff[3] = CHX_IMP_VAL;
+			TCP_Rx_Buff[4] = 0xFF;
+			TCP_Rx_Buff[5] = 0xCC;
+			
+			// 控制通道主动发送至上位机
+			SYS_Event |= TCP_RECV_EVT;	//!< 更新事件：模拟接收一帧				
+
+		}
 		}
 	}
 	

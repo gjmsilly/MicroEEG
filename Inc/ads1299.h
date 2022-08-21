@@ -521,6 +521,7 @@ typedef struct
 #define ADS1299_CMD_STOP                        (0x000Au)
 #define ADS1299_CMD_RDATAC                      (0x0010u)
 #define ADS1299_CMD_SDATAC                      (0x0011u)
+#define ADS1299_CMD_RDATA 	                    (0x0012u)
 #define ADS1299_CMD_INITDEVICE                  (0x0100u)
 /* offset calibration was removed from the new silicon          */
 //#define ADS1299_CMD_OFFCAL                      (0x001Au)
@@ -646,6 +647,7 @@ void ADS1299_ReadResult(uint8_t *pret);
 void ADS1299_Mode_Config(uint8_t Mode);
 
 void ADS1299_Sampling_Control(uint8_t Sampling);
+void ADS1299_IMPMeas_Control(uint8_t IMPMeas);
 bool ADS1299_SetSamplerate(uint8_t chip, uint16_t Samplerate);
 bool ADS1299_SetGain(uint8_t chip, uint8_t gain);
 void ADS1299_Channel_Control(uint8_t chip, uint8_t channel, uint8_t PDn);

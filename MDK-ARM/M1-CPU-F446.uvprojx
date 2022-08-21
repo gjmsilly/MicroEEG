@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_FULL_LL_DRIVER,USE_HAL_DRIVER,STM32F446xx,Dev_Ch32,xUNIXTimestamp</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;                ../Drivers/STM32F4xx_HAL_Driver/Inc;                ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;                ../Drivers/CMSIS/Device/ST/STM32F4xx/Include;                ../Drivers/CMSIS/Include;                ..\letter-shell;                ..\utilities;                ..\utilities\template</IncludePath>
+              <IncludePath>../Inc;                 ../Drivers/STM32F4xx_HAL_Driver/Inc;                 ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;                 ../Drivers/CMSIS/Device/ST/STM32F4xx/Include;                 ../Drivers/CMSIS/Include;                 ..\letter-shell;                 ..\utilities;                 ..\utilities\template</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -407,6 +407,101 @@
               <FileName>stm32f4xx_hal_msp.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Src/stm32f4xx_hal_msp.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Application/Shell</GroupName>
+          <Files>
+            <File>
+              <FileName>shell.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\letter-shell\shell.c</FilePath>
+            </File>
+            <File>
+              <FileName>shell_ext.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\letter-shell\shell_ext.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Protocol</GroupName>
+          <Files>
+            <File>
+              <FileName>protocol_ethernet.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\protocol_ethernet.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Service</GroupName>
+          <Files>
+            <File>
+              <FileName>w5500_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\w5500_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>MicroEEG_Misc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\MicroEEG_Misc.c</FilePath>
+            </File>
+            <File>
+              <FileName>AttritubeTable.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\AttritubeTable.c</FilePath>
+            </File>
+            <File>
+              <FileName>imp_meas.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\imp_meas.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Drivers/ADS1299</GroupName>
+          <Files>
+            <File>
+              <FileName>ads1299.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\ads1299.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Drivers/W5500</GroupName>
+          <Files>
+            <File>
+              <FileName>qspi_conf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\qspi_conf.c</FilePath>
+            </File>
+            <File>
+              <FileName>socket.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\socket.c</FilePath>
+            </File>
+            <File>
+              <FileName>w5500.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\w5500.c</FilePath>
+            </File>
+            <File>
+              <FileName>wizchip_conf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\wizchip_conf.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Drivers/CMSIS</GroupName>
+          <Files>
+            <File>
+              <FileName>system_stm32f4xx.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Src/system_stm32f4xx.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -566,97 +661,12 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Drivers/CMSIS</GroupName>
+          <GroupName>Utils</GroupName>
           <Files>
-            <File>
-              <FileName>system_stm32f4xx.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Src/system_stm32f4xx.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>Application/Shell</GroupName>
-          <Files>
-            <File>
-              <FileName>shell.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\letter-shell\shell.c</FilePath>
-            </File>
-            <File>
-              <FileName>shell_ext.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\letter-shell\shell_ext.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>Drivers/W5500</GroupName>
-          <Files>
-            <File>
-              <FileName>qspi_conf.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\qspi_conf.c</FilePath>
-            </File>
-            <File>
-              <FileName>socket.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\socket.c</FilePath>
-            </File>
-            <File>
-              <FileName>w5500.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\w5500.c</FilePath>
-            </File>
-            <File>
-              <FileName>wizchip_conf.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\wizchip_conf.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>Drivers/ADS1299</GroupName>
-          <Files>
-            <File>
-              <FileName>ads1299.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\ads1299.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>Service</GroupName>
-          <Files>
-            <File>
-              <FileName>protocol_ethernet.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\protocol_ethernet.c</FilePath>
-            </File>
-            <File>
-              <FileName>w5500_service.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\w5500_service.c</FilePath>
-            </File>
-            <File>
-              <FileName>MicroEEG_Misc.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\MicroEEG_Misc.c</FilePath>
-            </File>
             <File>
               <FileName>SimpleInsQueue.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\SimpleInsQueue.c</FilePath>
-            </File>
-            <File>
-              <FileName>AttritubeTable.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\AttritubeTable.c</FilePath>
-            </File>
-            <File>
-              <FileName>IMP_Meas.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\IMP_Meas.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -29,6 +29,7 @@
 #include "protocol_ethernet.h"
 #include "AttritubeTable.h"
 #include "MicroEEG_Misc.h"
+#include "imp_meas.h"
 
 /* USER CODE END Includes */
 
@@ -50,6 +51,7 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
 uint8_t SampleNum =0 ;				//!< 采样样本数
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -67,6 +69,7 @@ uint8_t SampleNum =0 ;				//!< 采样样本数
 /* USER CODE BEGIN EV */
 extern uint32_t CurTimeStamp[10];			//!< 当前时间
 extern uint32_t TriggerTimeStamp; //!< 标签事件发生时点
+extern uint8_t chx_process;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -234,32 +237,38 @@ void EXTI0_IRQHandler(void)
 void EXTI1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI1_IRQn 0 */
-	/* 样本时间戳获取 */
-	if( SYS_Event&EEG_DATA_START_EVT ) //!< 每次开始采样时对样本序号清零
+	if( SYS_Event&EEG_IMP_MODE ) // 阻抗测量模式
 	{
-		SampleNum=0;
-	}	
-	
-	CurTimeStamp[SampleNum] = TIM5->CNT;  //!< 获取当前时间	
-	
-	/* 样本采集及封包 */	
-	SYS_Event |= EEG_DATA_ACQ_EVT; //!< 更新事件：一包AD数据采集中
-	SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - 一包ad数据开始采集
-	SYS_Event &= ~POWERDOWN_EVT; //!< 清除前序事件 - 设备发生异常断电
-
-	if(UDP_DataProcess(SampleNum,SYS_Event)== UDP_DATA_CPL) //!< 对单个样本封包
-	{
-		SampleNum++; //!< 样本序号+1
+		SYS_Event |= CHX_IMP_REDY;
 	}
-	
-	if(SampleNum == SAMPLENUM )
+	else // 采样模式
 	{
-		SampleNum=0; //!< 样本序号归零
+		/* 样本时间戳获取 */
+		if( SYS_Event&EEG_DATA_START_EVT ) //!< 每次开始采样时对样本序号清零
+		{
+			SampleNum=0;
+		}	
 		
-		SYS_Event |= EEG_DATA_CPL_EVT; //!< 更新事件：一包ad数据采集完成 -> 跳转UDP帧协议服务			
-		SYS_Event &= ~EEG_DATA_ACQ_EVT; //!< 清除前序事件 - 一包AD数据采集中	
-	}		
-	
+		CurTimeStamp[SampleNum] = TIM5->CNT;  //!< 获取当前时间	
+		
+		/* 样本采集及封包 */	
+		SYS_Event |= EEG_DATA_ACQ_EVT; //!< 更新事件：一包AD数据采集中
+		SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - 一包ad数据开始采集
+		SYS_Event &= ~POWERDOWN_EVT; //!< 清除前序事件 - 设备发生异常断电
+
+		if(UDP_DataProcess(SampleNum,SYS_Event)== UDP_DATA_CPL) //!< 对单个样本封包
+		{
+			SampleNum++; //!< 样本序号+1
+		}
+		
+		if(SampleNum == SAMPLENUM )
+		{
+			SampleNum=0; //!< 样本序号归零
+			
+			SYS_Event |= EEG_DATA_CPL_EVT; //!< 更新事件：一包ad数据采集完成 -> 跳转UDP帧协议服务			
+			SYS_Event &= ~EEG_DATA_ACQ_EVT; //!< 清除前序事件 - 一包AD数据采集中	
+		}		
+	}
 	LED_Service(SYS_Event); //!< LED
 	
   /* USER CODE END EXTI1_IRQn 0 */

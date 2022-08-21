@@ -48,7 +48,7 @@ typedef struct
 
 // 通讯收发缓冲区参数
 #define TCP_Rx_Buff_Size			16
-#define TCP_Tx_Buff_Size			16
+#define TCP_Tx_Buff_Size			100
 #define	UDP_TrgRx_Buff_Size		16
 #define	UDP_TrgTx_Buff_Size		16
 
