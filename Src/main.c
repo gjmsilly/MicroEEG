@@ -377,29 +377,29 @@ static void Sys_Control()
 	{
 		cnt++;
 		if(cnt==8000){ //TODO 用定时器
-		cnt=0;
-		SYS_Event |= CHX_IMP_START; //!< 更新事件： 开始一通道阻抗值读取
-		
-		/* 发起一通道阻抗采集 */
-		while( imp_control(chx_process) != CHX_IMP_CPL );
-		chx_process++; 
-		
-		if( chx_process == 8 )
-		{
-			chx_process=0;
+			cnt=0;
+			SYS_Event |= CHX_IMP_START; //!< 更新事件： 开始一通道阻抗值读取
 			
-			//TODO 控制通道接收缓冲区写入 AC 03 01 CHX_IMP_VAL FF CC
-			TCP_Rx_Buff[0] = 0xAC;
-			TCP_Rx_Buff[1] = 0x03;
-			TCP_Rx_Buff[2] = 0x01;
-			TCP_Rx_Buff[3] = CHX_IMP_VAL;
-			TCP_Rx_Buff[4] = 0xFF;
-			TCP_Rx_Buff[5] = 0xCC;
+			/* 发起一通道阻抗采集 */
+			while( imp_control(chx_process) != CHX_IMP_CPL );
+			chx_process++; 
 			
-			// 控制通道主动发送至上位机
-			SYS_Event |= TCP_RECV_EVT;	//!< 更新事件：模拟接收一帧				
+			if( chx_process == 8 )
+			{
+				chx_process=0;
+				
+				//TODO 控制通道接收缓冲区写入 AC 03 01 CHX_IMP_VAL FF CC
+				TCP_Rx_Buff[0] = 0xAC;
+				TCP_Rx_Buff[1] = 0x03;
+				TCP_Rx_Buff[2] = 0x01;
+				TCP_Rx_Buff[3] = CHX_IMP_VAL;
+				TCP_Rx_Buff[4] = 0xFF;
+				TCP_Rx_Buff[5] = 0xCC;
+				
+				// 控制通道主动发送至上位机
+				SYS_Event |= TCP_RECV_EVT;	//!< 更新事件：模拟接收一帧				
 
-		}
+			}
 		}
 	}
 	
