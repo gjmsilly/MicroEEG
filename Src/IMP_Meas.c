@@ -7,15 +7,17 @@
  * @copyright (c) 2022 gjmsilly
  *
  */
+#include <math.h> 
+#include <string.h>   
 #include "ads1299.h"
 #include "AttritubeTable.h"
 #include "imp_meas.h"
 #include "main.h"
- 
+
  /************************************************************************
  * GLOBAL VARIABLES
  */
-static uint8_t chx_imp_sample[CHANNEL_NUM*3+CHANNEL_NUM/8*3]; //存储采样值
+uint8_t chx_imp_sample[CHANNEL_NUM*3+CHANNEL_NUM/8*3]; //存储采样值
 static uint32_t chx_imp_phyval[CHANNEL_NUM/8][8]; //存储转换后的物理量
 
  /************************************************************************
@@ -35,10 +37,20 @@ static void imp_config(uint8_t chx_en)
 	
 	//关闭所有通道
 	for( i=0; i<8; i++ ){
-		ADS1299_Channel_Control(0,i,0);
+	//	ADS1299_Channel_Control(0,i,0);
 	}
 	//单独使能
-	ADS1299_Channel_Control(0,chx_en,1);
+	//ADS1299_Channel_Control(0,chx_en,1);
+	
+	//通道电流源配置
+	//[3:2]=00(6nA),01(24nA),**10(6uA),11(24uA)
+	//[1:0]=**00(DC),01(7.8Hz),10(31.2Hz)
+	ADS1299_WriteREG(0,ADS1299_REG_LOFF,0x06);				
+	ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSN,(1<<chx_en));
+	ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSP,(1<<chx_en));		
+	ADS1299_WriteREG(0,ADS1299_REG_BIASSENSN,0x00);
+	ADS1299_WriteREG(0,ADS1299_REG_BIASSENSP,0x00);
+	
 }
 
 /*!
@@ -50,13 +62,15 @@ static void imp_config(uint8_t chx_en)
  */
 static void convert_to_phy_val(uint8_t chx)
 {
-	int chip,sample_val;
+	int chip;
+	uint32_t sample_val;
 	
 	for(chip=0; chip<CHANNEL_NUM/8; chip++){
 		
-		sample_val=chx_imp_sample[3+3*chx+27*chip];//提取通道采样值
-		//计算
-		chx_imp_phyval[chip][chx]=chip << 8 | chx;
+		memcpy(&sample_val,(uint8_t*)&chx_imp_sample[3+3*chx+27*chip],3);//提取通道采样值
+		//sample_val |= 0xFF000000; //3字节补码转4字节
+		//sample_val = 4500000*sample_val/8388608;//计算真实电压
+		chx_imp_phyval[chip][chx]= sample_val;//sample_val/6*1000; //KΩ
 	}
 
 }
@@ -79,13 +93,13 @@ uint32_t imp_control(uint8_t chx_process)
 	
 	else if ( SYS_Event&CHX_IMP_REDY )
 	{ 
-		ADS1299_ReadResult((uint8_t*)chx_imp_sample); //读取阻抗采样值
+		ADS1299_ReadResult((uint8_t*)&chx_imp_sample[0]); //读取阻抗采样值
 		ADS1299_IMPMeas_Control(0); //停止采样
 		convert_to_phy_val(chx_process);//转换为物理量
 		
 		for(chip=0; chip<CHANNEL_NUM/8; chip++){
 			int chx_Real_Num = chx_process+8*chip; //换算成实际通道属性编号
-			App_WriteAttr(CHX_IMP,chx_Real_Num,chx_imp_phyval[chip][chx_process]);//写入通道属性
+			App_WriteAttr( CHX_IMP, chx_Real_Num, chx_imp_phyval[chip][chx_process] );//写入通道属性
 		}
 		
 		SYS_Event &= ~CHX_IMP_REDY; //!< 清除前序事件
