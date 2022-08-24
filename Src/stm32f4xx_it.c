@@ -30,6 +30,7 @@
 #include "AttritubeTable.h"
 #include "MicroEEG_Misc.h"
 #include "imp_meas.h"
+#include "ads1299.h"
 
 /* USER CODE END Includes */
 
@@ -68,8 +69,11 @@ uint8_t SampleNum =0 ;				//!< 采样样本数
 
 /* USER CODE BEGIN EV */
 extern uint32_t CurTimeStamp[10];			//!< 当前时间
-extern uint32_t TriggerTimeStamp; //!< 标签事件发生时点
-extern uint8_t chx_process;
+extern uint32_t TriggerTimeStamp;			//!< 标签事件发生时点
+extern uint8_t chx_process;						//!< 当前处理的通道
+extern uint8_t* pimp_sample;					//!< 阻抗检测原始采样值
+extern uint8_t* pchx_imp_sample;			//!< 提取后的通道阻抗值
+
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -237,11 +241,26 @@ void EXTI0_IRQHandler(void)
 void EXTI1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI1_IRQn 0 */
-	if( SYS_Event&EEG_IMP_MODE ) // 阻抗测量模式
+	/* ------------------ 阻抗测量模式 ------------------ */
+	if( SYS_Event&EEG_IMP_MODE )
 	{
-		SYS_Event |= CHX_IMP_REDY;
+		ADS1299_ReadResult(pimp_sample); //读取采样值
+		//提取正在处理的通道采样值
+		//chx_tmp = *pimp_sample+
+		//if(//当前值>=前值)
+		//{
+			//存入
+		//}
+		SampleNum++;
+		
+		if( SampleNum == 75 ) //250sps采样,7.8Hz测试信号 测75个点
+		{	
+			SYS_Event |= CHX_IMP_DONE; //!< 更新事件：一通道阻抗值已读取完毕 -> 跳转阻抗值转换
+			SampleNum = 0;
+		}		
 	}
-	else // 采样模式
+	/* ------------------ 脑电采样模式 ------------------ */
+	else 
 	{
 		/* 样本时间戳获取 */
 		if( SYS_Event&EEG_DATA_START_EVT ) //!< 每次开始采样时对样本序号清零
@@ -256,12 +275,12 @@ void EXTI1_IRQHandler(void)
 		SYS_Event &= ~EEG_DATA_START_EVT; //!< 清除前序事件 - 一包ad数据开始采集
 		SYS_Event &= ~POWERDOWN_EVT; //!< 清除前序事件 - 设备发生异常断电
 
-		if(UDP_DataProcess(SampleNum,SYS_Event)== UDP_DATA_CPL) //!< 对单个样本封包
+		if( UDP_DataProcess(SampleNum,SYS_Event)== UDP_DATA_CPL ) //!< 对单个样本封包
 		{
 			SampleNum++; //!< 样本序号+1
 		}
 		
-		if(SampleNum == SAMPLENUM )
+		if( SampleNum == SAMPLENUM )
 		{
 			SampleNum=0; //!< 样本序号归零
 			
@@ -269,7 +288,8 @@ void EXTI1_IRQHandler(void)
 			SYS_Event &= ~EEG_DATA_ACQ_EVT; //!< 清除前序事件 - 一包AD数据采集中	
 		}		
 	}
-	LED_Service(SYS_Event); //!< LED
+	
+	LED_Service(SYS_Event); //!< LED指示
 	
   /* USER CODE END EXTI1_IRQn 0 */
   if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1) != RESET)

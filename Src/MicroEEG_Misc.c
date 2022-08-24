@@ -117,8 +117,8 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 					ADS1299_SetSamplerate(0,2000);	
 				break;
 				
-				default: //!< default samplerate 1K  针对上电后没有修改采样率的情况下异常断电设置
-					ADS1299_SetSamplerate(0,1000);		//1kHZ采样			
+				default: //!< default samplerate 250 针对上电后没有修改采样率的情况下异常断电设置
+					ADS1299_SetSamplerate(0,250);		//250HZ采样			
 				break;		
 			}
 			
@@ -183,6 +183,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			if( *(uint8_t*)pValue == IMP_MEAS_MODE )
 			{
 				SYS_Event |= EEG_IMP_MODE; //!< 更新事件：阻抗检测模式
+				
 			}
 			else if( *(uint8_t*)pValue == SAMPLE_MODE ) 
 			{

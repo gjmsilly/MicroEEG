@@ -415,47 +415,6 @@ void ADS1299_Sampling_Control(uint8_t Sampling)
 }
 
 /*!
- *  @fn     ADS1299_IMPMeas_Control
- *
- *  @brief  ADS1299 阻抗测量开关设置
- *
- *  @param  IMPMeas - 0:停止阻抗测量 1：开始一次阻抗测量
- *
- *  @return NULL
- */
-void ADS1299_IMPMeas_Control(uint8_t IMPMeas)
-{
-    switch(IMPMeas)
-    {
-        case 0:
-            ADS1299_SendCommand(ADS1299_CMD_STOP);
-				
-						#ifdef Dev_Ch32
-						Mod_DRDY_INT_Disable(0);
-						#else
-						Mod_DRDY_INT_Disable(1);
-						#endif
-        
-						Mod_CS_Disable;
-        break;
-
-        case 1:
-            ADS1299_SendCommand(ADS1299_CMD_START);
-            ADS1299_SendCommand(ADS1299_CMD_RDATA);
-				
-						#ifdef Dev_Ch32
-						Mod_DRDY_INT_Enable(0);
-						#else
-						Mod_DRDY_INT_Enable(1);
-						#endif
-				
-            Mod_CS_Enable(0);
-        break;
-
-    }
-}
-
-/*!
  *  @fn     ADS1299_SetSamplerate
  *
  *  @brief  ADS1299 采样率设置

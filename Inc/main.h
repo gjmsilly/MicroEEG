@@ -189,13 +189,14 @@ extern uint32_t SYS_Event;
 #define UDP_TRGPROCESSCLP_EVT		( 1 << 6 )	//!< UDP事件帧协议处理完毕
 #define EEG_IMP_MODE						( 1 << 7 )	//!< 阻抗检测模式
 #define CHX_IMP_START						( 1 << 8 )	//!< 一个通道阻抗检测开始
-#define CHX_IMP_REDY						( 1 << 9 )	//!< 一通道阻抗值待获取
-#define EEG_DATA_START_EVT			( 1 << 10 )	//!< 一包AD数据开始采集
-#define EEG_DATA_ACQ_EVT				( 1 << 11 )	//!< 一包AD数据采集中
-#define EEG_DATA_CPL_EVT				( 1 << 12 )	//!< 一包AD数据采集完成
-#define EEG_STOP_EVT						( 1 << 13 )	//!< AD数据暂停采集
-#define TRIGGER_EVT							(	1	<< 14 )	//!< 标签事件
-#define POWERDOWN_EVT						(	1	<< 15 )	//!< 异常断电事件
+//#define	CHX_IMP_REDY						( 1 << 9 )	//!< 一个通道的采样值待读取
+#define CHX_IMP_DONE						( 1 << 10 )	//!< 一通道阻抗值已读取完毕
+#define EEG_DATA_START_EVT			( 1 << 11 )	//!< 一包AD数据开始采集
+#define EEG_DATA_ACQ_EVT				( 1 << 12 )	//!< 一包AD数据采集中
+#define EEG_DATA_CPL_EVT				( 1 << 13 )	//!< 一包AD数据采集完成
+#define EEG_STOP_EVT						( 1 << 14 )	//!< AD数据暂停采集
+#define TRIGGER_EVT							(	1	<< 15 )	//!< 标签事件
+#define POWERDOWN_EVT						(	1	<< 16 )	//!< 异常断电事件
 #define SOCKETDOWN_EVT					(	1	<< 17 )	//!< w5500连接断开事件
 
 

@@ -68,8 +68,8 @@ SHELL_TypeDef shell;						//!< shell句柄
 extern uint8_t UDP_DTx_Buff[UDPD_Tx_Buff_Size];//!< ADS1299结果缓存区（shell调试用）
 uint8_t ReadResult;             //!< shell调试用
 
-uint8_t chx_process=0;   //!< 正在阻抗检测的通道编号,本版本为多片一起检测，即编号范围0~7
-uint32_t cnt=0; //for debug
+uint8_t chx_process=0;					//!< 正在阻抗检测的通道编号,本版本为多片一起检测，即编号范围0~7
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -375,9 +375,6 @@ static void Sys_Control()
 	// 阻抗检测事件
 	if ( SYS_Event & EEG_IMP_MODE ) 
 	{
-		cnt++;
-		if(cnt==8000){ //TODO 用定时器
-			cnt=0;
 			SYS_Event |= CHX_IMP_START; //!< 更新事件： 开始一通道阻抗值读取
 			
 			/* 发起一通道阻抗采集 */
@@ -398,9 +395,7 @@ static void Sys_Control()
 				
 				// 控制通道主动发送至上位机
 				SYS_Event |= TCP_RECV_EVT;	//!< 更新事件：模拟接收一帧				
-
 			}
-		}
 	}
 	
 	// 异常事件
