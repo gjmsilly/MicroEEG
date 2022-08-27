@@ -21,8 +21,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_it.h"
+  
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h> 
+
 #include "w5500_service.h"
 #include "socket.h"
 #include "w5500.h"
@@ -46,12 +49,18 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define ABS(x) ( (x)>0?(x):-(x) )	
+#define MAX(x,y) ( (x) > (y) ? (x) : (y))
+#define MIN(x,y) ( (x) <= (y) ? (x) : (y))
 
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-uint8_t SampleNum =0 ;				//!< 采样样本数
+uint8_t SampleNum = 0 ;				//!< 采样样本数
+int32_t max_sample_val[CHANNEL_NUM/8][8]; 
+int32_t min_sample_val[CHANNEL_NUM/8][8];
+int32_t curr_sample_val[CHANNEL_NUM/8][8];
 
 /* USER CODE END PV */
 
@@ -72,7 +81,8 @@ extern uint32_t CurTimeStamp[10];			//!< 当前时间
 extern uint32_t TriggerTimeStamp;			//!< 标签事件发生时点
 extern uint8_t chx_process;						//!< 当前处理的通道
 extern uint8_t* pimp_sample;					//!< 阻抗检测原始采样值
-extern uint8_t* pchx_imp_sample;			//!< 提取后的通道阻抗值
+//extern uint8_t* pchx_imp_sample;			//!< 提取后的通道阻抗值
+extern int32_t chx_imp_sample[CHANNEL_NUM/8][8];
 
 /* USER CODE END EV */
 
@@ -241,21 +251,43 @@ void EXTI0_IRQHandler(void)
 void EXTI1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI1_IRQn 0 */
+	
 	/* ------------------ 阻抗测量模式 ------------------ */
 	if( SYS_Event&EEG_IMP_MODE )
 	{
 		ADS1299_ReadResult(pimp_sample); //读取采样值
+		
 		//提取正在处理的通道采样值
-		//chx_tmp = *pimp_sample+
-		//if(//当前值>=前值)
-		//{
-			//存入
-		//}
+		int chip = 0;
+		for( chip=0; chip < CHANNEL_NUM/8; chip++) {
+			
+			//提取通道采样值
+			curr_sample_val[chip][chx_process] = *(uint8_t*)(pimp_sample+3+3*chx_process+27*chip) << 16;
+			curr_sample_val[chip][chx_process] |= *(uint8_t*)(pimp_sample+3+3*chx_process+27*chip +1) << 8;
+			curr_sample_val[chip][chx_process] |= *(uint8_t*)(pimp_sample+3+3*chx_process+27*chip +2);
+			
+			//3字节补码转4字节
+			if( (curr_sample_val[chip][chx_process] & 0x00800000) !=0 ) { //最高位为1
+				curr_sample_val[chip][chx_process] |= 0xFF000000 ; 
+			}
+			
+			//取通道采样值最大值、最小值
+			max_sample_val[chip][chx_process] = MAX(max_sample_val[chip][chx_process],curr_sample_val[chip][chx_process]);
+			//min_sample_val[chip][chx_process] = MIN(min_sample_val[chip][chx_process],curr_sample_val[chip][chx_process]);
+		}
+		
 		SampleNum++;
 		
 		if( SampleNum == 75 ) //250sps采样,7.8Hz测试信号 测75个点
 		{	
+			
+			for( chip=0; chip < CHANNEL_NUM/8; chip++) {
+				
+				chx_imp_sample[chip][chx_process] = max_sample_val[chip][chx_process];// - min_sample_val[chip][chx_process];
+			
+			}
 			SYS_Event |= CHX_IMP_DONE; //!< 更新事件：一通道阻抗值已读取完毕 -> 跳转阻抗值转换
+			
 			SampleNum = 0;
 		}		
 	}

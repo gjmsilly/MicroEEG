@@ -304,6 +304,38 @@ void ADS1299_ReadResult(uint8_t *pret)
 	LL_DMA_ClearFlag_TC0(DMA_Handle);
 }
 
+/*!
+ *  @fn     ADS1299_Channel_Control
+ *
+ *  @brief  ADS1299 通道开关控制
+ *  通道关闭，则输入短接MUX=001，同时关闭对应通道的输入偏置接入。
+ *
+ *  @param  chip - ADS1299模块编号 1-4:模块1-4 0:所有模块
+ *  @param  channel - 通道编号
+ *  @param  PDn - 通道开关 0-关闭 1-打开
+ */
+void ADS1299_Channel_Control(uint8_t chip, uint8_t channel, uint8_t PDn)
+{
+	TADS1299CHnSET chVal;
+	uint8_t bias = (1<<channel);
+	uint8_t regval;
+	
+	if(PDn==0){
+		chVal.control_bit.mux = 0x01;  // input shorted
+		chVal.control_bit.pd = 0x01; // power down
+		ADS1299_Channel_Config(chip,channel,chVal);
+		
+		regval = ADS1299_ReadREG(chip,ADS1299_REG_BIASSENSP);
+		ADS1299_WriteREG(chip,ADS1299_REG_BIASSENSP,regval&(0xFF&bias));
+	}
+	else
+	{
+		chVal.control_bit.mux = 0x00; 
+		chVal.control_bit.pd = 0x00; // power on
+		//chVal.control_bit.gain = 6; // power on
+		ADS1299_Channel_Config(chip,channel,chVal);
+	}
+}
 
 /*!
  *  @fn     ADS1299_Mode_Config
@@ -332,7 +364,7 @@ void ADS1299_Mode_Config(uint8_t Mode)
 			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSP,0x00);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSN,0x00);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSP,0xFF); //偏置全部接入
-			ADS1299_WriteREG(0,ADS1299_REG_MISC1,0x20); // SRB1关闭
+			ADS1299_WriteREG(0,ADS1299_REG_MISC1,0x20); // SRB1闭合
 			
 			for(i=0;i<8;i++)
 			{
@@ -352,18 +384,29 @@ void ADS1299_Mode_Config(uint8_t Mode)
 		
 		case ADS1299_ParaGroup_IMP://IMP_Meas //TODO!
 		{
+			//关闭所有通道
+			for( i=0; i<8; i++ ){
+				ADS1299_Channel_Control(0,i,0);
+			}
+			//单独使能
+			//ADS1299_Channel_Control(0,4,1);
+			ADS1299_Channel_Control(0,2,1);
+			
 			ADS1299_WriteREG(0,ADS1299_REG_LOFF,0x09);				//[3:2]=00(6nA),01(24nA),10(6uA),11(24uA); [1:0]=01(7.8Hz),10(31.2Hz)
-			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSN,0xFF);
-			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSP,0xFF);
+			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSN,0x04);
+			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSP,0x04);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSN,0x00);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSP,0x00);
-			
+			//ADS1299_WriteREG(0,ADS1299_REG_CONFIG3,0xec);
+			//ADS1299_WriteREG(0,ADS1299_REG_CONFIG4,0x02);
+			ADS1299_WriteREG(0,ADS1299_REG_MISC1,0x20); // SRB1闭合
+			/*
 			for(i=0;i<8;i++)
 			{
 				// Gain = 1
 				ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x00);
 				WaitUs(10);
-			}			
+			}	*/		
 			break;
 		}
 		
@@ -537,32 +580,3 @@ bool ADS1299_SetGain(uint8_t chip, uint8_t gain)
      return EXIT_SUCCESS;
 }
 
-/*!
- *  @fn     ADS1299_Channel_Control
- *
- *  @brief  ADS1299 通道开关控制
- *  通道关闭，则输入短接MUX=001，同时关闭对应通道的输入偏置接入。
- *
- *  @param  chip - ADS1299模块编号 1-4:模块1-4 0:所有模块
- *  @param  channel - 通道编号
- *  @param  PDn - 通道开关 0-关闭 1-打开
- */
-void ADS1299_Channel_Control(uint8_t chip, uint8_t channel, uint8_t PDn)
-{
-	TADS1299CHnSET chVal;
-	uint8_t bias = (1<<channel);
-	
-	if(PDn==0){
-		chVal.control_bit.mux = 0x01;  // input shorted
-		chVal.control_bit.pd = 0x01; // power down
-		ADS1299_Channel_Config(chip,channel,chVal);
-		
-		ADS1299_WriteREG(chip,ADS1299_REG_BIASSENSP,~(0xFF&bias));
-	}
-	else
-	{
-		chVal.control_bit.mux = 0x00;  // input shorted
-		chVal.control_bit.pd = 0x00; // power on
-		ADS1299_Channel_Config(chip,channel,chVal);
-	}
-}

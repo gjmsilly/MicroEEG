@@ -188,6 +188,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 			else if( *(uint8_t*)pValue == SAMPLE_MODE ) 
 			{
 				SYS_Event &= ~EEG_IMP_MODE; //!< 清除前序事件
+				ADS1299_Mode_Config(ADS1299_ParaGroup_ACQ);
 			}
 		break;	
 	}

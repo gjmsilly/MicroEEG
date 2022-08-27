@@ -69,6 +69,7 @@ extern uint8_t UDP_DTx_Buff[UDPD_Tx_Buff_Size];//!< ADS1299结果缓存区（shell调试
 uint8_t ReadResult;             //!< shell调试用
 
 uint8_t chx_process=0;					//!< 正在阻抗检测的通道编号,本版本为多片一起检测，即编号范围0~7
+uint16_t delay=0;
 
 /* USER CODE END PV */
 
@@ -375,27 +376,32 @@ static void Sys_Control()
 	// 阻抗检测事件
 	if ( SYS_Event & EEG_IMP_MODE ) 
 	{
-			SYS_Event |= CHX_IMP_START; //!< 更新事件： 开始一通道阻抗值读取
-			
-			/* 发起一通道阻抗采集 */
-			while( imp_control(chx_process) != CHX_IMP_CPL );
-			chx_process++; 
-			
-			if( chx_process == 8 )
-			{
-				chx_process=0;
+		delay++;
+		if ( delay == 2000 )
+		{
+				delay = 0;
+				SYS_Event |= CHX_IMP_START; //!< 更新事件： 开始一通道阻抗值读取
 				
-				//TODO 控制通道接收缓冲区写入 AC 03 01 CHX_IMP_VAL FF CC
-				TCP_Rx_Buff[0] = 0xAC;
-				TCP_Rx_Buff[1] = 0x03;
-				TCP_Rx_Buff[2] = 0x01;
-				TCP_Rx_Buff[3] = CHX_IMP_VAL;
-				TCP_Rx_Buff[4] = 0xFF;
-				TCP_Rx_Buff[5] = 0xCC;
+				/* 发起一通道阻抗采集 */
+				while( imp_control(chx_process) != CHX_IMP_CPL );
+				chx_process++; 
 				
-				// 控制通道主动发送至上位机
-				SYS_Event |= TCP_RECV_EVT;	//!< 更新事件：模拟接收一帧				
-			}
+				if( chx_process == 8 )
+				{
+					chx_process=0;
+					
+					//TODO 控制通道接收缓冲区写入 AC 03 01 CHX_IMP_VAL FF CC
+					TCP_Rx_Buff[0] = 0xAC;
+					TCP_Rx_Buff[1] = 0x03;
+					TCP_Rx_Buff[2] = 0x01;
+					TCP_Rx_Buff[3] = CHX_IMP_VAL;
+					TCP_Rx_Buff[4] = 0xFF;
+					TCP_Rx_Buff[5] = 0xCC;
+					
+					// 控制通道主动发送至上位机
+					SYS_Event |= TCP_RECV_EVT;	//!< 更新事件：模拟接收一帧				
+				}
+		}
 	}
 	
 	// 异常事件
@@ -464,7 +470,7 @@ int main(void)
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX
 	//	复位ADS1299
 	ADS1299_Init(0);
-	ADS1299_Mode_Config(1);
+	ADS1299_Mode_Config(ADS1299_ParaGroup_ACQ);
 	
 	//样本时间戳服务初始化
 	SampleTimestamp_Service_Init();
