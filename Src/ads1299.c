@@ -278,7 +278,7 @@ static void ADS1299_ReadResult_DMA(uint32_t DataHeadAddress, uint8_t DataLength)
 void ADS1299_ReadResult(uint8_t *pret)
 {
   Mod_CS_Enable(0);
-	WaitUs(4); 
+	//WaitUs(4); 
 	
 	//DMA
 	#ifdef Dev_Ch32 
@@ -330,7 +330,7 @@ void ADS1299_Channel_Control(uint8_t chip, uint8_t channel, uint8_t PDn)
 	}
 	else
 	{
-		chVal.control_bit.mux = 0x00; 
+		chVal.control_bit.mux = 2; 
 		chVal.control_bit.pd = 0x00; // power on
 		//chVal.control_bit.gain = 6; // power on
 		ADS1299_Channel_Config(chip,channel,chVal);
@@ -397,8 +397,8 @@ void ADS1299_Mode_Config(uint8_t Mode)
 			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSP,0x04);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSN,0x00);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSP,0x00);
-			//ADS1299_WriteREG(0,ADS1299_REG_CONFIG3,0xec);
-			//ADS1299_WriteREG(0,ADS1299_REG_CONFIG4,0x02);
+			ADS1299_WriteREG(0,ADS1299_REG_CONFIG3,0xec);
+			ADS1299_WriteREG(0,ADS1299_REG_CONFIG4,0x02);
 			ADS1299_WriteREG(0,ADS1299_REG_MISC1,0x20); // SRB1闭合
 			/*
 			for(i=0;i<8;i++)

@@ -284,7 +284,9 @@ void EXTI1_IRQHandler(void)
 			for( chip=0; chip < CHANNEL_NUM/8; chip++) {
 				
 				chx_imp_sample[chip][chx_process] = max_sample_val[chip][chx_process];// - min_sample_val[chip][chx_process];
-			
+				/* 复位 */
+				max_sample_val[chip][chx_process] = 0x00; 
+				//min_sample_val[chip][chx_process] = 0x00;
 			}
 			SYS_Event |= CHX_IMP_DONE; //!< 更新事件：一通道阻抗值已读取完毕 -> 跳转阻抗值转换
 			

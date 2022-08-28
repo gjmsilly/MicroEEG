@@ -470,7 +470,7 @@ int main(void)
 	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX
 	//	复位ADS1299
 	ADS1299_Init(0);
-	ADS1299_Mode_Config(ADS1299_ParaGroup_ACQ);
+	ADS1299_Mode_Config(ADS1299_ParaGroup_ACQ); // ADS1299_ParaGroup_IMP
 	
 	//样本时间戳服务初始化
 	SampleTimestamp_Service_Init();

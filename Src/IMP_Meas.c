@@ -17,7 +17,7 @@
  * LOCAL VARIABLES
  */
 //static uint8_t imp_sample[CHANNEL_NUM*3+CHANNEL_NUM/8*3]; //暂存所有通道阻抗检测原始采样值
-int32_t chx_imp_phyval[CHANNEL_NUM/8][8]; //存储转换后的物理量
+uint32_t chx_imp_phyval[CHANNEL_NUM/8][8]; //存储转换后的物理量
 
  /************************************************************************
  * GLOBAL VARIABLES
@@ -74,7 +74,7 @@ static void imp_config(uint8_t chx_en)
 static void convert_to_phy_val(uint8_t chx)
 {
 	int chip;
-	int32_t sample_val;
+	uint32_t sample_val;
 	
 	for( chip=0; chip<CHANNEL_NUM/8; chip++ )
 	{
@@ -82,7 +82,9 @@ static void convert_to_phy_val(uint8_t chx)
 		//memcpy(&sample_val,(uint8_t*)&chx_imp_sample[3+3*chx+27*chip],3);//提取通道采样值
 		//sample_val |= 0xFF000000; //3字节补码转4字节
 		//sample_val = 4.5*sample_val/8388608;//计算真实电压
-		chx_imp_phyval[chip][chx]= sample_val;//6*1000; //KΩ
+		//chx_imp_phyval[chip][chx]= sample_val/6*1000; //KΩ
+		
+		chx_imp_phyval[chip][chx] = (1500*sample_val) >> 24;
 	}
 
 }
@@ -96,10 +98,9 @@ uint32_t imp_control(uint8_t chx_process)
 
 	if( SYS_Event&CHX_IMP_START )
 	{	
-		SYS_Event &= ~CHX_IMP_START; //!< 清除前序事件
 		imp_config(chx_process);//通道寄存器配置
 		ADS1299_Sampling_Control(1);//开始采样
-		
+		SYS_Event &= ~CHX_IMP_START; //!< 清除前序事件
 		return CHX_IMPING;
 	}
 	
