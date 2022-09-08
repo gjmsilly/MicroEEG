@@ -326,11 +326,11 @@ void ADS1299_Channel_Control(uint8_t chip, uint8_t channel, uint8_t PDn)
 		ADS1299_Channel_Config(chip,channel,chVal);
 		
 		regval = ADS1299_ReadREG(chip,ADS1299_REG_BIASSENSP);
-		ADS1299_WriteREG(chip,ADS1299_REG_BIASSENSP,regval&(0xFF&bias));
+		//ADS1299_WriteREG(chip,ADS1299_REG_BIASSENSP,regval&(0xFF&bias));
 	}
 	else
 	{
-		chVal.control_bit.mux = 2; 
+		chVal.control_bit.mux = 0; 
 		chVal.control_bit.pd = 0x00; // power on
 		//chVal.control_bit.gain = 6; // power on
 		ADS1299_Channel_Config(chip,channel,chVal);
@@ -390,23 +390,24 @@ void ADS1299_Mode_Config(uint8_t Mode)
 			}
 			//单独使能
 			//ADS1299_Channel_Control(0,4,1);
-			ADS1299_Channel_Control(0,2,1);
+			ADS1299_Channel_Control(1,0,1);
 			
-			ADS1299_WriteREG(0,ADS1299_REG_LOFF,0x09);				//[3:2]=00(6nA),01(24nA),10(6uA),11(24uA); [1:0]=01(7.8Hz),10(31.2Hz)
-			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSN,0x04);
-			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSP,0x04);
+			ADS1299_WriteREG(1,ADS1299_REG_LOFF,0x09);				//[3:2]=00(6nA),01(24nA),10(6uA),11(24uA); [1:0]=01(7.8Hz),10(31.2Hz)
+			ADS1299_WriteREG(1,ADS1299_REG_LOFFSENSN,0x01);
+			ADS1299_WriteREG(1,ADS1299_REG_LOFFSENSP,0x01);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSN,0x00);
-			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSP,0x00);
+			ADS1299_WriteREG(1,ADS1299_REG_BIASSENSP,0x00);
 			ADS1299_WriteREG(0,ADS1299_REG_CONFIG3,0xec);
 			ADS1299_WriteREG(0,ADS1299_REG_CONFIG4,0x02);
 			ADS1299_WriteREG(0,ADS1299_REG_MISC1,0x20); // SRB1闭合
-			/*
-			for(i=0;i<8;i++)
-			{
+
+			//for(i=0;i<8;i++)
+			//{
 				// Gain = 1
-				ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x00);
-				WaitUs(10);
-			}	*/		
+			//	ADS1299_WriteREG(0,ADS1299_REG_CH1SET+i,0x00);
+			//	WaitUs(10);
+			//}		
+			//ADS1299_WriteREG(0,ADS1299_REG_CH1SET+2,0x00)
 			break;
 		}
 		

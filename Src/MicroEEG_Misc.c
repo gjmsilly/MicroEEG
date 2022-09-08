@@ -180,7 +180,7 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 		case IMP_MEAS_EN:
 			App_GetAttr(IMP_MEAS_EN,CHX_NONE,pValue); // 获取属性值
 
-			if( *(uint8_t*)pValue == IMP_MEAS_MODE )
+			if(( *(uint8_t*)pValue == IMP_MEAS_MODE ) & ((SYS_Event&EEG_IMP_MODE)==0))
 			{
 				SYS_Event |= EEG_IMP_MODE; //!< 更新事件：阻抗检测模式
 				

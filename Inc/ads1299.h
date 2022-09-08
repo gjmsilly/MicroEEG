@@ -562,8 +562,8 @@ typedef struct
  * 3. ADS1299_ParaGroup_STBY 空闲模式
  * 4. ADS1299_ParaGroup_TSIG 测试模式
  *********************************************************************************/
-#define ADS1299_ParaGroup_ACQ			1
-#define ADS1299_ParaGroup_IMP   			2
+#define ADS1299_ParaGroup_ACQ 		1
+#define ADS1299_ParaGroup_IMP   	2
 #define ADS1299_ParaGroup_STBY		3
 #define ADS1299_ParaGroup_TSIG		4
 
