@@ -379,7 +379,7 @@ static void Sys_Control()
 	if ( SYS_Event & EEG_IMP_MODE ) 
 	{
 		delay++;
-		if ( delay == 2000 )
+		if ( delay == 5000 )
 		{
 				delay = 0;
 				SYS_Event |= CHX_IMP_START; //!< 更新事件： 开始一通道阻抗值读取
