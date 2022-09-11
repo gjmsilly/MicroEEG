@@ -23,10 +23,10 @@ uint32_t chx_imp_phyval[CHANNEL_NUM/8][8]; //存储转换后的物理量
  * GLOBAL VARIABLES
  */
 uint8_t imp_sample[CHANNEL_NUM*3+CHANNEL_NUM/8*3]; //暂存所有通道阻抗检测原始采样值
-int32_t chx_imp_sample[CHANNEL_NUM/8][8]; //存储提取后的通道采样值
+uint32_t chx_imp_sample[CHANNEL_NUM/8][8]; //存储提取后的通道采样值
 
-uint8_t* pimp_sample = imp_sample; //指针作为全局变量
-int32_t* pchx_imp_sample = chx_imp_sample[0]; 
+uint8_t* pimp_sample = imp_sample;
+uint32_t* pchx_imp_sample = chx_imp_sample[0]; 
 
  /************************************************************************
  * LOCAL FUNCTIONS
@@ -79,12 +79,11 @@ static void convert_to_phy_val(uint8_t chx)
 	for( chip=0; chip<CHANNEL_NUM/8; chip++ )
 	{
 		sample_val = chx_imp_sample[chip][chx];
-		//memcpy(&sample_val,(uint8_t*)&chx_imp_sample[3+3*chx+27*chip],3);//提取通道采样值
-		//sample_val |= 0xFF000000; //3字节补码转4字节
+
 		//sample_val = 4.5*sample_val/8388608;//计算真实电压
 		//chx_imp_phyval[chip][chx]= sample_val/6*1000; //KΩ
 		
-		chx_imp_phyval[chip][chx] = (1500*sample_val) >> 24;
+		chx_imp_phyval[chip][chx] = sample_val/11;//单位Ω 速算
 	}
 
 }

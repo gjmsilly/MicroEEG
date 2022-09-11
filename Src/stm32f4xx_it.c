@@ -58,9 +58,8 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
 uint8_t SampleNum = 0 ;				//!< 采样样本数
-int32_t max_sample_val[CHANNEL_NUM/8][8]; 
-int32_t min_sample_val[CHANNEL_NUM/8][8];
-int32_t curr_sample_val[CHANNEL_NUM/8][8];
+int32_t max_sample_val[CHANNEL_NUM/8][8]; //int!
+int32_t curr_sample_val[CHANNEL_NUM/8][8]; //int!
 
 /* USER CODE END PV */
 
@@ -81,8 +80,7 @@ extern uint32_t CurTimeStamp[10];			//!< 当前时间
 extern uint32_t TriggerTimeStamp;			//!< 标签事件发生时点
 extern uint8_t chx_process;						//!< 当前处理的通道
 extern uint8_t* pimp_sample;					//!< 阻抗检测原始采样值
-//extern uint8_t* pchx_imp_sample;			//!< 提取后的通道阻抗值
-extern int32_t chx_imp_sample[CHANNEL_NUM/8][8];
+extern uint32_t chx_imp_sample[CHANNEL_NUM/8][8];
 
 /* USER CODE END EV */
 
@@ -271,9 +269,8 @@ void EXTI1_IRQHandler(void)
 				curr_sample_val[chip][chx_process] |= 0xFF000000 ; 
 			}
 			
-			//取通道采样值最大值、最小值
+			//取通道采样值最大值
 			max_sample_val[chip][chx_process] = MAX(max_sample_val[chip][chx_process],curr_sample_val[chip][chx_process]);
-			//min_sample_val[chip][chx_process] = MIN(min_sample_val[chip][chx_process],curr_sample_val[chip][chx_process]);
 		}
 		
 		SampleNum++;
@@ -285,12 +282,12 @@ void EXTI1_IRQHandler(void)
 				
 				chx_imp_sample[chip][chx_process] = max_sample_val[chip][chx_process];// - min_sample_val[chip][chx_process];
 				/* 复位 */
-				max_sample_val[chip][chx_process] = 0x00; 
-				//min_sample_val[chip][chx_process] = 0x00;
+				max_sample_val[chip][chx_process] = 0; 
 			}
-			SYS_Event |= CHX_IMP_DONE; //!< 更新事件：一通道阻抗值已读取完毕 -> 跳转阻抗值转换
 			
 			SampleNum = 0;
+			
+			SYS_Event |= CHX_IMP_DONE; //!< 更新事件：一通道阻抗值已读取完毕 -> 跳转阻抗值转换
 		}		
 	}
 	/* ------------------ 脑电采样模式 ------------------ */
