@@ -202,7 +202,7 @@ fsm_implementation(TCP_Process)
 							this.pDataLength = &this.DataLength;	
 							
 							printf("S:LENGTH\r\n");
-							transfer_to(FRAME_LENGTH);							//!< 跳转帧长度获取
+							transfer_to(FRAME_LENGTH); //!< 跳转帧长度获取
 						}						
        )
 						
@@ -235,16 +235,16 @@ fsm_implementation(TCP_Process)
 								this._OP_ = TCP_Rx_Buff+5;
 							}
 							
-							if(TCP_Rx_Buff[this.FrameLength+2]== TCP_Recv_FT)//!< 帧尾检测
+							if(TCP_Rx_Buff[this.FrameLength+2]== TCP_Recv_FT) //!< 帧尾检测
 							{								
 								printf("S:INS\r\n");								
-								transfer_to(FRAME_INS);										//!< 跳转指令操作
+								transfer_to(FRAME_INS); //!< 跳转指令操作
 							}
 							else //!< 帧尾检测失败
 							{
 								printf("S:ERR-CTFailed\r\n");
-								memset(TCP_Rx_Buff,0xFF,sizeof(TCP_Rx_Buff_Size));//!< 清空TCP接收缓冲区
-								transfer_to(FRAME_SEEKHEAD);							//!< 此包丢弃								
+								memset(TCP_Rx_Buff,0xFF,sizeof(TCP_Rx_Buff_Size)); //!< 清空TCP接收缓冲区
+								transfer_to(FRAME_SEEKHEAD); //!< 此包丢弃								
 							}																	
        )						
 				
@@ -281,7 +281,7 @@ fsm_implementation(TCP_Process)
             	default:
 								printf("WrongINS\r\n");
 								memset(TCP_Rx_Buff,0xFF,sizeof(TCP_Rx_Buff_Size));//清空TCP接收缓冲区
-            		transfer_to(FRAME_SEEKHEAD);							//!< 此包丢弃	
+            		transfer_to(FRAME_SEEKHEAD); //!< 此包丢弃	
 								break;
             }						
         )
@@ -290,7 +290,7 @@ fsm_implementation(TCP_Process)
 				/*! TCP回复打包 */	
         state(FRAME_RPY,
 				
-						TCP_Tx_Buff[0] = TCP_Send_FH;					//!< 帧头
+						TCP_Tx_Buff[0] = TCP_Send_FH; //!< 帧头
 						
 						if( this.ERR_NUM != SUCCESS )
 							this.FrameLength=2; //!< 有效帧只含错误码+回复类型
@@ -453,21 +453,18 @@ static void UDP_DataFrameHeaderGet()
  *
  *	@return @SUCCESS 完成标签
  */
-uint8_t UDP_TriggerProcess()
+uint8_t UDP_EvtProcess()
 {
 	uint32_t *pDataTimeStamp = &TriggerTimeStamp; //!< 获取数据时间戳
-	
-	UDP_TrgTx_Buff[9]=*(uint8_t *)(pDataTimeStamp);	//!< 样本时间戳 - 增量型（每样本相对开始采样时点的时间增量）精度10us，注意小端对齐
-	UDP_TrgTx_Buff[10]=*((uint8_t *)(pDataTimeStamp)+1);
-	UDP_TrgTx_Buff[11]=*((uint8_t *)(pDataTimeStamp)+2);
-	UDP_TrgTx_Buff[12]=*((uint8_t *)(pDataTimeStamp)+3);
- 
-	UDP_TrgTx_Buff[13]= UDP_TrgRx_Buff[1];
-	UDP_TrgTx_Buff[14]= UDP_TrgRx_Buff[2];
+	// Byte 0-7 预留UNIX时间戳
+	// Byte 8-11 样本同源时间戳
+	UDP_EvtTx_Buff[8]=*(uint8_t *)(pDataTimeStamp);	//!< 样本时间戳 - 增量型（每样本相对开始采样时点的时间增量）精度10us，注意小端对齐
+	UDP_EvtTx_Buff[9]=*((uint8_t *)(pDataTimeStamp)+1);
+	UDP_EvtTx_Buff[10]=*((uint8_t *)(pDataTimeStamp)+2);
+	UDP_EvtTx_Buff[11]=*((uint8_t *)(pDataTimeStamp)+3);
+	// Byte 12-13 标签
+	UDP_EvtTx_Buff[12]= UDP_EvtRx_Buff[0];
+	UDP_EvtTx_Buff[13]= UDP_EvtRx_Buff[1];
 
 	 return SUCCESS;			 
 }
-//////////////////////////////////////////////////////////////////////////
-/*
- *  ======================== EEG阻抗通道协议 ============================
- */ 

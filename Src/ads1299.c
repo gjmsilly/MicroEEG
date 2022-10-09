@@ -99,6 +99,7 @@ static void ADS1299_PowerOn()
  */
 void ADS1299_Init()
 {
+
 	/* 初始化与主控芯片的通信接口 */
 	LL_SPI_Enable(SPI_Handle); //SPI
 	LL_DMA_SetPeriphAddress(DMA_Handle, DMA_RX_STREAM, (uint32_t)&(SPI_Handle->DR)); //DMA
@@ -110,11 +111,11 @@ void ADS1299_Init()
   #else
   Mod_DRDY_INT_Disable(1);
   #endif
+	
 	/* 初始化ADS1299 */
   ADS1299_PowerOn();
 	ADS1299_Reset();	
-  //Device wakes up in RDATAC Mode, send SDATAC cmd
-  ADS1299_SendCommand(ADS1299_CMD_SDATAC);
+  ADS1299_SendCommand(ADS1299_CMD_SDATAC); //Device wakes up in RDATAC Mode, send SDATAC cmd
 
 }
 
@@ -189,10 +190,10 @@ void ADS1299_SendCommand(uint8_t command)
 /*!
  *  @fn     ADS1299_ReadREG
  *
- *  @brief  ADS1299 写寄存器
+ *  @brief  ADS1299 读寄存器
  *
  *  对指定的ADS1299模块指定寄存器值读取。
- *  [WARNING!]当硬件采取菊花链连接方式时，读取值均为模块1的值。
+ *  [WARNING!]当硬件采取菊花链连接方式时，读取上来的值均为模块1的值。
  *
  *  @param  chip - ADS1299模块编号
  *  @param  address - 寄存器地址
@@ -248,7 +249,7 @@ void ADS1299_Channel_Config(uint8_t chip, uint8_t channel, TADS1299CHnSET Para)
 }
 
 
-//TODO inline 报错
+//TODO inline
 static void ADS1299_ReadResult_DMA(uint32_t DataHeadAddress, uint8_t DataLength)
 {
 	
@@ -326,13 +327,12 @@ void ADS1299_Channel_Control(uint8_t chip, uint8_t channel, uint8_t PDn)
 		ADS1299_Channel_Config(chip,channel,chVal);
 		
 		regval = ADS1299_ReadREG(chip,ADS1299_REG_BIASSENSP);
-		//ADS1299_WriteREG(chip,ADS1299_REG_BIASSENSP,regval&(0xFF&bias));
+		ADS1299_WriteREG(chip,ADS1299_REG_BIASSENSP,regval&(0xFF&bias));
 	}
 	else
 	{
 		chVal.control_bit.mux = 0; 
 		chVal.control_bit.pd = 0x00; // power on
-		//chVal.control_bit.gain = 6; // power on
 		ADS1299_Channel_Config(chip,channel,chVal);
 	}
 }
@@ -342,7 +342,7 @@ void ADS1299_Channel_Control(uint8_t chip, uint8_t channel, uint8_t PDn)
  *
  *  @brief  ADS1299 快速模式配置
  *
- *  @param  Mode - 模式 1:采样模式 2:阻抗检测模式 4:测试模式
+ *  @param  Mode - 模式 1:采样模式 2:阻抗检测模式 3:空闲模式 4:测试模式
  *
  */
 void ADS1299_Mode_Config(uint8_t Mode)
@@ -364,7 +364,7 @@ void ADS1299_Mode_Config(uint8_t Mode)
 			ADS1299_WriteREG(0,ADS1299_REG_LOFFSENSP,0x00);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSN,0x00);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSP,0xFF); //偏置全部接入
-			ADS1299_WriteREG(0,ADS1299_REG_MISC1,0x20); // SRB1闭合
+			ADS1299_WriteREG(0,ADS1299_REG_MISC1,0x20); //SRB1闭合
 			
 			for(i=0;i<8;i++)
 			{
@@ -382,7 +382,7 @@ void ADS1299_Mode_Config(uint8_t Mode)
 			break;
 		}
 		
-		case ADS1299_ParaGroup_IMP://IMP_Meas //TODO!
+		case ADS1299_ParaGroup_IMP://IMP_Meas [TODO] 仅用于测试
 		{
 			//关闭所有通道
 			for( i=0; i<8; i++ ){
@@ -392,7 +392,7 @@ void ADS1299_Mode_Config(uint8_t Mode)
 			//ADS1299_Channel_Control(0,4,1);
 			ADS1299_Channel_Control(1,0,1);
 			
-			ADS1299_WriteREG(1,ADS1299_REG_LOFF,0x09);				//[3:2]=00(6nA),01(24nA),10(6uA),11(24uA); [1:0]=01(7.8Hz),10(31.2Hz)
+			ADS1299_WriteREG(1,ADS1299_REG_LOFF,0x09);//[3:2]=00(6nA),01(24nA),10(6uA),11(24uA); [1:0]=01(7.8Hz),10(31.2Hz)
 			ADS1299_WriteREG(1,ADS1299_REG_LOFFSENSN,0x01);
 			ADS1299_WriteREG(1,ADS1299_REG_LOFFSENSP,0x01);
 			ADS1299_WriteREG(0,ADS1299_REG_BIASSENSN,0x00);
@@ -572,7 +572,7 @@ bool ADS1299_SetGain(uint8_t chip, uint8_t gain)
          ADS1299_Channel_Config(chip,i,ChVal);
 				
 			   if(chip==0){
-					 /* 如果为所有模块通道设置一致，则每配置一次回读一次 */
+					 /* 如果需要设置所有模块通道一致，则每配置一次回读一次 */
 					 valget = ADS1299_ReadREG(chip,ADS1299_REG_CH1SET+i);
 					 if(valget!=ChVal.value) 
 						 return EXIT_FAILURE;

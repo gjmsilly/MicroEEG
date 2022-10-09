@@ -280,7 +280,7 @@ void LED_Service_Init(void)
 	PWR_LED1_ON;	//设备通电状态指示
 	PWR_LED2_OFF;
 	ACQ_LED1_OFF; //设备采样状态指示
-	ACQ_LED2_OFF;
+	ACQ_LED2_OFF; //设备事件接收指示 （收发完成一次亮灭）
 	ERR_LED1_OFF; 
 	ERR_LED2_OFF; //设备运行状态指示
 }
@@ -298,6 +298,7 @@ void LED_Service(uint16_t devstate)
 	
 	if( devstate & POWERDOWN_EVT ) //!< 设备发生异常断电
 		ERR_LED2_ON;
+	
 }
 
 /*  ============================ 备份服务 ==============================
@@ -313,7 +314,7 @@ void LED_Service(uint16_t devstate)
  *	@brief	备份服务初始化
  *					在设备上电后对掉电前设备状态进行检测，
  *					对异常掉电情况及时恢复掉电前状态,若设备正常开机则复位所有备份。
- *					!本函数必须在rtc初始化后且其他服务初始化前调用。
+ *					[WARNING]本函数必须在rtc初始化后且其他服务初始化前调用。
  */
 void BKP_Service_Init()
 {

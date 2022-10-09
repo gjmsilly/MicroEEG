@@ -339,18 +339,18 @@ static void Sys_Control()
 	
 	if( SYS_Event & UDP_RECV_EVT )
 	{
-		 if(UDP_TriggerProcess()==SUCCESS) //!< UDP事件帧协议服务处理完毕 -> 跳转UDP端口发送
+		 if(UDP_EvtProcess()==SUCCESS) //!< UDP事件帧协议服务处理完毕 -> 跳转UDP端口发送
 		 {
-			 SYS_Event |= UDP_TRGPROCESSCLP_EVT;	//!< 更新事件：UDP事件帧协议处理完毕
+			 SYS_Event |= UDP_EVTPROCESSCLP_EVT;	//!< 更新事件：UDP事件帧协议处理完毕
 			 SYS_Event &= ~UDP_RECV_EVT; //!< 清除前序事件 - UDP端口接收到一帧
 		 }			 
 	}
 		
-	if( SYS_Event & UDP_TRGPROCESSCLP_EVT )
+	if( SYS_Event & UDP_EVTPROCESSCLP_EVT )
 	{
 			if(UDP_Service(2,SYS_Event) == UDP_SEND )
 		{
-			SYS_Event &= ~UDP_TRGPROCESSCLP_EVT; //!< 清除前序事件 - UDP事件帧协议处理完毕
+			SYS_Event &= ~UDP_EVTPROCESSCLP_EVT; //!< 清除前序事件 - UDP事件帧协议处理完毕
 		}
 	}
 	
@@ -465,14 +465,8 @@ int main(void)
 	shellInit(&shell);
 		
 	//ADS1299 初始化
-	//	使能SPI	
-	LL_SPI_Enable(SPI1);	
-	//	配置DMA
-	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_0, (uint32_t)&(SPI1->DR)); 	// SPI1_RX
-	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_3, (uint32_t)&(SPI1->DR)); 	// SPI1_TX
-	//	复位ADS1299
-	ADS1299_Init(0);
-	ADS1299_Mode_Config(ADS1299_ParaGroup_IMP); // 
+	ADS1299_Init();
+	ADS1299_Mode_Config(ADS1299_ParaGroup_ACQ); //初始模式-采样模式
 	
 	//样本时间戳服务初始化
 	SampleTimestamp_Service_Init();

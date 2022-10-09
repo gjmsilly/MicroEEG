@@ -27,8 +27,8 @@
 uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];				//TCP接收缓冲区 
 uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];				//TCP发送缓冲区
 uint8_t UDP_DTx_Buff[UDPD_Tx_Buff_Size];			//UDP数据发送缓冲区
-uint8_t UDP_TrgRx_Buff[UDP_TrgRx_Buff_Size];	//UDP事件发送缓冲区
-uint8_t UDP_TrgTx_Buff[UDP_TrgTx_Buff_Size];	//UDP事件接收缓冲区
+uint8_t UDP_EvtRx_Buff[UDP_TrgRx_Buff_Size];	//UDP事件发送缓冲区
+uint8_t UDP_EvtTx_Buff[UDP_TrgTx_Buff_Size];	//UDP事件接收缓冲区
 uint8_t *pUDP_DTx_Buff;												//UDP发送数据帧指针
 
  /*****************************************************************************
@@ -65,11 +65,11 @@ void W5500_Init(void)
 	
 	W5500_Config();								//初始化W5500通用寄存器区
 	Detect_Gateway();							//检查网关服务器 
-	W5500_Socket_Init(0);					//Socket 0配置 - TCP 
-	W5500_Socket_Init(1);     		//Socket 1配置 - UDP发 
-	W5500_Socket_Init(2);     		//Socket 2配置 - UDP收 
+	W5500_Socket_Init(0);					//Socket 0配置 - TCP控制通道
+	W5500_Socket_Init(1);     		//Socket 1配置 - UDP数据发 
+	W5500_Socket_Init(2);     		//Socket 2配置 - UDP事件收发
 	
-	pUDP_DTx_Buff = UDP_DTx_Buff; 	//!< UDP发送缓冲指针
+	pUDP_DTx_Buff = UDP_DTx_Buff; 	//!< UDP数据发送缓冲指针
 	
 	SYS_Event &= ~SOCKETDOWN_EVT; //!< 清除前序事件 - 设备发生异常断电
 	
@@ -163,10 +163,12 @@ static void W5500_Config(void)
 *														- Socket 0                     			TCP 服务器
 *														- Socket 1													UDP
 *														- Socket 2													UDP
+*														- Socket 3													UDP
 *						@Sn_DIP				目的主机IP地址						32bit			 （TCP client时配置） 
 *						@UDP_DPORT		目的主机端口号												
+*														- Socket 0													不指定
 *														- Socket 1													7002 (defualt)
-*														- Socket 2													7002 (defualt)
+*														- Socket 2													7004
 *						@UDP_DIPR     目的主机IP地址						
 *														- Socket 1              32bit				192.168.1.101
 *														- Socket 2              32bit				192.168.1.101
@@ -214,18 +216,18 @@ static void W5500_Load_Net_Parameters(void)
 		//加载Socket 1的端口号: 7002 （default 锁死）
 		(Psn_param+1)->Sn_Port = 7002;
 
-		//UDP(广播)模式需配置目的主机端口号 7002（default 上位机可修改）
+		//UDP(广播)模式需配置目的主机端口号 7002（default）
 		(Psn_param+1)->UDP_DPORT = 7002;
 		
 	}
 	
 	/* Socket 2 配置 */	
 	{		
-		//加载Socket 2的端口号: 7003 （default 锁死）
-		(Psn_param+2)->Sn_Port = 7003;
+		//加载Socket 2的端口号: 7003 （default 锁死）[TODO] 本版本也为监听端口号
+		(Psn_param+2)->Sn_Port = 7003; 
 
-		//UDP(广播)模式需配置目的主机端口号 7003（default 上位机可修改）
-		(Psn_param+2)->UDP_DPORT = 7003;
+		//UDP目的主机端口号 7003（default）
+		(Psn_param+2)->UDP_DPORT = 7004;
 	}
 	
 }
@@ -504,10 +506,10 @@ uint8_t UDP_Service(uint8_t sn, uint16_t Procesflag)
 						if((recvsize = getSn_RX_RSR(sn)) > 0)
 						{
 							/* 读取UDP端口数据 */
-							recvfrom(	sn,UDP_TrgRx_Buff,             \
+							recvfrom(	sn,UDP_EvtRx_Buff,             \
 												recvsize,										\
-												(Psn_param+sn)->UDP_DIPR,  	\
-												&(Psn_param+sn)->UDP_DPORT); 												 					
+												(Psn_param+0)->UDP_DIPR,  	\
+												&(Psn_param+sn)->Sn_Port); 												 					
 						}	
 									
 							/* 清除中断标志位 */
@@ -518,12 +520,12 @@ uint8_t UDP_Service(uint8_t sn, uint16_t Procesflag)
 								
 						UDPserv_status= UDP_RECV;					
 					}
-					else if( Procesflag&UDP_TRGPROCESSCLP_EVT )
+					else if( Procesflag&UDP_EVTPROCESSCLP_EVT )
 					{
 							/* UDP标签帧服务处理完毕，回复标签+本机时间戳信息 */		
-						sendto(sn, UDP_TrgTx_Buff,  \
-										16, 		\
-										(Psn_param+sn)->UDP_DIPR,  	\
+						sendto(sn, UDP_EvtTx_Buff,  \
+										14, 		\
+										(Psn_param+0)->UDP_DIPR,  	\
 										(Psn_param+sn)->UDP_DPORT);  //一次发送UDP发送缓冲区所有数据
 						
 						UDPserv_status = UDP_SEND;						

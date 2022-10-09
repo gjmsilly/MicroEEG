@@ -186,7 +186,7 @@ extern uint32_t SYS_Event;
 #define TCP_SEND_EVT            ( 1 << 3 )	//!< TCP端口回复完成
 #define UDP_RECV_EVT						( 1 << 4 )	//!< UDP端口接收到一帧
 #define UDP_DTPROCESSCLP_EVT		( 1 << 5 )	//!< UDP数据帧协议处理完毕
-#define UDP_TRGPROCESSCLP_EVT		( 1 << 6 )	//!< UDP事件帧协议处理完毕
+#define UDP_EVTPROCESSCLP_EVT		( 1 << 6 )	//!< UDP事件帧协议处理完毕
 #define EEG_IMP_MODE						( 1 << 7 )	//!< 阻抗检测模式
 #define CHX_IMP_START						( 1 << 8 )	//!< 一个通道阻抗检测开始
 //#define	CHX_IMP_REDY						( 1 << 9 )	//!< 一个通道的采样值待读取

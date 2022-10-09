@@ -71,8 +71,8 @@ typedef struct
 extern uint8_t TCP_Rx_Buff[TCP_Rx_Buff_Size];				//TCP接收缓冲区 
 extern uint8_t TCP_Tx_Buff[TCP_Tx_Buff_Size];				//TCP发送缓冲区
 extern uint8_t UDP_DTx_Buff[UDPD_Tx_Buff_Size];			//UDP数据发送缓冲区
-extern uint8_t UDP_TrgRx_Buff[UDP_TrgRx_Buff_Size];	//UDP事件发送缓冲区
-extern uint8_t UDP_TrgTx_Buff[UDP_TrgTx_Buff_Size];	//UDP事件接收缓冲区
+extern uint8_t UDP_EvtRx_Buff[UDP_TrgRx_Buff_Size];	//UDP事件发送缓冲区
+extern uint8_t UDP_EvtTx_Buff[UDP_TrgTx_Buff_Size];	//UDP事件接收缓冲区
 extern uint8_t *pUDP_DTx_Buff;		
 extern NETWORKParam_t net_param,*Pnet_param;
 extern SOCKETnParam_t  sn_param[3],*Psn_param;

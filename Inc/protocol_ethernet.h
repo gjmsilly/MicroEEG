@@ -97,7 +97,7 @@ void TCP_ProcessFSMInit(void);
 uint8_t TCP_ProcessFSM(void);
 
 uint8_t UDP_DataProcess(uint8_t SampleNum ,uint32_t Procesflag);
-uint8_t UDP_TriggerProcess();
+uint8_t UDP_EvtProcess();
 
 uint8_t protocol_RegisterAttrCBs(AttrCBs_t *pAttrcallbacks);
 
