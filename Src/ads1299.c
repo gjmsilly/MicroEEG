@@ -23,7 +23,7 @@ uint8_t DummyByte=0x00;
 /************************************************************************
  * LOCAL FUNCTIONS
  */
-static void WaitUs(int iWaitUs);
+static void WaitUs(uint32_t nus);
 static void ADS1299_Reset();
 static void ADS1299_PowerOn();
 
@@ -31,32 +31,34 @@ static void ADS1299_PowerOn();
  * FUNCTIONS
  */
  
-/*!
- *  @fn     WaitUs
- *
- *  @brief  延时（非精准延时）
- *	
- *  @param  iWaitUs - 延时时间，单位us
- */
-static void WaitUs(int iWaitUs)
+/*
+Systick功能实现us延时，参数SYSCLK为系统时钟
+*/
+uint32_t fac_us;
+static void WaitUs(uint32_t nus)
 {
-    int iPreTickVal = SysTick -> VAL;  
-	  int iCounterTargetValue;
-	  int iCounterTargetInterval;
-	   
-	  iCounterTargetInterval = iWaitUs * (HAL_RCC_GetHCLKFreq()/1000000)-32;
-	  if(iPreTickVal < iCounterTargetInterval)
-	  {
-			iCounterTargetValue =  iPreTickVal + SysTick->LOAD - iCounterTargetInterval;
-		}
-		else
-		{
-			iCounterTargetValue =  iPreTickVal - iCounterTargetInterval;
-		}
+    uint32_t ticks;
+    uint32_t told,tnow,tcnt=0;
+    uint32_t reload=SysTick->LOAD;
 		
-		while(SysTick -> VAL >= iCounterTargetValue);
-	
+		//SystemCoreClock=SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
+		fac_us=SystemCoreClock/8000000;
+		
+    ticks=nus*fac_us; 
+    told=SysTick->VAL; 
+    while(1)
+    {
+        tnow=SysTick->VAL;
+        if(tnow!=told)
+        {
+            if(tnow<told)tcnt+=told-tnow;
+            else tcnt+=reload-tnow+told;
+            told=tnow;
+            if(tcnt>=ticks)break; 
+        }
+    };
 }
+
 /*!
  *  @fn     ADS1299_Reset
  *
