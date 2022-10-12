@@ -330,23 +330,23 @@ static void Sys_Control()
 	// UDP标签通道事件 
 	if( SYS_Event & TRIGGER_EVT )
 	{
-		if(UDP_Service(2,SYS_Event) == UDP_RECV)		//!< UDP端口接收，清除接收中断标志位
+		if( UDP_Service(2,SYS_Event) == UDP_RECV )		//!< UDP端口接收，清除接收中断标志位
 		{
 			SYS_Event |= UDP_RECV_EVT;	//!< 更新事件：UDP端口接收到一帧 -> 跳转UDP事件帧协议服务
 			SYS_Event &= ~TRIGGER_EVT; //!< 清除前序事件 - 标签事件
 		}
 	}
 	
-	if( SYS_Event & UDP_RECV_EVT )
+	else if( SYS_Event & UDP_RECV_EVT )
 	{
-		 if(UDP_EvtProcess()==SUCCESS) //!< UDP事件帧协议服务处理完毕 -> 跳转UDP端口发送
+		 if( UDP_EvtProcess()==SUCCESS ) //!< UDP事件帧协议服务处理完毕 -> 跳转UDP端口发送
 		 {
 			 SYS_Event |= UDP_EVTPROCESSCLP_EVT;	//!< 更新事件：UDP事件帧协议处理完毕
 			 SYS_Event &= ~UDP_RECV_EVT; //!< 清除前序事件 - UDP端口接收到一帧
 		 }			 
 	}
 		
-	if( SYS_Event & UDP_EVTPROCESSCLP_EVT )
+	else if( SYS_Event & UDP_EVTPROCESSCLP_EVT )
 	{
 			if(UDP_Service(2,SYS_Event) == UDP_SEND )
 		{
@@ -379,7 +379,8 @@ static void Sys_Control()
 	if ( SYS_Event & EEG_IMP_MODE ) 
 	{
 		delay++;
-		if ( delay == 2)
+		
+		if ( delay == 10 ) //TODO 
 		{
 				delay = 0;
 				SYS_Event |= CHX_IMP_START; //!< 更新事件： 开始一通道阻抗值读取

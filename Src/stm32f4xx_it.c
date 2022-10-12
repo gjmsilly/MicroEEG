@@ -275,7 +275,7 @@ void EXTI1_IRQHandler(void)
 		
 		SampleNum++;
 		
-		if( SampleNum == 75 ) //250sps采样,7.8Hz测试信号 测75个点
+		if( SampleNum == 25 ) //250sps采样,7.8Hz测试信号 至少采半个周期 即采1/(7.8*2)*250 个点
 		{	
 			
 			for( chip=0; chip < CHANNEL_NUM/8; chip++) {

@@ -180,15 +180,17 @@ uint8_t AttrChangeProcess (uint8_t AttrChangeNum)
 		case IMP_MEAS_EN:
 			App_GetAttr(IMP_MEAS_EN,CHX_NONE,pValue); // 获取属性值
 
-			if(( *(uint8_t*)pValue == IMP_MEAS_MODE ) & ((SYS_Event&EEG_IMP_MODE)==0))
+			if( ( *(uint8_t*)pValue == IMP_MEAS_MODE ) & ( (SYS_Event&EEG_IMP_MODE)==0 ) )
 			{
 				SYS_Event |= EEG_IMP_MODE; //!< 更新事件：阻抗检测模式
+				ADS1299_SetSamplerate(0,250); //!< 默认250Hz采样
 				
 			}
 			else if( *(uint8_t*)pValue == SAMPLE_MODE ) 
 			{
 				SYS_Event &= ~EEG_IMP_MODE; //!< 清除前序事件
-				ADS1299_Mode_Config(ADS1299_ParaGroup_ACQ);
+				ADS1299_Mode_Config(ADS1299_ParaGroup_ACQ); //!< 恢复采样模式
+				BKP_Service_Recovery();//!< 恢复采样率、增益
 			}
 		break;	
 	}
@@ -288,7 +290,7 @@ void LED_Service_Init(void)
 void LED_Service(uint16_t devstate)
 {
 	
-	if( devstate & EEG_DATA_CPL_EVT ) //!< 设备采样中
+	if( (devstate & EEG_DATA_CPL_EVT) || (devstate & EEG_IMP_MODE) ) //!< 设备采样中
 	{		
 		ACQ_LED1_TOGGLE;
 		ERR_LED2_OFF;
@@ -296,6 +298,13 @@ void LED_Service(uint16_t devstate)
 	else if( devstate & EEG_STOP_EVT ) //!< 设备停止采样
 		ACQ_LED1_OFF;
 	
+	if( devstate & UDP_RECV_EVT )	//!< 事件发生，标签接收
+	{
+		ACQ_LED2_TOGGLE;
+	}
+	//else if ( devstate & UDP_EVTPROCESSCLP_EVT ) //!< 事件发生，标签发送完毕
+	//	ACQ_LED2_OFF; //TODO 展示效果不好
+		
 	if( devstate & POWERDOWN_EVT ) //!< 设备发生异常断电
 		ERR_LED2_ON;
 	

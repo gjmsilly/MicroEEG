@@ -31,32 +31,15 @@ static void ADS1299_PowerOn();
  * FUNCTIONS
  */
  
-/*
-Systick功能实现us延时，参数SYSCLK为系统时钟
-*/
-uint32_t fac_us;
+// TODO 粗延时
 static void WaitUs(uint32_t nus)
 {
-    uint32_t ticks;
-    uint32_t told,tnow,tcnt=0;
-    uint32_t reload=SysTick->LOAD;
-		
-		//SystemCoreClock=SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
-		fac_us=SystemCoreClock/8000000;
-		
-    ticks=nus*fac_us; 
-    told=SysTick->VAL; 
-    while(1)
+    uint32_t Delay = nus * 168/4;
+    do
     {
-        tnow=SysTick->VAL;
-        if(tnow!=told)
-        {
-            if(tnow<told)tcnt+=told-tnow;
-            else tcnt+=reload-tnow+told;
-            told=tnow;
-            if(tcnt>=ticks)break; 
-        }
-    };
+        __NOP();
+    }
+    while (Delay --);
 }
 
 /*!

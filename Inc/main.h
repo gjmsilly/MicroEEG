@@ -173,6 +173,7 @@ extern uint32_t SYS_Event;
 #define ACQ_LED2_OFF  	LL_GPIO_SetOutputPin  (GPIOE, ACQ_LED2_Pin);
 #define ACQ_LED2_ON   	LL_GPIO_ResetOutputPin(GPIOE, ACQ_LED2_Pin);
 #define ACQ_LED1_TOGGLE	LL_GPIO_TogglePin(GPIOE, ACQ_LED1_Pin);
+#define ACQ_LED2_TOGGLE	LL_GPIO_TogglePin(GPIOE, ACQ_LED2_Pin);
 #define PWR_LED1_OFF  	LL_GPIO_SetOutputPin  (GPIOE, PWR_LED1_Pin);
 #define PWR_LED1_ON   	LL_GPIO_ResetOutputPin(GPIOE, PWR_LED1_Pin);
 #define PWR_LED2_OFF  	LL_GPIO_SetOutputPin  (GPIOC, PWR_LED2_Pin);
