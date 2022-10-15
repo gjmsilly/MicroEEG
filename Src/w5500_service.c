@@ -66,8 +66,8 @@ void W5500_Init(void)
 	W5500_Config();								//初始化W5500通用寄存器区
 	Detect_Gateway();							//检查网关服务器 
 	W5500_Socket_Init(0);					//Socket 0配置 - TCP控制通道
-	W5500_Socket_Init(1);     		//Socket 1配置 - UDP数据发 
-	W5500_Socket_Init(2);     		//Socket 2配置 - UDP事件收发
+	W5500_Socket_Init(1);     		//Socket 1配置 - UDP脑电数据发 
+	W5500_Socket_Init(2);     		//Socket 2配置 - UDP事件标签收发
 	
 	pUDP_DTx_Buff = UDP_DTx_Buff; 	//!< UDP数据发送缓冲指针
 	
@@ -384,11 +384,14 @@ static void W5500_Socket_Init(uint8_t sn)
 *
 * 说明    : 调用本函数前确保socket已打开- @ref W5500_Socket_Init
 *******************************************************************************/
+
 uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 {
 	uint16_t recvsize=0,sentsize = 0; // 用于回环测试
 	uint8_t TCPserv_status; //!< TCP服务状态
-	//uint16_t port=7001;
+	uint8_t phystate; //!< 网口物理状态
+	
+	phystate = getPHYCFGR();
 	
 	switch(getSn_SR(sn)) //检查该socket的状态
 	{
@@ -410,11 +413,24 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 		/* Socket n 处于连接状态 */
 		case SOCK_ESTABLISHED:
 		
-			if(getSn_IR(sn) & Sn_IR_CON)
+			/*			
+			if ( getSn_IR(sn) & Sn_IR_TIMEOUT ) // 超时
+			{
+				close(sn);
+				W5500_Socket_Init(sn);
+			}
+			else if(getSn_IR(sn) & Sn_IR_CON ) //连接正常
 			{
 				setSn_IR(sn,Sn_IR_CON); //清除socket标志位
-			}	
-
+			}
+			*/
+			
+			if ((phystate&0x01)==PHYCFGR_LNK_OFF) //网线断开
+			{
+				close(sn);
+				W5500_Socket_Init(sn);
+			}
+			
 			if((recvsize = getSn_RX_RSR(sn))>0) //接收目的主机发来的TCP数据			
 			{
 				
@@ -432,16 +448,19 @@ uint8_t TCPServer_Service(uint8_t sn , uint16_t Procesflag)
 				memset(TCP_Rx_Buff,0xff,sizeof(TCP_Rx_Buff));//清除TCP接收缓冲区
 				
 				TCPserv_status = TCP_SEND;
+				
 			}
-		
 		break;
 			
 		/* Socket n 断开请求 */
 		case SOCK_CLOSE_WAIT:
-			close(sn);
+			disconnect(sn);	// 断开当前TCP连接
+      close(sn);	// 关闭当前所使用socket
 			
 			TCPserv_status = Sn_CLOSED; 
+
 		break;
+	
 	}
 	
 	return( TCPserv_status );
